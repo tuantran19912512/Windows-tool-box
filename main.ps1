@@ -1,9 +1,9 @@
 ﻿# ==============================================================================
-# Tên công cụ: TOOLBOX Cho KTONLINE
-# Tác giả: Trần Tuấn - KTOnline
+# Tên công cụ: VIETTOOLBOX PRO (BẢN CẬP NHẬT QUICK POWER)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
 # ==============================================================================
 
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
 
 # 1. Đoạn code ẩn cửa sổ Console
 $showWindowAsync = Add-Type -MemberDefinition @"
@@ -28,7 +28,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 $scriptFolder = Join-Path $PSScriptRoot "Scripts"
 $logoPath = Join-Path $PSScriptRoot "logo2.png"
 
-# 4. Giao diện XAML
+# 4. Giao diện XAML (Logo 140x140 + 4 Nút chức năng ở Footer)
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -56,8 +56,8 @@ $inputXML = @"
                 </Image>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="CÔNG CỤ CHO KTONLINE" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
-                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Trần KTOnline" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
+                    <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
+                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
                 </StackPanel>
             </Grid>
 
@@ -83,11 +83,23 @@ $inputXML = @"
             </Grid>
 
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="25">
-                <Button Name="BtnColor" Content="MÀU CHỮ: XANH" Width="150" Height="45" Margin="0,0,15,0" 
+                
+                <Button Name="BtnShutdown" Content="TẮT MÁY" Width="130" Height="45" Margin="0,0,10,0" 
+                        Background="#D35400" Foreground="White" BorderThickness="0" FontWeight="Bold">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
+                </Button>
+
+                <Button Name="BtnRestart" Content="KHỞI ĐỘNG LẠI" Width="130" Height="45" Margin="0,0,10,0" 
+                        Background="#2980B9" Foreground="White" BorderThickness="0" FontWeight="Bold">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
+                </Button>
+
+                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" 
                         Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#007ACC" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
-                <Button Name="BtnClose" Content="THOÁT ✕" Width="150" Height="45" 
+
+                <Button Name="BtnClose" Content="THOÁT ✕" Width="110" Height="45" 
                         Background="#CC1123" Foreground="White" BorderThickness="0" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
@@ -104,6 +116,8 @@ $groupContainer = $window.FindName("GroupContainer")
 $txtLog = $window.FindName("TxtLog")
 $btnClose = $window.FindName("BtnClose")
 $btnColor = $window.FindName("BtnColor")
+$btnShutdown = $window.FindName("BtnShutdown")
+$btnRestart = $window.FindName("BtnRestart")
 
 $Global:LogColorGreen = $true
 
@@ -115,7 +129,6 @@ function Global:Ghi-Log($msg) {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
-# Hàm ChayTacVu (Vẫn giữ để các file con gọi nếu cần)
 function Global:ChayTacVu($tenTacVu, $logic) {
     $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
     Ghi-Log "=========================================="
@@ -124,7 +137,6 @@ function Global:ChayTacVu($tenTacVu, $logic) {
     try { &$logic } catch { Ghi-Log "!!! LỖI: $($_.Exception.Message)" }
 }
 
-# --- CẬP NHẬT QUAN TRỌNG TẠI ĐÂY ---
 function Update-UI {
     $null = $groupContainer.Children.Clear()
     if (!(Test-Path $scriptFolder)) { return }
@@ -143,10 +155,9 @@ function Update-UI {
             $btn.Content = "● " + $file.BaseName.Substring($file.BaseName.IndexOf('_') + 1).Replace('_',' ')
             $btn.Height = 42; $btn.Margin = "0,0,0,6"; $btn.Background = "#2D2D30"; $btn.Foreground = "White"; $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "12,0,0,0"; $btn.Tag = $file.FullName
             
-            # SỬA LOGIC CLICK: Xóa log trước khi nạp file
             $btn.Add_Click({ 
                 param($sender, $e) 
-                $window.Dispatcher.Invoke([action]{ $txtLog.Clear() }) # ÉP CLEAR LOG TẠI ĐÂY
+                $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
                 try { . $sender.Tag } catch { Ghi-Log "LỖI KHI GỌI FILE: $($_.Exception.Message)" } 
             })
             $null = $stack.Children.Add($btn)
@@ -156,6 +167,7 @@ function Update-UI {
     }
 }
 
+# --- XỬ LÝ SỰ KIỆN ĐỔI MÀU CHỮ ---
 $btnColor.Add_Click({
     if ($Global:LogColorGreen) {
         $txtLog.Foreground = "#FFFFFF"; $btnColor.Content = "MÀU CHỮ: TRẮNG"; $Global:LogColorGreen = $false
@@ -164,6 +176,25 @@ $btnColor.Add_Click({
     }
 })
 
+# --- XỬ LÝ SỰ KIỆN TẮT MÁY ---
+$btnShutdown.Add_Click({
+    $confirm = [System.Windows.Forms.MessageBox]::Show("Toàn có chắc chắn muốn TẮT MÁY không?", "VietToolbox", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
+    if ($confirm -eq "Yes") { 
+        Ghi-Log ">>> ĐANG THỰC HIỆN TẮT MÁY..."
+        Stop-Computer -Force 
+    }
+})
+
+# --- XỬ LÝ SỰ KIỆN KHỞI ĐỘNG LẠI ---
+$btnRestart.Add_Click({
+    $confirm = [System.Windows.Forms.MessageBox]::Show("Toàn có chắc chắn muốn KHỞI ĐỘNG LẠI không?", "VietToolbox", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Question)
+    if ($confirm -eq "Yes") { 
+        Ghi-Log ">>> ĐANG THỰC HIỆN KHỞI ĐỘNG LẠI..."
+        Restart-Computer -Force 
+    }
+})
+
+# Khởi chạy
 Update-UI
 $btnClose.Add_Click({ $window.Close() })
 $window.Add_MouseLeftButtonDown({ $window.DragMove() })
