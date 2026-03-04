@@ -28,6 +28,6 @@ if (Test-Path $MainScript) {
     Remove-Item -Path $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item -Path $ZipFile -Force -ErrorAction SilentlyContinue
     
-    Write-Host ">>> DA DON DEP SACH SE. CAM ON TOAN DA SU DUNG!" -ForegroundColor Green
+    Write-Host ">>> DA DON DEP SACH SE. CAM ON BAN DA SU DUNG!" -ForegroundColor Green
     Start-Sleep -Seconds 2
 }
