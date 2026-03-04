@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO (BẢN TÙY CHỈNH MÀU LOG)
-# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# Tên công cụ: TOOLBOX Cho KTONLINE
+# Tác giả: Trần Tuấn - KTOnline
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
@@ -56,8 +56,8 @@ $inputXML = @"
                 </Image>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
-                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
+                    <TextBlock Text="CÔNG CỤ CHO KTONLINE" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
+                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Trần KTOnline" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
                 </StackPanel>
             </Grid>
 
@@ -87,7 +87,6 @@ $inputXML = @"
                         Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#007ACC" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
-
                 <Button Name="BtnClose" Content="THOÁT ✕" Width="150" Height="45" 
                         Background="#CC1123" Foreground="White" BorderThickness="0" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
@@ -106,10 +105,8 @@ $txtLog = $window.FindName("TxtLog")
 $btnClose = $window.FindName("BtnClose")
 $btnColor = $window.FindName("BtnColor")
 
-# Biến theo dõi trạng thái màu
 $Global:LogColorGreen = $true
 
-# --- Hàm hỗ trợ ---
 function Global:Ghi-Log($msg) {
     $window.Dispatcher.Invoke([action]{
         $txtLog.AppendText("[$((Get-Date).ToString('HH:mm:ss'))] $msg`r`n")
@@ -118,6 +115,7 @@ function Global:Ghi-Log($msg) {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
+# Hàm ChayTacVu (Vẫn giữ để các file con gọi nếu cần)
 function Global:ChayTacVu($tenTacVu, $logic) {
     $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
     Ghi-Log "=========================================="
@@ -126,6 +124,7 @@ function Global:ChayTacVu($tenTacVu, $logic) {
     try { &$logic } catch { Ghi-Log "!!! LỖI: $($_.Exception.Message)" }
 }
 
+# --- CẬP NHẬT QUAN TRỌNG TẠI ĐÂY ---
 function Update-UI {
     $null = $groupContainer.Children.Clear()
     if (!(Test-Path $scriptFolder)) { return }
@@ -143,7 +142,13 @@ function Update-UI {
             $btn = New-Object System.Windows.Controls.Button
             $btn.Content = "● " + $file.BaseName.Substring($file.BaseName.IndexOf('_') + 1).Replace('_',' ')
             $btn.Height = 42; $btn.Margin = "0,0,0,6"; $btn.Background = "#2D2D30"; $btn.Foreground = "White"; $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "12,0,0,0"; $btn.Tag = $file.FullName
-            $btn.Add_Click({ param($sender, $e) try { . $sender.Tag } catch { Ghi-Log "LỖI: $($_.Exception.Message)" } })
+            
+            # SỬA LOGIC CLICK: Xóa log trước khi nạp file
+            $btn.Add_Click({ 
+                param($sender, $e) 
+                $window.Dispatcher.Invoke([action]{ $txtLog.Clear() }) # ÉP CLEAR LOG TẠI ĐÂY
+                try { . $sender.Tag } catch { Ghi-Log "LỖI KHI GỌI FILE: $($_.Exception.Message)" } 
+            })
             $null = $stack.Children.Add($btn)
         }
         $expander.Content = $stack
@@ -151,20 +156,14 @@ function Update-UI {
     }
 }
 
-# --- XỬ LÝ SỰ KIỆN ĐỔI MÀU CHỮ ---
 $btnColor.Add_Click({
     if ($Global:LogColorGreen) {
-        $txtLog.Foreground = "#FFFFFF" # Chuyển sang Trắng
-        $btnColor.Content = "MÀU CHỮ: TRẮNG"
-        $Global:LogColorGreen = $false
+        $txtLog.Foreground = "#FFFFFF"; $btnColor.Content = "MÀU CHỮ: TRẮNG"; $Global:LogColorGreen = $false
     } else {
-        $txtLog.Foreground = "#00FF00" # Chuyển sang Xanh
-        $btnColor.Content = "MÀU CHỮ: XANH"
-        $Global:LogColorGreen = $true
+        $txtLog.Foreground = "#00FF00"; $btnColor.Content = "MÀU CHỮ: XANH"; $Global:LogColorGreen = $true
     }
 })
 
-# Khởi chạy
 Update-UI
 $btnClose.Add_Click({ $window.Close() })
 $window.Add_MouseLeftButtonDown({ $window.DragMove() })
