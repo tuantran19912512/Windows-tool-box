@@ -1,4 +1,5 @@
-﻿Write-Host ">>> DANG KHOI CHAY VIETTOOLBOX TU GITHUB..." -ForegroundColor Cyan
+ 
+Write-Host ">>> DANG KHOI CHAY VIETTOOLBOX TU GITHUB..." -ForegroundColor Cyan
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
