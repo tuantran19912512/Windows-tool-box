@@ -1,4 +1,4 @@
- 
+clear
 Write-Host ">>> DANG KHOI CHAY VIETTOOLBOX TU GITHUB..." -ForegroundColor Cyan
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
