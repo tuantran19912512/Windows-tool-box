@@ -1,52 +1,77 @@
-﻿Add-Type -AssemblyName System.Windows.Forms
+﻿# ÉP POWERSHELL HIỂU TIẾNG VIỆT (UTF-8)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+$OutputEncoding = [System.Text.Encoding]::UTF8
 
-Ghi-Log "=========================================================="
-Ghi-Log ">>> CÔNG CỤ ĐẶC TRỊ LỖI KẸT LỆNH MÁY IN (SPOOLER) <<<"
-Ghi-Log "=========================================================="
+Add-Type -AssemblyName System.Windows.Forms
 
-# 1. Dừng dịch vụ Print Spooler
-Ghi-Log "[1/3] Đang đóng băng dịch vụ máy in (Print Spooler)..."
-try {
-    Stop-Service -Name "Spooler" -Force -ErrorAction Stop
-    Ghi-Log "   + Đã dừng dịch vụ thành công."
-} catch {
-    Ghi-Log "   - Dịch vụ đang ở trạng thái dừng hoặc có lỗi (bỏ qua)."
-}
+# ==============================================================================
+# SCRIPT: FIX LỖI KẸT MÁY IN (CLEAR PRINTER SPOOLER)
+# ==============================================================================
 
-# 2. Xóa các file rác/kẹt trong thư mục PRINTERS
-Ghi-Log "[2/3] Đang tiêu diệt các lệnh in bị kẹt cứng trong hệ thống..."
-$SpoolFolder = "C:\Windows\System32\spool\PRINTERS"
-if (Test-Path $SpoolFolder) {
+$LogicThucThi = {
+    if (Get-Command ChuyenTab -ErrorAction SilentlyContinue) { ChuyenTab $pnlLog $btnMenuLog }
+    
+    Ghi-Log "=========================================================="
+    Ghi-Log ">>> ĐANG XỬ LÝ LỖI KẸT MÁY IN (PRINTER SPOOLER) <<<"
+    Ghi-Log "=========================================================="
+
+    # --- BƯỚC 1: DỪNG DỊCH VỤ SPOOLER ---
+    Ghi-Log "[1/3] Đang dừng dịch vụ Print Spooler..."
     try {
-        # Xóa tất cả các file (.SHD và .SPL) nằm trong thư mục này
-        Get-ChildItem -Path $SpoolFolder -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-        Ghi-Log "   + Đã dọn sạch hàng đợi máy in."
+        $spooler = Get-Service -Name Spooler
+        if ($spooler.Status -ne "Stopped") {
+            Stop-Service -Name Spooler -Force -ErrorAction Stop
+            Ghi-Log "   [OK] Đã dừng dịch vụ thành công."
+        } else {
+            Ghi-Log "   [!] Dịch vụ Spooler vốn đã dừng từ trước."
+        }
     } catch {
-        Ghi-Log "!!! LỖI: Không thể xóa file. Có thể một tiến trình khác đang giữ file."
+        Ghi-Log "   !!! LỖI: Không thể dừng dịch vụ Spooler. Hãy chạy Tool với quyền Admin."
+        return
     }
-} else {
-    Ghi-Log "   - Thư mục PRINTERS không tồn tại, bỏ qua."
+
+    # --- BƯỚC 2: XÓA CÁC FILE LỆNH IN BỊ KẸT ---
+    Ghi-Log "[2/3] Đang dọn dẹp các lệnh in bị kẹt trong hệ thống..."
+    $spoolPath = "$env:SystemRoot\System32\spool\PRINTERS\*"
+    try {
+        # Kiểm tra xem có file nào không
+        if (Test-Path $spoolPath) {
+            $files = Get-ChildItem -Path $spoolPath
+            if ($files.Count -gt 0) {
+                Ghi-Log "   + Tìm thấy $($files.Count) lệnh in cũ. Đang xóa..."
+                Remove-Item -Path $spoolPath -Force -Recurse
+                Ghi-Log "   [OK] Đã dọn dẹp sạch folder Printers."
+            } else {
+                Ghi-Log "   [!] Thư mục lệnh in vốn đã trống."
+            }
+        }
+    } catch {
+        Ghi-Log "   [!] Cảnh báo: Một số file đang bị khóa, không thể xóa hết."
+    }
+
+    # --- BƯỚC 3: KHỞI ĐỘNG LẠI DỊCH VỤ ---
+    Ghi-Log "[3/3] Đang khởi động lại dịch vụ máy in..."
+    try {
+        Start-Service -Name Spooler -ErrorAction Stop
+        Ghi-Log "   [OK] Dịch vụ Print Spooler đã hoạt động trở lại."
+        
+        # Kiểm tra chốt hạ
+        $check = Get-Service -Name Spooler
+        if ($check.Status -eq "Running") {
+            Ghi-Log ">>> HOÀN TẤT: MÁY IN ĐÃ SẴN SÀNG ĐỂ SỬ DỤNG! <<<"
+        }
+    } catch {
+        Ghi-Log "   !!! LỖI: Không thể khởi động lại dịch vụ Spooler."
+    }
+
+    Ghi-Log "=========================================================="
+    
+    [System.Windows.Forms.MessageBox]::Show("Đã sửa lỗi kẹt máy in thành công! `nBạn có thể thử in lại ngay bây giờ.", "VietToolbox", 0, 64)
 }
 
-# 3. Khởi động lại dịch vụ Print Spooler
-Ghi-Log "[3/3] Đang kích hoạt lại dịch vụ máy in..."
-try {
-    Start-Service -Name "Spooler" -ErrorAction Stop
-    Ghi-Log "   + Đã khởi động lại dịch vụ thành công."
-} catch {
-    Ghi-Log "!!! LỖI CỰC MẠNH: Không thể bật lại Spooler."
-}
-
-# 4. Kiểm tra chốt hạ
-$svc = Get-Service -Name "Spooler" -ErrorAction SilentlyContinue
-if ($null -ne $svc -and $svc.Status -eq 'Running') {
-    Ghi-Log "=========================================================="
-    Ghi-Log ">>> HOÀN TẤT: MÁY IN ĐÃ SẴN SÀNG HOẠT ĐỘNG <<<"
-    Ghi-Log "=========================================================="
-    [System.Windows.Forms.MessageBox]::Show("Đã sửa lỗi kẹt máy in thành công! Khách hàng có thể in lại bình thường.", "VietToolbox Pro", 0, 64)
+# Tích hợp vào VietToolbox
+if (Get-Command "ChayTacVu" -ErrorAction SilentlyContinue) {
+    ChayTacVu "Sửa lỗi kẹt máy in..." $LogicThucThi
 } else {
-    Ghi-Log "=========================================================="
-    Ghi-Log "!!! THẤT BẠI: DỊCH VỤ MÁY IN KHÔNG THỂ CHẠY !!!"
-    Ghi-Log "=========================================================="
-    [System.Windows.Forms.MessageBox]::Show("Lỗi khởi động hệ thống in ấn của Windows! Vui lòng kiểm tra lại dịch vụ Spooler trong services.msc.", "Lỗi hệ thống", 0, 16)
+    &$LogicThucThi
 }
