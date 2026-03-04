@@ -126,39 +126,80 @@ function Update-DetailText {
         $out += ("   - Sức khỏe       : [{0}] | Serial: {1}`r`n" -f $d.HealthStatus, $d.SerialNumber.Trim())
     }
 
-    $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) - CHI TIẾT CHÍNH XÁC ] <<<`r`n"
-    
-    # Hàm lấy VRAM chính xác từ Registry (Bỏ qua giới hạn WMI 32-bit)
-    $GpuRegPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\00*"
-    $GpuData = Get-ItemProperty -Path $GpuRegPath -ErrorAction SilentlyContinue
+    $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) - BẢN FIX LỖI BINARY ] <<<`r`n"
     
     $gpus = Get-CimInstance Win32_VideoController
-    $totalSysRam = (Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize / 1MB
+    $os = Get-CimInstance Win32_OperatingSystem
+    $totalSysRam = $os.TotalVisibleMemorySize / 1MB
 
     foreach ($g in $gpus) {
-        # Dò tìm VRAM chuẩn từ Registry dựa trên tên Card
-        $MatchReg = $GpuData | Where-Object { $_.DriverDesc -eq $g.Name }
-        $ExactVRAM = 0
-        
-        if ($MatchReg -and $MatchReg."HardwareInformation.AdapterMemorySize") {
-            # Lấy giá trị từ Registry (Dạng 64-bit Unsigned)
-            $ExactVRAM = [Math]::Round($MatchReg."HardwareInformation.AdapterMemorySize" / 1GB, 2)
-        } else {
-            # Fallback nếu Registry lỗi (Dùng cách tính cũ nhưng ép kiểu 64-bit)
-            $raw = [int64]$g.AdapterRAM
-            if ($raw -lt 0) { $raw += 4294967296 }
-            $ExactVRAM = [Math]::Round($raw / 1GB, 2)
+        $exactVRAM = 0
+        $method = ""
+
+        # --- CÁCH 1: DÙNG NVIDIA-SMI (Chuẩn nhất cho 1660 Ti) ---
+        if ($g.Name -match "NVIDIA") {
+            $smiFile = "$env:TEMP\vram.txt"
+            $smiProc = Start-Process "nvidia-smi" -ArgumentList "--query-gpu=memory.total --format=csv,noheader,nounits" -NoNewWindow -PassThru -RedirectStandardOutput $smiFile -ErrorAction SilentlyContinue
+            if ($smiProc) {
+                $smiProc.WaitForExit(3000)
+                if (Test-Path $smiFile) {
+                    $vramRaw = Get-Content $smiFile | Out-String
+                    if ($vramRaw -match "\d+") {
+                        $exactVRAM = [Math]::Round([float]$vramRaw.Trim() / 1024, 2)
+                        $method = "(NVIDIA SMI)"
+                    }
+                    Remove-Item $smiFile -Force -ErrorAction SilentlyContinue
+                }
+            }
         }
 
-        # Shared Memory (RAM chia sẻ - Thường là 50% System RAM)
-        $vramShared = [Math]::Round($totalSysRam / 2, 2)
-        $vramTotal = $ExactVRAM + $vramShared
+        # --- CÁCH 2: LỤC REGISTRY (FIX LỖI MẢNG BYTE) ---
+        if ($exactVRAM -le 0) {
+            $regPaths = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\00*" -ErrorAction SilentlyContinue
+            foreach ($reg in $regPaths) {
+                if ($reg.DriverDesc -eq $g.Name) {
+                    $val = $null
+                    if ($reg."HardwareInformation.qwMemorySize") { $val = $reg."HardwareInformation.qwMemorySize" }
+                    elseif ($reg."HardwareInformation.MemorySize") { $val = $reg."HardwareInformation.MemorySize" }
 
-        $out += ("- Tên Card      : {0}`r`n" -f $g.Name)
-        $out += ("  + VRAM RIÊNG  : {0} GB (Dedicated - Hàng thật)`r`n" -f $ExactVRAM)
-        $out += ("  + VRAM CHIA SẺ: {0} GB (Shared - Mượn RAM)`r`n" -f $vramShared)
-        $out += ("  + TỔNG CỘNG   : {0} GB (Total Graphics Memory)`r`n" -f $vramTotal)
-        $out += ("  + Trình điều khiển: {0} (Ngày: {1})`r`n" -f $g.DriverVersion, $g.DriverDate.ToString('dd/MM/yyyy'))
+                    if ($val -is [System.Array]) {
+                        # TỰ ĐỘNG NHẬN DIỆN ĐỘ DÀI MẢNG ĐỂ TRÁNH LỖI
+                        if ($val.Length -ge 8) {
+                            $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt64($val, 0) / 1GB, 2)
+                            $method = "(Reg-Bin64)"
+                        }
+                        elseif ($val.Length -ge 4) {
+                            $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt32($val, 0) / 1GB, 2)
+                            $method = "(Reg-Bin32)"
+                        }
+                    }
+                    elseif ($val -ne $null) {
+                        $raw = [int64]$val
+                        if ($raw -lt 0) { $raw += 4294967296 }
+                        $exactVRAM = [Math]::Round($raw / 1GB, 2)
+                        $method = "(Reg-Num)"
+                    }
+                }
+            }
+        }
+
+        # --- CÁCH 3: DỰ PHÒNG CUỐI CÙNG (WMI) ---
+        if ($exactVRAM -le 0) {
+            $raw = [int64]$g.AdapterRAM
+            if ($raw -lt 0) { $raw += 4294967296 }
+            $exactVRAM = [Math]::Round($raw / 1GB, 2)
+            $method = "(WMI-Fix)"
+        }
+
+        # Tính toán Shared và Total
+        $vramShared = [Math]::Round($totalSysRam / 2, 2)
+        $vramTotal = $exactVRAM + $vramShared
+
+        $out += ("- GPU: {0} {1}`r`n" -f $g.Name, $method)
+        $out += ("  + VRAM RIÊNG (Dedicated): {0} GB`r`n" -f $exactVRAM)
+        $out += ("  + VRAM CHIA SẺ (Shared) : {0} GB`r`n" -f $vramShared)
+        $out += ("  + TỔNG DUNG LƯỢNG VGA   : {0} GB`r`n" -f $vramTotal)
+        $out += ("  + Driver: {0}`r`n" -f $g.DriverVersion)
         $out += " ----------------------------------------------------------`r`n"
     }
 
