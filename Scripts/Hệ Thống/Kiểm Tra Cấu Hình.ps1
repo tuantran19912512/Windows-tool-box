@@ -126,29 +126,40 @@ function Update-DetailText {
         $out += ("   - Sức khỏe       : [{0}] | Serial: {1}`r`n" -f $d.HealthStatus, $d.SerialNumber.Trim())
     }
 
-    $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) ] <<<`r`n"
+    $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) - CHI TIẾT CHÍNH XÁC ] <<<`r`n"
+    
+    # Hàm lấy VRAM chính xác từ Registry (Bỏ qua giới hạn WMI 32-bit)
+    $GpuRegPath = "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\00*"
+    $GpuData = Get-ItemProperty -Path $GpuRegPath -ErrorAction SilentlyContinue
+    
     $gpus = Get-CimInstance Win32_VideoController
-    # Lấy tổng RAM hệ thống để tính Shared Memory (thường Windows chia 50%)
     $totalSysRam = (Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize / 1MB
 
     foreach ($g in $gpus) {
-        # FIX LỖI TRÀN SỐ: AdapterRAM là 32-bit signed, cần chuyển sang 64-bit unsigned
-        $rawVRAM = [int64]$g.AdapterRAM
-        if ($rawVRAM -lt 0) { $rawVRAM += 4294967296 } # Bù 4GB nếu bị âm
+        # Dò tìm VRAM chuẩn từ Registry dựa trên tên Card
+        $MatchReg = $GpuData | Where-Object { $_.DriverDesc -eq $g.Name }
+        $ExactVRAM = 0
         
-        $vramDedicated = [Math]::Round($rawVRAM / 1GB, 2)
-        
-        # Shared Memory: Windows thường mặc định chia sẻ ~50% System RAM cho GPU
-        $vramShared = [Math]::Round($totalSysRam / 2, 2)
-        
-        # Total Memory
-        $vramTotal = $vramDedicated + $vramShared
+        if ($MatchReg -and $MatchReg."HardwareInformation.AdapterMemorySize") {
+            # Lấy giá trị từ Registry (Dạng 64-bit Unsigned)
+            $ExactVRAM = [Math]::Round($MatchReg."HardwareInformation.AdapterMemorySize" / 1GB, 2)
+        } else {
+            # Fallback nếu Registry lỗi (Dùng cách tính cũ nhưng ép kiểu 64-bit)
+            $raw = [int64]$g.AdapterRAM
+            if ($raw -lt 0) { $raw += 4294967296 }
+            $ExactVRAM = [Math]::Round($raw / 1GB, 2)
+        }
 
-        $out += ("- GPU: {0}`r`n" -f $g.Name)
-        $out += ("  + VRAM Riêng (Dedicated): {0} GB (Hàng thật)`r`n" -f $vramDedicated)
-        $out += ("  + RAM Chia sẻ (Shared)  : {0} GB (Mượn hệ thống)`r`n" -f $vramShared)
-        $out += ("  + TỔNG DUNG LƯỢNG VGA   : {0} GB`r`n" -f $vramTotal)
-        $out += ("  + Phiên bản Driver      : {0}`r`n" -f $g.DriverVersion)
+        # Shared Memory (RAM chia sẻ - Thường là 50% System RAM)
+        $vramShared = [Math]::Round($totalSysRam / 2, 2)
+        $vramTotal = $ExactVRAM + $vramShared
+
+        $out += ("- Tên Card      : {0}`r`n" -f $g.Name)
+        $out += ("  + VRAM RIÊNG  : {0} GB (Dedicated - Hàng thật)`r`n" -f $ExactVRAM)
+        $out += ("  + VRAM CHIA SẺ: {0} GB (Shared - Mượn RAM)`r`n" -f $vramShared)
+        $out += ("  + TỔNG CỘNG   : {0} GB (Total Graphics Memory)`r`n" -f $vramTotal)
+        $out += ("  + Trình điều khiển: {0} (Ngày: {1})`r`n" -f $g.DriverVersion, $g.DriverDate.ToString('dd/MM/yyyy'))
+        $out += " ----------------------------------------------------------`r`n"
     }
 
     $out += "`r`n==========================================================`r`n"
