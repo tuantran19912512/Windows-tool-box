@@ -127,12 +127,28 @@ function Update-DetailText {
     }
 
     $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) ] <<<`r`n"
-    $gpus = Get-CimInstance Win32_VideoController; $totalVRAM = 0
+    $gpus = Get-CimInstance Win32_VideoController
+    # Lấy tổng RAM hệ thống để tính Shared Memory (thường Windows chia 50%)
+    $totalSysRam = (Get-CimInstance Win32_OperatingSystem).TotalVisibleMemorySize / 1MB
+
     foreach ($g in $gpus) {
-        $vram = if ($g.AdapterRAM -lt 0 -or $null -eq $g.AdapterRAM) { 0 } else { [Math]::Round($g.AdapterRAM / 1GB, 2) }
-        $totalVRAM += $vram
-        $out += ("- GPU: {0} | VRAM: {1} GB`r`n" -f $g.Name, $vram)
-        $out += ("  Phiên bản Driver: {0}`r`n" -f $g.DriverVersion)
+        # FIX LỖI TRÀN SỐ: AdapterRAM là 32-bit signed, cần chuyển sang 64-bit unsigned
+        $rawVRAM = [int64]$g.AdapterRAM
+        if ($rawVRAM -lt 0) { $rawVRAM += 4294967296 } # Bù 4GB nếu bị âm
+        
+        $vramDedicated = [Math]::Round($rawVRAM / 1GB, 2)
+        
+        # Shared Memory: Windows thường mặc định chia sẻ ~50% System RAM cho GPU
+        $vramShared = [Math]::Round($totalSysRam / 2, 2)
+        
+        # Total Memory
+        $vramTotal = $vramDedicated + $vramShared
+
+        $out += ("- GPU: {0}`r`n" -f $g.Name)
+        $out += ("  + VRAM Riêng (Dedicated): {0} GB (Hàng thật)`r`n" -f $vramDedicated)
+        $out += ("  + RAM Chia sẻ (Shared)  : {0} GB (Mượn hệ thống)`r`n" -f $vramShared)
+        $out += ("  + TỔNG DUNG LƯỢNG VGA   : {0} GB`r`n" -f $vramTotal)
+        $out += ("  + Phiên bản Driver      : {0}`r`n" -f $g.DriverVersion)
     }
 
     $out += "`r`n==========================================================`r`n"
