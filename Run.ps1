@@ -1,4 +1,11 @@
 clear
+# CHỖ SỬA 1: ÉP DÙNG TLS 1.2 ĐỂ TẢI ĐƯỢC FILE TRÊN WIN 10 CŨ
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+
+# Ép mở khóa Script tạm thời cho phiên làm việc này
+if ((Get-ExecutionPolicy) -ne 'Bypass') {
+    Set-ExecutionPolicy Bypass -Scope Process -Force
+}
 Write-Host ">>> DANG KHOI CHAY VIETTOOLBOX TU GITHUB..." -ForegroundColor Cyan
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {

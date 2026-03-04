@@ -1,4 +1,5 @@
-﻿# Đoạn code ẩn cửa sổ Console (màn hình xanh/đen)
+﻿[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+# Đoạn code ẩn cửa sổ Console (màn hình xanh/đen)
 $showWindowAsync = Add-Type -MemberDefinition @"
 [DllImport("user32.dll")]
 public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
@@ -78,7 +79,23 @@ function Global:Ghi-Log($msg) {
     })
     [System.Windows.Forms.Application]::DoEvents()
 }
+function Global:ChayTacVu($tenTacVu, $logic) {
+    $window.Dispatcher.Invoke([action]{
+        # Bước 1: Xóa sạch màn hình log cũ cho gọn
+        $txtLog.Clear()
+    })
+    
+    Ghi-Log "=========================================="
+    Ghi-Log ">>> ĐANG THỰC HIỆN: $tenTacVu"
+    Ghi-Log "=========================================="
 
+    try {
+        # Bước 2: Chạy logic của script (ScriptBlock)
+        &$logic
+    } catch {
+        Ghi-Log "!!! LỖI HỆ THỐNG: $($_.Exception.Message)"
+    }
+}
 # 3. Hàm tạo Group và Button tự động
 function Update-UI {
     $groupContainer.Children.Clear()
