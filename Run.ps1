@@ -1,6 +1,4 @@
-﻿# ============================================================================
-# SCRIPT TỰ ĐỘNG TẢI & CHẠY VIETTOOLBOX TỪ GITHUB
-# ============================================================================
+﻿
 Write-Host ">>> DANG TAI VIETTOOLBOX TU GITHUB..." -ForegroundColor Cyan
 
 # Link tải toàn bộ Repo dưới dạng file ZIP (nhánh main)
