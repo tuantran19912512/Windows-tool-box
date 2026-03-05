@@ -19,8 +19,8 @@ $LogicCaiPhanMemFull = {
     $fontDam = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
 
     $tabControl = New-Object System.Windows.Forms.TabControl; $tabControl.Size = "960,720"; $tabControl.Location = "20,20"
-    $tabInstall = New-Object System.Windows.Forms.TabPage; $tabInstall.Text = "🚀 Cài Đặt"; $tabInstall.BackColor = "White"
-    $tabAdmin = New-Object System.Windows.Forms.TabPage; $tabAdmin.Text = "⚙️ Quản Trị"; $tabAdmin.BackColor = "White"
+    $tabInstall = New-Object System.Windows.Forms.TabPage; $tabInstall.Text = "Cài Đặt"; $tabInstall.BackColor = "White"
+    $tabAdmin = New-Object System.Windows.Forms.TabPage; $tabAdmin.Text = "Quản Trị"; $tabAdmin.BackColor = "White"
     $tabControl.Controls.AddRange(@($tabInstall, $tabAdmin))
     $form.Controls.Add($tabControl)
 
