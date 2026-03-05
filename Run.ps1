@@ -11,7 +11,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-Write-Host ">>> Dang khoi tao moi truong lam viec..." -ForegroundColor Cyan
+Write-Host ">>> Dang khoi tao moi truong lam viec vui long doi..." -ForegroundColor Cyan
 
 # Cấu hình đường dẫn tạm
 $RepoZipUrl = "https://github.com/tuantran19912512/Windows-tool-box/archive/refs/heads/main.zip"
