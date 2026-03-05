@@ -4,110 +4,107 @@
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 $LogicCaiPhanMemFull = {
-    # --- THÔNG TIN GITHUB ---
     $GH_USER  = "tuantran19912512"
     $GH_REPO  = "Windows-tool-box"
     $GH_FILE  = "DanhSachPhanMem.csv"
     $apiUrl   = "https://api.github.com/repos/$GH_USER/$GH_REPO/contents/$GH_FILE"
-    $tokenPath = Join-Path $PSScriptRoot "token.txt"
+    $tokenPath = Join-Path $env:TEMP "vt_cloud_token.txt"
 
-    # --- HÀM HỎI TOKEN (CHỈ HỎI KHI CHƯA CÓ HOẶC TOKEN HỎNG) ---
+    # --- FONT CHUẨN ---
+    $fontTieuDe = New-Object System.Drawing.Font("Segoe UI Semibold", 14)
+    $fontNut    = New-Object System.Drawing.Font("Segoe UI Bold", 10)
+    $fontNoiDung = New-Object System.Drawing.Font("Segoe UI", 10)
+    $fontNho    = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
+
+    # --- HÀM HỎI TOKEN ---
     function Get-StoredToken {
+        if (Test-Path $tokenPath) { 
+            $tk = Get-Content $tokenPath -Raw
+            if ($tk) { return $tk.Trim() }
+        }
         $inputForm = New-Object System.Windows.Forms.Form
-        $inputForm.Text = "VietToolbox - Kích Hoạt Cloud"; $inputForm.Size = "450,200"; $inputForm.StartPosition = "CenterScreen"; $inputForm.TopMost = $true
-        $lbl = New-Object System.Windows.Forms.Label; $lbl.Text = "Vui lòng dán mã GitHub Token (ghp_...) mới vào đây:"; $lbl.Location = "20,20"; $lbl.Size = "400,20"
+        $inputForm.Text = "Kich hoat VietToolbox Cloud"; $inputForm.Size = "450,200"; $inputForm.StartPosition = "CenterScreen"; $inputForm.TopMost = $true
+        $lbl = New-Object System.Windows.Forms.Label; $lbl.Text = "Nhap ma GitHub Token de lam viec:"; $lbl.Location = "20,20"; $lbl.Size = "400,20"; $lbl.Font = $fontNoiDung
         $txt = New-Object System.Windows.Forms.TextBox; $txt.Location = "20,50"; $txt.Size = "390,25"
-        $btn = New-Object System.Windows.Forms.Button; $btn.Text = "KÍCH HOẠT"; $btn.Location = "160,100"; $btn.Size = "120,35"; $btn.DialogResult = [System.Windows.Forms.DialogResult]::OK
+        $btn = New-Object System.Windows.Forms.Button; $btn.Text = "KICH HOAT"; $btn.Location = "160,100"; $btn.Size = "120,35"; $btn.DialogResult = [System.Windows.Forms.DialogResult]::OK
         $inputForm.Controls.AddRange(@($lbl, $txt, $btn))
-        
-        if ($inputForm.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK -and $txt.Text -ne "") {
-            $txt.Text.Trim() | Out-File $tokenPath -Encoding UTF8
-            return $txt.Text.Trim()
+        if ($inputForm.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK -and $txt.Text) {
+            $val = $txt.Text.Trim(); $val | Out-File $tokenPath -Encoding UTF8; return $val
         }
         return $null
     }
 
-    # Khởi tạo Token ban đầu
-    if (Test-Path $tokenPath) { $global:GH_TOKEN = (Get-Content $tokenPath -Raw).Trim() }
-    else { $global:GH_TOKEN = Get-StoredToken }
-    if ($null -eq $global:GH_TOKEN) { return }
+    $global:GH_TOKEN = Get-StoredToken
+    if (!$global:GH_TOKEN) { return }
 
-    # --- KHỞI TẠO FORM CHÍNH ---
+    # --- KHOI TAO FORM ---
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "VietToolbox - Software Manager (Bản Đầy Đủ)"; $form.Size = "1000,850"; $form.BackColor = "White"; $form.StartPosition = "CenterScreen"
+    $form.Text = "VIETTOOLBOX - QUAN LY PHAN MEM"; $form.Size = "1000,850"; $form.BackColor = "#FFFFFF"; $form.StartPosition = "CenterScreen"
     
-    $fontNhan = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
-    $fontDam = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
-
     $tabControl = New-Object System.Windows.Forms.TabControl; $tabControl.Size = "960,750"; $tabControl.Location = "20,20"
-    $tabInstall = New-Object System.Windows.Forms.TabPage; $tabInstall.Text = "🚀 Cài Đặt"; $tabInstall.BackColor = "White"
-    $tabAdmin = New-Object System.Windows.Forms.TabPage; $tabAdmin.Text = "⚙️ Quản Trị"; $tabAdmin.BackColor = "White"
+    $tabInstall = New-Object System.Windows.Forms.TabPage; $tabInstall.Text = "CAI DAT"; $tabInstall.BackColor = "White"
+    $tabAdmin = New-Object System.Windows.Forms.TabPage; $tabAdmin.Text = "QUAN TRI"; $tabAdmin.BackColor = "White"
     $tabControl.Controls.AddRange(@($tabInstall, $tabAdmin))
     $form.Controls.Add($tabControl)
 
-    # --- [TRANG 1: CÀI ĐẶT] ---
-    $lvStore = New-Object System.Windows.Forms.ListView; $lvStore.Size = "910,450"; $lvStore.Location = "20,20"; $lvStore.View = "Details"; $lvStore.CheckBoxes = $true; $lvStore.FullRowSelect = $true; $lvStore.Font = New-Object System.Drawing.Font("Segoe UI", 11)
-    [void]$lvStore.Columns.Add("Tên Ứng Dụng", 500); [void]$lvStore.Columns.Add("Trạng thái", 300); [void]$lvStore.Columns.Add("ID", 0)
+    # --- [TAB 1: CAI DAT] ---
+    $lvStore = New-Object System.Windows.Forms.ListView; $lvStore.Size = "910,450"; $lvStore.Location = "20,20"; $lvStore.View = "Details"; $lvStore.CheckBoxes = $true; $lvStore.FullRowSelect = $true; $lvStore.Font = $fontNoiDung; $lvStore.BorderStyle = "FixedSingle"
+    [void]$lvStore.Columns.Add("TEN UNG DUNG", 480); [void]$lvStore.Columns.Add("TRANG THAI", 280); [void]$lvStore.Columns.Add("ID", 0)
     
-    $lblProgress = New-Object System.Windows.Forms.Label; $lblProgress.Text = "Sẵn sàng..."; $lblProgress.Location = "20,480"; $lblProgress.Size = "500,20"; $lblProgress.Font = $fontNhan
-    $pgBar = New-Object System.Windows.Forms.ProgressBar; $pgBar.Location = "20,505"; $pgBar.Size = "910,25"; $pgBar.Style = "Continuous"
+    $lblProgress = New-Object System.Windows.Forms.Label; $lblProgress.Text = "San sang..."; $lblProgress.Location = "20,480"; $lblProgress.Size = "500,20"; $lblProgress.Font = $fontNho; $lblProgress.ForeColor = "Gray"
+    $pgBar = New-Object System.Windows.Forms.ProgressBar; $pgBar.Location = "20,505"; $pgBar.Size = "910,20"; $pgBar.Style = "Continuous"
     
-    $btnRelInst = New-Object System.Windows.Forms.Button; $btnRelInst.Text = "🔄 CẬP NHẬT"; $btnRelInst.Size = "220,60"; $btnRelInst.Location = "340,560"; $btnRelInst.BackColor = "#6C757D"; $btnRelInst.ForeColor = "White"; $btnRelInst.FlatStyle = "Flat"; $btnRelInst.Font = $fontDam
-    $btnInstall = New-Object System.Windows.Forms.Button; $btnInstall.Text = "🚀 CÀI ĐẶT NGAY"; $btnInstall.Size = "350,60"; $btnInstall.Location = "580,560"; $btnInstall.BackColor = "#0068FF"; $btnInstall.ForeColor = "White"; $btnInstall.FlatStyle = "Flat"; $btnInstall.Font = $fontDam
-    
+    $btnRelInst = New-Object System.Windows.Forms.Button; $btnRelInst.Text = "LAM MOI DANH SACH"; $btnRelInst.Size = "220,55"; $btnRelInst.Location = "340,560"; $btnRelInst.BackColor = "#455A64"; $btnRelInst.ForeColor = "White"; $btnRelInst.FlatStyle = "Flat"; $btnRelInst.Font = $fontNut
+    $btnInstall = New-Object System.Windows.Forms.Button; $btnInstall.Text = "BAT DAU CAI DAT"; $btnInstall.Size = "350,55"; $btnInstall.Location = "580,560"; $btnInstall.BackColor = "#2196F3"; $btnInstall.ForeColor = "White"; $btnInstall.FlatStyle = "Flat"; $btnInstall.Font = $fontNut
     $tabInstall.Controls.AddRange(@($lvStore, $lblProgress, $pgBar, $btnRelInst, $btnInstall))
 
-    # --- [TRANG 2: QUẢN TRỊ] ---
-    $gridAdmin = New-Object System.Windows.Forms.DataGridView; $gridAdmin.Size = "920,300"; $gridAdmin.Location = "10,20"; $gridAdmin.AutoSizeColumnsMode = "Fill"; $gridAdmin.RowHeadersVisible = $false; $gridAdmin.BackgroundColor = "White"
-    [void]$gridAdmin.Columns.Add((New-Object System.Windows.Forms.DataGridViewCheckBoxColumn -Property @{Name="Check";HeaderText="Mặc định"}))
-    [void]$gridAdmin.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="Name";HeaderText="Tên Phần Mềm"}))
+    # --- [TAB 2: QUAN TRI] ---
+    $gridAdmin = New-Object System.Windows.Forms.DataGridView; $gridAdmin.Size = "920,300"; $gridAdmin.Location = "10,20"; $gridAdmin.AutoSizeColumnsMode = "Fill"; $gridAdmin.RowHeadersVisible = $false; $gridAdmin.BackgroundColor = "White"; $gridAdmin.BorderStyle = "None"
+    [void]$gridAdmin.Columns.Add((New-Object System.Windows.Forms.DataGridViewCheckBoxColumn -Property @{Name="Check";HeaderText="Mac dinh"}))
+    [void]$gridAdmin.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="Name";HeaderText="Ten Ung Dung"}))
     [void]$gridAdmin.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="ID";HeaderText="Winget ID"}))
     
-    $lblLabelName = New-Object System.Windows.Forms.Label; $lblLabelName.Text = "Tên hiển thị:"; $lblLabelName.Location = "10,335"; $lblLabelName.Size = "280,20"; $lblLabelName.Font = $fontNhan; $lblLabelName.ForeColor = "Gray"
-    $txtNewName = New-Object System.Windows.Forms.TextBox; $txtNewName.Location = "10,360"; $txtNewName.Size = "280,30"
+    $lblLName = New-Object System.Windows.Forms.Label; $lblLName.Text = "Ten hien thi:"; $lblLName.Location = "10,335"; $lblLName.Size = "280,20"; $lblLName.Font = $fontNho; $lblLName.ForeColor = "Gray"
+    $txtNewName = New-Object System.Windows.Forms.TextBox; $txtNewName.Location = "10,355"; $txtNewName.Size = "280,30"
+    $lblLID = New-Object System.Windows.Forms.Label; $lblLID.Text = "Winget ID:"; $lblLID.Location = "300,335"; $lblLID.Size = "280,20"; $lblLID.Font = $fontNho; $lblLID.ForeColor = "Gray"
+    $txtNewID = New-Object System.Windows.Forms.TextBox; $txtNewID.Location = "300,355"; $txtNewID.Size = "280,30"
     
-    $lblLabelID = New-Object System.Windows.Forms.Label; $lblLabelID.Text = "Winget ID:"; $lblLabelID.Location = "300,335"; $lblLabelID.Size = "280,20"; $lblLabelID.Font = $fontNhan; $lblLabelID.ForeColor = "Gray"
-    $txtNewID = New-Object System.Windows.Forms.TextBox; $txtNewID.Location = "300,360"; $txtNewID.Size = "280,30"
-    
-    $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "➕ THÊM"; $btnAdd.Location = "600,358"; $btnAdd.Size = "150,32"; $btnAdd.BackColor = "#2ECC71"; $btnAdd.ForeColor = "White"; $btnAdd.FlatStyle = "Flat"
-    $btnRelAdmin = New-Object System.Windows.Forms.Button; $btnRelAdmin.Text = "🔄 TẢI LẠI"; $btnRelAdmin.Location = "760,358"; $btnRelAdmin.Size = "150,32"; $btnRelAdmin.BackColor = "#6C757D"; $btnRelAdmin.ForeColor = "White"; $btnRelAdmin.FlatStyle = "Flat"
-    $btnPush = New-Object System.Windows.Forms.Button; $btnPush.Text = "☁️ CẬP NHẬT LÊN GITHUB CLOUD (API)"; $btnPush.Size = "920,60"; $btnPush.Location = "10,450"; $btnPush.BackColor = "#1A2B4C"; $btnPush.ForeColor = "White"; $btnPush.Font = $fontDam; $btnPush.FlatStyle = "Flat"
-    
-    $tabAdmin.Controls.AddRange(@($gridAdmin, $lblLabelName, $txtNewName, $lblLabelID, $txtNewID, $btnAdd, $btnRelAdmin, $btnPush))
+    $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "THEM MOI"; $btnAdd.Location = "600,354"; $btnAdd.Size = "150,32"; $btnAdd.BackColor = "#4CAF50"; $btnAdd.ForeColor = "White"; $btnAdd.FlatStyle = "Flat"; $btnAdd.Font = $fontNut
+    $btnRelAdmin = New-Object System.Windows.Forms.Button; $btnRelAdmin.Text = "TAI LAI"; $btnRelAdmin.Location = "760,354"; $btnRelAdmin.Size = "150,32"; $btnRelAdmin.BackColor = "#455A64"; $btnRelAdmin.ForeColor = "White"; $btnRelAdmin.FlatStyle = "Flat"; $btnRelAdmin.Font = $fontNut
+    $btnPush = New-Object System.Windows.Forms.Button; $btnPush.Text = "CAP NHẬT DU LIEU LEN CLOUD"; $btnPush.Size = "920,60"; $btnPush.Location = "10,450"; $btnPush.BackColor = "#0D47A1"; $btnPush.ForeColor = "White"; $btnPush.Font = $fontNut; $btnPush.FlatStyle = "Flat"
+    $tabAdmin.Controls.AddRange(@($gridAdmin, $lblLName, $txtNewName, $lblLID, $txtNewID, $btnAdd, $btnRelAdmin, $btnPush))
 
-    # --- HÀM TẢI DỮ LIỆU QUA API (ZERO DELAY) ---
+    # --- HAM TAI DU LIEU ---
     function Reload-Data {
         $lvStore.Items.Clear(); $gridAdmin.Rows.Clear()
         try {
             $headers = @{"Authorization" = "token $global:GH_TOKEN"; "Accept" = "application/vnd.github.v3+json"; "User-Agent" = "VietToolbox"}
             $response = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
-            $csvText = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(($response.content -replace "\s", "")))
-            if ($csvText) {
+            if ($null -ne $response -and $null -ne $response.content) {
+                $csvText = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String(($response.content -replace "\s", "")))
                 $lines = $csvText.Trim().Trim([char]65279) -split "`r?`n" | Where-Object { $_.Trim() -ne "" }
                 $csvData = $lines | ConvertFrom-Csv
                 foreach ($a in $csvData) {
                     if ($a.Name) {
-                        $chk = ($a.Check -match "True")
-                        $li = New-Object System.Windows.Forms.ListViewItem($a.Name); $li.Checked = $chk; [void]$li.SubItems.Add("Sẵn sàng"); [void]$li.SubItems.Add($a.ID)
-                        $lvStore.Items.Add($li); [void]$gridAdmin.Rows.Add($chk, $a.Name, $a.ID)
+                        $li = New-Object System.Windows.Forms.ListViewItem($a.Name); $li.Checked = ($a.Check -match "True")
+                        [void]$li.SubItems.Add("San sang"); [void]$li.SubItems.Add($a.ID)
+                        $lvStore.Items.Add($li); [void]$gridAdmin.Rows.Add($li.Checked, $a.Name, $a.ID)
                     }
                 }
             }
         } catch {
             if ($_.Exception.Message -match "401") {
-                [System.Windows.Forms.MessageBox]::Show("GitHub đã khóa Token cũ. Hãy dán mã mới!")
                 if (Test-Path $tokenPath) { Remove-Item $tokenPath -Force }
                 $global:GH_TOKEN = Get-StoredToken
-                if ($null -ne $global:GH_TOKEN) { Reload-Data }
+                if ($global:GH_TOKEN) { Reload-Data }
             }
         }
     }
 
-    # --- CÁC SỰ KIỆN NÚT BẤM ---
+    # --- SU KIEN ---
     $btnRelInst.Add_Click({ Reload-Data })
     $btnRelAdmin.Add_Click({ Reload-Data })
     $btnAdd.Add_Click({ if ($txtNewName.Text) { [void]$gridAdmin.Rows.Add($true, $txtNewName.Text, $txtNewID.Text); $txtNewName.Text=""; $txtNewID.Text="" } })
-
     $btnPush.Add_Click({
         try {
             $csv = "Check,Name,ID`n" + (($gridAdmin.Rows | ForEach-Object { if ($_.Cells['Name'].Value) { "$($_.Cells['Check'].Value),$($_.Cells['Name'].Value),$($_.Cells['ID'].Value)" } }) -join "`n")
@@ -115,7 +112,7 @@ $LogicCaiPhanMemFull = {
             $info = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
             $body = @{ message="Admin Update"; content=[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($csv.Trim())); sha=$info.sha } | ConvertTo-Json
             Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Put -Body $body
-            [System.Windows.Forms.MessageBox]::Show("Đã cập nhật Cloud thành công!"); Reload-Data
+            [System.Windows.Forms.MessageBox]::Show("Da cap nhat thanh cong!"); Reload-Data
         } catch { if ($_.Exception.Message -match "401") { Reload-Data } }
     })
 
@@ -123,15 +120,14 @@ $LogicCaiPhanMemFull = {
         $items = @($lvStore.CheckedItems); if ($items.Count -eq 0) { return }
         $btnInstall.Enabled = $false; $pgBar.Maximum = $items.Count; $pgBar.Value = 0
         for ($i=0; $i -lt $items.Count; $i++) {
-            $item = $items[$i]; $lblProgress.Text = "Đang cài ($($i+1)/$($items.Count)): $($item.Text)..."
-            $item.SubItems[1].Text = "⏳ Đang cài..."; $item.BackColor = [System.Drawing.Color]::LightYellow; [System.Windows.Forms.Application]::DoEvents()
+            $item = $items[$i]; $lblProgress.Text = "Dang cai dat ($($i+1)/$($items.Count)): $($item.Text)..."
+            $item.SubItems[1].Text = "Dang cai..."; [System.Windows.Forms.Application]::DoEvents()
             $p = Start-Process "winget" -ArgumentList "install --id `"$($item.SubItems[2].Text)`" --silent --accept-package-agreements" -PassThru -NoNewWindow
             while (-not $p.HasExited) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 100 }
-            $item.SubItems[1].Text = if ($p.ExitCode -eq 0) { "✅ Xong" } else { "⚠️ Lỗi" }
-            $item.BackColor = if ($p.ExitCode -eq 0) { [System.Drawing.Color]::LightGreen } else { [System.Drawing.Color]::White }
+            $item.SubItems[1].Text = if ($p.ExitCode -eq 0) { "Hoan tat" } else { "Loi" }
             $pgBar.Value = $i + 1
         }
-        $btnInstall.Enabled = $true; $lblProgress.Text = "Hoàn tất!"
+        $btnInstall.Enabled = $true; $lblProgress.Text = "Tat ca da hoan tat!"
     })
 
     Reload-Data
