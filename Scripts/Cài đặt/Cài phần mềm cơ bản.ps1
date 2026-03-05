@@ -5,7 +5,7 @@ Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 $LogicCaiPhanMemFull = {
     # --- CẤU HÌNH GITHUB ---
-    $GH_TOKEN = "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" 
+    $GH_TOKEN = "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" 
     $GH_USER  = "tuantran19912512"
     $GH_REPO  = "Windows-tool-box"
     $GH_FILE  = "DanhSachPhanMem.csv"
