@@ -1,4 +1,4 @@
-clear
+﻿clear
 # [1] TẮT THANH TIẾN TRÌNH ĐỂ TĂNG TỐC TẢI GẤP 10 LẦN
 $ProgressPreference = 'SilentlyContinue'
 
@@ -11,7 +11,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-Write-Host ">>> DANG KHOI CHAY VIETTOOLBOX PRO TU GITHUB..." -ForegroundColor Cyan
+Write-Host ">>> Dang khoi tao moi truong lam viec..." -ForegroundColor Cyan
 
 # Cấu hình đường dẫn tạm
 $RepoZipUrl = "https://github.com/tuantran19912512/Windows-tool-box/archive/refs/heads/main.zip"
@@ -27,7 +27,7 @@ $webClient = New-Object System.Net.WebClient
 try {
     $webClient.DownloadFile($RepoZipUrl, $ZipFile)
 } catch {
-    Write-Host "!!! LOI: Khong the ket noi GitHub. Kiem tra Internet!" -ForegroundColor Red
+    Write-Host "!!! LOI: Khong the ket noi may chu. Kiem tra Internet!" -ForegroundColor Red
     pause
     exit
 }
@@ -48,7 +48,7 @@ if ($MainScript) {
     $ToolProcess.WaitForExit()
     
     # [7] DỌN DẸP SAU KHI THOÁT
-    Write-Host "-> Dang don dep rác he thong..." -ForegroundColor Cyan
+    Write-Host "-> Dang don dep rac he thong..." -ForegroundColor Cyan
     Set-Location $env:TEMP
     Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item $ZipFile -Force -ErrorAction SilentlyContinue
