@@ -1,4 +1,4 @@
-﻿clear
+clear
 # [1] TẮT THANH TIẾN TRÌNH ĐỂ TĂNG TỐC TẢI GẤP 10 LẦN
 $ProgressPreference = 'SilentlyContinue'
 
