@@ -16,48 +16,55 @@ function Tim-OSPP {
 $XacNhan = [System.Windows.Forms.MessageBox]::Show("Bạn có chắc chắn muốn xóa sạch bản quyền Office hiện tại (KMS, Crack) để nạp Key mới không?", "Xác nhận dọn dẹp", "YesNo", "Warning")
 
 if ($XacNhan -eq "Yes") {
-    Ghi-Log "=========================================="
-    Ghi-Log ">>> BẮT ĐẦU DỌN DẸP BẢN QUYỀN CRACK <<<"
-    Ghi-Log "=========================================="
+    Global:Ghi-Log "=========================================="
+    Global:Ghi-Log ">>> BẮT ĐẦU DỌN DẸP BẢN QUYỀN CRACK <<<"
+    Global:Ghi-Log "=========================================="
 
     $v = Tim-OSPP
     if ($v) {
         # 1. Xóa máy chủ KMS ảo
-        Ghi-Log "1. Đang xóa máy chủ KMS và Domain..."
+        Global:Ghi-Log "1. Đang xóa cấu hình máy chủ KMS ảo..."
         cscript //nologo "$v" /remhst | Out-Null
         cscript //nologo "$v" /ckms-domain | Out-Null
 
-        # 2. Xóa các tác vụ Crack chạy ngầm
-        Ghi-Log "2. Đang xóa các Scheduled Task (AutoKMS, Pico...)"
-        $Tasks = "AutoKMS", "AutoPico", "KMS", "OfficeSoftwareProtection"
+        # 2. Xóa các tác vụ Crack chạy ngầm (ĐÃ FIX: BỎ CÁC TASK CHÍNH CHỦ CỦA WINDOWS)
+        Global:Ghi-Log "2. Đang dọn dẹp các Scheduled Task rác của phần mềm Crack..."
+        $Tasks = @("AutoKMS", "AutoPico", "KMSAuto", "KMSPico", "SppExtComObjHook")
         foreach ($t in $Tasks) {
             Get-ScheduledTask -TaskName "*$t*" -ErrorAction SilentlyContinue | Unregister-ScheduledTask -Confirm:$false -ErrorAction SilentlyContinue
         }
 
         # 3. Quét và gỡ toàn bộ Product Key hiện tại
-        Ghi-Log "3. Đang quét danh sách Key cài đặt..."
+        Global:Ghi-Log "3. Đang quét danh sách Key cài đặt..."
         $status = cscript //nologo "$v" /dstatus | Out-String
         $regex = "Last 5 characters of installed product key: (.{5})"
         $keys = [regex]::Matches($status, $regex) | ForEach-Object { $_.Groups[1].Value }
 
         if ($keys) {
             foreach ($key in $keys) {
-                Ghi-Log " -> Đang gỡ Key đuôi: $key"
+                Global:Ghi-Log " -> Đang gỡ Key có đuôi: $key"
                 cscript //nologo "$v" /unpkey:$key | Out-Null
             }
         } else {
-            Ghi-Log " -> Không tìm thấy Key nào để gỡ."
+            Global:Ghi-Log " -> Không tìm thấy Key nào để gỡ."
         }
 
-        # 4. Làm sạch Registry
-        Ghi-Log "4. Làm sạch Registry SoftwareProtectionPlatform..."
+        # 4. Làm sạch Registry KMS
+        Global:Ghi-Log "4. Làm sạch Registry rác của KMS..."
         $regPath = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\SoftwareProtectionPlatform"
         Remove-ItemProperty -Path $regPath -Name "KeyManagementServiceName" -ErrorAction SilentlyContinue
 
-        Ghi-Log ">>> HOÀN TẤT! Office đã về trạng thái sạch (Zin)."
-        [System.Windows.Forms.MessageBox]::Show("Đã gỡ sạch bản quyền Crack! Office đã sẵn sàng để nạp Key mới.", "Thành công")
+        # 5. Khôi phục trạng thái mặc định (Rearm) và khởi động lại Dịch vụ (QUAN TRỌNG)
+        Global:Ghi-Log "5. Đang Reset lại trạng thái bản quyền (Rearm) và làm mới hệ thống..."
+        cscript //nologo "$v" /rearm | Out-Null
+        
+        # Khởi động lại dịch vụ cấp phép của Office để nhận diện trạng thái mới
+        Restart-Service -Name "osppsvc" -Force -ErrorAction SilentlyContinue
+
+        Global:Ghi-Log ">>> HOÀN TẤT! Office đã về trạng thái nguyên bản."
+        [System.Windows.Forms.MessageBox]::Show("Đã gỡ sạch bản quyền Crack!`nOffice đã trở về trạng thái chưa kích hoạt (Zin) và sẵn sàng nạp Key mới.", "Thành công")
     } else {
-        Ghi-Log "LỖI: Không tìm thấy file OSPP.VBS. Vui lòng kiểm tra lại bộ cài Office."
+        Global:Ghi-Log "LỖI: Không tìm thấy file OSPP.VBS. Vui lòng kiểm tra lại bộ cài Office."
         [System.Windows.Forms.MessageBox]::Show("Không tìm thấy công cụ OSPP.VBS!", "Lỗi", 0, 16)
     }
 }
