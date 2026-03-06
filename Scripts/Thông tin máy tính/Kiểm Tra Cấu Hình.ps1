@@ -54,7 +54,7 @@ $xaml = @"
                 </StackPanel>
 
                 <GroupBox Grid.Column="1" Header="HỒ SƠ PHẦN CỨNG CHI TIẾT &amp; CHẨN ĐOÁN" Foreground="#007ACC" BorderBrush="#333333" Margin="10,0,0,0">
-                    <TextBox Name="TxtDetail" Background="#0F0F0F" Foreground="#00FF00" FontFamily="Consolas" FontSize="12" 
+                    <TextBox Name="TxtDetail" Background="#0F0F0F" Foreground="#00FF00" FontFamily="Consolas" FontSize="13" 
                              IsReadOnly="True" BorderThickness="0" VerticalScrollBarVisibility="Auto" Padding="15" AcceptsReturn="True"/>
                 </GroupBox>
             </Grid>
@@ -82,61 +82,88 @@ $diskBar = $window.FindName("DiskBar"); $diskPct = $window.FindName("DiskPct")
 $pinBar = $window.FindName("PinBar"); $pinText = $window.FindName("PinText"); $boxPin = $window.FindName("BoxPin")
 $txtDetail = $window.FindName("TxtDetail"); $btnExit = $window.FindName("BtnExit"); $btnRefresh = $window.FindName("BtnRefresh")
 
-# 3. HÀM QUÉT DỮ LIỆU SIÊU CHI TIẾT (VÉT CẠN)
+# 3. HÀM QUÉT DỮ LIỆU CÓ HIỆU ỨNG IN TỪNG MỤC
 function Update-DetailText {
-    $out = ">>> [ 1. BO MẠCH CHỦ & BIOS ] <<<`r`n"
+    $btnRefresh.IsEnabled = $false
+    $txtDetail.Clear()
+    [System.Windows.Forms.Application]::DoEvents()
+
+    function Add-Live ($Text, $Delay = 300) {
+        $txtDetail.AppendText($Text)
+        $txtDetail.ScrollToEnd()
+        [System.Windows.Forms.Application]::DoEvents()
+        if ($Delay -gt 0) { Start-Sleep -Milliseconds $Delay }
+    }
+
+    Add-Live ">>> ĐANG KHỞI TẠO QUÉT HỆ THỐNG... VUI LÒNG ĐỢI <<<`r`n" 500
+
+    # --- 1. BO MẠCH CHỦ ---
     $board = Get-CimInstance Win32_BaseBoard; $bios = Get-CimInstance Win32_BIOS
-    $out += ("{0,-22}: {1}`r`n" -f "Hãng sản xuất", $board.Manufacturer)
-    $out += ("{0,-22}: {1}`r`n" -f "Model Mainboard", $board.Product)
-    $out += ("{0,-22}: {1}`r`n" -f "Số Serial Main", $board.SerialNumber)
-    $out += ("{0,-22}: {1} (Ngày: {2})`r`n" -f "Phiên bản BIOS", $bios.SMBIOSBIOSVersion, $bios.ReleaseDate.ToString('dd/MM/yyyy'))
-    
-    $out += "`r`n>>> [ 2. VI XỬ LÝ (CPU) ] <<<`r`n"
+    $t1 = "`r`n>>> [ 1. BO MẠCH CHỦ & BIOS ] <<<`r`n"
+    $t1 += ("{0,-22}: {1}`r`n" -f "Hãng sản xuất", $board.Manufacturer)
+    $t1 += ("{0,-22}: {1}`r`n" -f "Model Mainboard", $board.Product)
+    $t1 += ("{0,-22}: {1}`r`n" -f "Số Serial Main", $board.SerialNumber)
+    $t1 += ("{0,-22}: {1} (Ngày: {2})`r`n" -f "Phiên bản BIOS", $bios.SMBIOSBIOSVersion, $bios.ReleaseDate.ToString('dd/MM/yyyy'))
+    Add-Live $t1 300
+
+    # --- 2. CPU ---
     $cpu = Get-CimInstance Win32_Processor
     $cpuCores = $cpu.NumberOfCores
-    $out += ("{0,-22}: {1}`r`n" -f "Tên CPU", $cpu.Name.Trim())
-    $out += ("{0,-22}: {1} Nhân / {2} Luồng`r`n" -f "Cấu trúc", $cpuCores, $cpu.NumberOfLogicalProcessors)
-    $out += ("{0,-22}: {1} MHz`r`n" -f "Xung nhịp tối đa", $cpu.MaxClockSpeed)
-    $out += ("{0,-22}: {1} MB`r`n" -f "Bộ nhớ đệm L3", [Math]::Round($cpu.L3CacheSize / 1024, 0))
+    $t2 = "`r`n>>> [ 2. VI XỬ LÝ (CPU) ] <<<`r`n"
+    $t2 += ("{0,-22}: {1}`r`n" -f "Tên CPU", $cpu.Name.Trim())
+    $t2 += ("{0,-22}: {1} Nhân / {2} Luồng`r`n" -f "Cấu trúc", $cpuCores, $cpu.NumberOfLogicalProcessors)
+    $t2 += ("{0,-22}: {1} MHz`r`n" -f "Xung nhịp tối đa", $cpu.MaxClockSpeed)
+    $t2 += ("{0,-22}: {1} MB`r`n" -f "Bộ nhớ đệm L3", [Math]::Round($cpu.L3CacheSize / 1024, 0))
+    Add-Live $t2 300
 
-    $out += "`r`n>>> [ 3. CHI TIẾT TỪNG THANH RAM ] <<<`r`n"
+    # --- 3. RAM (ĐÃ BỔ SUNG SỐ KHE TRỐNG) ---
     $ramChips = Get-CimInstance Win32_PhysicalMemory
     $ramSlots = Get-CimInstance Win32_PhysicalMemoryArray | Select-Object -ExpandProperty MemoryDevices
     $ramTotal = 0; $i = 1
+    
+    # Tính số khe RAM còn trống
+    $emptySlots = $ramSlots - $ramChips.Count
+    if ($emptySlots -lt 0) { $emptySlots = 0 } # Đề phòng WMI báo lỗi số liệu ảo
+
+    $t3 = "`r`n>>> [ 3. BỘ NHỚ TRONG (RAM) ] <<<`r`n"
+    $t3 += ("{0,-22}: {1} khe (Đang cắm: {2} | Trống: {3})`r`n" -f "Tình trạng khe cắm", $ramSlots, $ramChips.Count, $emptySlots)
+    
     foreach ($chip in $ramChips) {
         $v = switch($chip.Manufacturer.Trim()){"0198"{"Kingston"};"00CE"{"Samsung"};"029E"{"Hynix"};"04CB"{"ADATA"};"802C"{"Micron"};default{$chip.Manufacturer.Trim()}}
         $capGB = [Math]::Round($chip.Capacity/1GB,0); $ramTotal += $capGB
-        $out += " + THANH RAM $i :`r`n"
-        $out += ("   - Dung lượng     : {0} GB | BUS: {1} MHz`r`n" -f $capGB, $chip.Speed)
-        $out += ("   - Hãng sản xuất  : {0}`r`n" -f $v)
-        $out += ("   - Part Number    : {0}`r`n" -f $chip.PartNumber.Trim())
-        $out += ("   - Số Serial      : {0}`r`n" -f $chip.SerialNumber.Trim())
+        $t3 += " + THANH RAM $i :`r`n"
+        $t3 += ("   - Dung lượng     : {0} GB | BUS: {1} MHz`r`n" -f $capGB, $chip.Speed)
+        $t3 += ("   - Hãng sản xuất  : {0}`r`n" -f $v)
+        $t3 += ("   - Part Number    : {0}`r`n" -f $chip.PartNumber.Trim())
+        $t3 += ("   - Số Serial      : {0}`r`n" -f $chip.SerialNumber.Trim())
         $i++
     }
+    Add-Live $t3 400
 
-    $out += "`r`n>>> [ 4. Ổ CỨNG (NIÊM YẾT VS THỰC TẾ) ] <<<`r`n"
+    # --- 4. Ổ CỨNG ---
     $disks = Get-PhysicalDisk
+    $t4 = "`r`n>>> [ 4. Ổ CỨNG (NIÊM YẾT VS THỰC TẾ) ] <<<`r`n"
     foreach ($d in $disks) {
         $realGB = [Math]::Round($d.Size / 1GB, 1)
         $marketRaw = $d.Size / 1000000000
         $label = switch ($marketRaw) { {$_ -le 128}{"120/128GB"}{$_ -le 256}{"240/256GB"}{$_ -le 512}{"480/512GB"}{$_ -le 1024}{"1TB"}default{[Math]::Round($marketRaw,0).ToString()+"GB"} }
-        $out += " + Ổ CỨNG: $($d.FriendlyName) [$($d.MediaType)]`r`n"
-        $out += ("   - Niêm yết       : {0}`r`n" -f $label)
-        $out += ("   - Thực tế        : {0} GB (Hệ Windows)`r`n" -f $realGB)
-        $out += ("   - Sức khỏe       : [{0}] | Serial: {1}`r`n" -f $d.HealthStatus, $d.SerialNumber.Trim())
+        $t4 += " + Ổ CỨNG: $($d.FriendlyName) [$($d.MediaType)]`r`n"
+        $t4 += ("   - Niêm yết       : {0}`r`n" -f $label)
+        $t4 += ("   - Thực tế        : {0} GB (Hệ Windows)`r`n" -f $realGB)
+        $t4 += ("   - Sức khỏe       : [{0}] | Serial: {1}`r`n" -f $d.HealthStatus, $d.SerialNumber.Trim())
     }
+    Add-Live $t4 400
 
-    $out += "`r`n>>> [ 5. ĐỒ HỌA (GPU) - BẢN FIX LỖI BINARY ] <<<`r`n"
-    
+    # --- 5. ĐỒ HỌA GPU ---
     $gpus = Get-CimInstance Win32_VideoController
     $os = Get-CimInstance Win32_OperatingSystem
     $totalSysRam = $os.TotalVisibleMemorySize / 1MB
+    $totalVRAM = 0
+    $t5 = "`r`n>>> [ 5. ĐỒ HỌA (GPU) - BẢN FIX LỖI BINARY ] <<<`r`n"
 
     foreach ($g in $gpus) {
-        $exactVRAM = 0
-        $method = ""
+        $exactVRAM = 0; $method = ""
 
-        # --- CÁCH 1: DÙNG NVIDIA-SMI (Chuẩn nhất cho 1660 Ti) ---
         if ($g.Name -match "NVIDIA") {
             $smiFile = "$env:TEMP\vram.txt"
             $smiProc = Start-Process "nvidia-smi" -ArgumentList "--query-gpu=memory.total --format=csv,noheader,nounits" -NoNewWindow -PassThru -RedirectStandardOutput $smiFile -ErrorAction SilentlyContinue
@@ -145,15 +172,13 @@ function Update-DetailText {
                 if (Test-Path $smiFile) {
                     $vramRaw = Get-Content $smiFile | Out-String
                     if ($vramRaw -match "\d+") {
-                        $exactVRAM = [Math]::Round([float]$vramRaw.Trim() / 1024, 2)
-                        $method = "(NVIDIA SMI)"
+                        $exactVRAM = [Math]::Round([float]$vramRaw.Trim() / 1024, 2); $method = "(NVIDIA SMI)"
                     }
                     Remove-Item $smiFile -Force -ErrorAction SilentlyContinue
                 }
             }
         }
 
-        # --- CÁCH 2: LỤC REGISTRY (FIX LỖI MẢNG BYTE) ---
         if ($exactVRAM -le 0) {
             $regPaths = Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\Class\{4d36e968-e325-11ce-bfc1-08002be10318}\00*" -ErrorAction SilentlyContinue
             foreach ($reg in $regPaths) {
@@ -163,56 +188,50 @@ function Update-DetailText {
                     elseif ($reg."HardwareInformation.MemorySize") { $val = $reg."HardwareInformation.MemorySize" }
 
                     if ($val -is [System.Array]) {
-                        # TỰ ĐỘNG NHẬN DIỆN ĐỘ DÀI MẢNG ĐỂ TRÁNH LỖI
-                        if ($val.Length -ge 8) {
-                            $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt64($val, 0) / 1GB, 2)
-                            $method = "(Reg-Bin64)"
-                        }
-                        elseif ($val.Length -ge 4) {
-                            $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt32($val, 0) / 1GB, 2)
-                            $method = "(Reg-Bin32)"
-                        }
+                        if ($val.Length -ge 8) { $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt64($val, 0) / 1GB, 2); $method = "(Reg-Bin64)" }
+                        elseif ($val.Length -ge 4) { $exactVRAM = [Math]::Round([System.BitConverter]::ToUInt32($val, 0) / 1GB, 2); $method = "(Reg-Bin32)" }
                     }
                     elseif ($val -ne $null) {
                         $raw = [int64]$val
                         if ($raw -lt 0) { $raw += 4294967296 }
-                        $exactVRAM = [Math]::Round($raw / 1GB, 2)
-                        $method = "(Reg-Num)"
+                        $exactVRAM = [Math]::Round($raw / 1GB, 2); $method = "(Reg-Num)"
                     }
                 }
             }
         }
 
-        # --- CÁCH 3: DỰ PHÒNG CUỐI CÙNG (WMI) ---
         if ($exactVRAM -le 0) {
             $raw = [int64]$g.AdapterRAM
             if ($raw -lt 0) { $raw += 4294967296 }
-            $exactVRAM = [Math]::Round($raw / 1GB, 2)
-            $method = "(WMI-Fix)"
+            $exactVRAM = [Math]::Round($raw / 1GB, 2); $method = "(WMI-Fix)"
         }
 
-        # Tính toán Shared và Total
         $vramShared = [Math]::Round($totalSysRam / 2, 2)
         $vramTotal = $exactVRAM + $vramShared
+        $totalVRAM += $exactVRAM
 
-        $out += ("- GPU: {0} {1}`r`n" -f $g.Name, $method)
-        $out += ("  + VRAM RIÊNG (Dedicated): {0} GB`r`n" -f $exactVRAM)
-        $out += ("  + VRAM CHIA SẺ (Shared) : {0} GB`r`n" -f $vramShared)
-        $out += ("  + TỔNG DUNG LƯỢNG VGA   : {0} GB`r`n" -f $vramTotal)
-        $out += ("  + Driver: {0}`r`n" -f $g.DriverVersion)
-        $out += " ----------------------------------------------------------`r`n"
+        $t5 += ("- GPU: {0} {1}`r`n" -f $g.Name, $method)
+        $t5 += ("  + VRAM RIÊNG (Dedicated): {0} GB`r`n" -f $exactVRAM)
+        $t5 += ("  + VRAM CHIA SẺ (Shared) : {0} GB`r`n" -f $vramShared)
+        $t5 += ("  + TỔNG DUNG LƯỢNG VGA   : {0} GB`r`n" -f $vramTotal)
+        $t5 += ("  + Driver: {0}`r`n" -f $g.DriverVersion)
+        $t5 += " ----------------------------------------------------------`r`n"
     }
+    Add-Live $t5 500
 
-    $out += "`r`n==========================================================`r`n"
-    $out += ">>> PHÂN TÍCH NGHẼN CỔ CHAI & TƯ VẤN NÂNG CẤP <<<`r`n"
-    $out += "==========================================================`r`n"
-    if ($cpuCores -le 4 -and $totalVRAM -ge 8) { $out += "[!!!] NGHẼN CPU: Vi xử lý quá yếu so với Card đồ họa.`r`n" }
-    elseif ($cpuCores -ge 12 -and $totalVRAM -le 4) { $out += "[!!!] NGHẼN GPU: Card đồ họa quá yếu so với Vi xử lý.`r`n" }
-    if ($ramTotal -lt 16 -and $totalVRAM -ge 8) { $out += "[!] NGHẼN RAM: Cần nâng cấp lên ít nhất 16-32GB RAM để render.`r`n" }
-    if ($disks.MediaType -contains "HDD") { $out += "[!!!] NGHẼN Ổ CỨNG: Hãy thay SSD ngay để thoát cảnh giật lag.`r`n" }
-    if ($ramSlots -gt $ramChips.Count) { $out += "[+] KHE RAM: Còn trống $(($ramSlots - $ramChips.Count)) khe cắm. Nâng cấp rất dễ.`r`n" }
+    # --- 6. PHÂN TÍCH NGHẼN CỔ CHAI ---
+    $t6 = "`r`n==========================================================`r`n"
+    $t6 += ">>> PHÂN TÍCH NGHẼN CỔ CHAI & TƯ VẤN NÂNG CẤP <<<`r`n"
+    $t6 += "==========================================================`r`n"
+    if ($cpuCores -le 4 -and $totalVRAM -ge 8) { $t6 += "[!!!] NGHẼN CPU: Vi xử lý quá yếu so với Card đồ họa.`r`n" }
+    elseif ($cpuCores -ge 12 -and $totalVRAM -le 4) { $t6 += "[!!!] NGHẼN GPU: Card đồ họa quá yếu so với Vi xử lý.`r`n" }
+    if ($ramTotal -lt 16 -and $totalVRAM -ge 8) { $t6 += "[!] NGHẼN RAM: Cần nâng cấp lên ít nhất 16-32GB RAM để render.`r`n" }
+    if ($disks.MediaType -contains "HDD") { $t6 += "[!!!] NGHẼN Ổ CỨNG: Hãy thay SSD ngay để thoát cảnh giật lag.`r`n" }
+    if ($emptySlots -gt 0) { $t6 += "[+] KHE RAM: Hệ thống còn trống $emptySlots khe cắm, có thể dễ dàng nâng cấp thêm RAM.`r`n" }
+    
+    Add-Live $t6 0
 
-    $txtDetail.Text = $out
+    $btnRefresh.IsEnabled = $true
 }
 
 # 4. TIMER CẬP NHẬT (%) SIÊU MƯỢT
@@ -237,7 +256,7 @@ $timer.Add_Tick({
 })
 
 # 5. KHỞI CHẠY
-Update-DetailText
+$txtDetail.Text = ">>> HỆ THỐNG ĐÃ SẴN SÀNG... VUI LÒNG BẤM 'QUÉT LẠI CẤU HÌNH' ĐỂ BẮT ĐẦU PHÂN TÍCH <<<`r`n"
 $timer.Start()
 $btnRefresh.Add_Click({ Update-DetailText })
 $btnExit.Add_Click({ $timer.Stop(); $window.Close() })
