@@ -1,6 +1,6 @@
 ﻿Add-Type -AssemblyName System.Windows.Forms
 
-# 1. Cấu hình đường dẫn Gist của Tuấn và file tạm
+# 1. Cấu hình đường dẫn Gist của Bạn và file tạm
 $Url = "https://gist.githubusercontent.com/tuantran19912512/81329d670436ea8492b73bd5889ad444/raw/Ohook.cmd"
 $TempFile = Join-Path $env:TEMP "Ohook_Activation.cmd"
 
@@ -18,13 +18,13 @@ if (Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet -ErrorAction SilentlyC
     Ghi-Log "   + Internet: OK"
 } else {
     Ghi-Log "!!! LỖI: Không có kết nối mạng."
-    [System.Windows.Forms.MessageBox]::Show("Tuấn ơi, máy khách không có mạng! Vui lòng kết nối Internet trước khi chạy thuốc nhé.", "Lỗi kết nối", 0, 16)
+    [System.Windows.Forms.MessageBox]::Show("Bạn ơi, máy khách không có mạng! Vui lòng kết nối Internet trước khi chạy thuốc nhé.", "Lỗi kết nối", 0, 16)
     exit
 }
 
 # 4. Tải file thuốc từ Gist và Xử lý lỗi LF/CRLF
 try {
-    Ghi-Log "-> Đang tải file Ohook từ Gist của Tuấn..."
+    Ghi-Log "-> Đang tải file Ohook từ Gist của Bạn..."
     
     $RawContent = Invoke-RestMethod -Uri $FinalUrl -UseBasicParsing
     
@@ -37,7 +37,7 @@ try {
     Ghi-Log "   + Tải và xử lý định dạng file thành công."
 } catch {
     Ghi-Log "!!! LỖI: Không thể tải file. Link Gist có thể bị chặn."
-    [System.Windows.Forms.MessageBox]::Show("Lỗi tải file thuốc từ Gist! Tuấn kiểm tra lại mạng nhé.", "Lỗi tải file", 0, 16)
+    [System.Windows.Forms.MessageBox]::Show("Lỗi tải file thuốc từ Gist! Bạn kiểm tra lại mạng nhé.", "Lỗi tải file", 0, 16)
     exit
 }
 
@@ -49,7 +49,7 @@ if (Test-Path $TempFile) {
         Start-Process cmd.exe -ArgumentList "/c `"$TempFile`" /Ohook" -WindowStyle Hidden -Verb RunAs -Wait
         
         Ghi-Log "   + Đã thực hiện xong quy trình Ohook."
-        [System.Windows.Forms.MessageBox]::Show("Kích hoạt Ohook ngầm hoàn tất! Tuấn mở Office lên kiểm tra nhé.", "Thành công")
+        [System.Windows.Forms.MessageBox]::Show("Kích hoạt Ohook ngầm hoàn tất! Bạn mở Office lên kiểm tra nhé.", "Thành công")
     } catch {
         Ghi-Log "!!! LỖI: Không thể chạy file (Khách bấm 'No' khi hỏi Admin)."
     } finally {
