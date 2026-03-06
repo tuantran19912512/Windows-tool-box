@@ -3,73 +3,79 @@
 
 $LogicThucThi = {
     Ghi-Log ">>> ĐANG TRUY QUÉT CHI TIẾT PIN (CÔNG NGHỆ POWER-REPORT) <<<"
-    Ghi-Log "Vui lòng chờ vài giây để Windows trích xuất dữ liệu..."
-
-    # 1. Tạo báo cáo pin tạm thời bằng lệnh gốc của Windows
-    $reportPath = "$env:TEMP\battery_report.xml"
-    # Dùng lệnh này để lấy dữ liệu thô chuẩn nhất
-    powercfg /batteryreport /output "$env:TEMP\battery_report.html" /duration 1 | Out-Null
     
-    # 2. Lấy thông tin từ WMI làm dự phòng và bổ trợ
+    # 1. KIỂM TRA PHẦN CỨNG: PHÂN BIỆT MÁY BÀN (PC) VÀ LAPTOP
     $batteryWMI = Get-CimInstance -ClassName Win32_Battery -ErrorAction SilentlyContinue
-    $fullCapWMI = (Get-CimInstance -Namespace root/wmi -ClassName BatteryFullChargedCapacity).FullChargedCapacity
-    $designCapWMI = (Get-CimInstance -Namespace root/wmi -ClassName BatteryStaticData).DesignCapacity
+    
+    if (-not $batteryWMI) {
+        Ghi-Log "------------------------------------------"
+        Ghi-Log "[!] HỆ THỐNG BÁO CÁO: Bạn đang dùng Máy bàn (PC) hoặc thiết bị không có pin."
+        Ghi-Log "=> Đã bỏ qua bước kiểm tra Pin."
+        Ghi-Log "------------------------------------------"
+        return # Dừng script tại đây luôn, không chạy các lệnh bên dưới nữa
+    }
 
-    # 3. Nếu WMI của MSI bị trống DesignCapacity, mình sẽ dùng mẹo "ép" lấy số liệu
-    if (-not $designCapWMI -or $designCapWMI -eq 0) {
-        # Thử lấy lại từ Win32_Battery (đôi khi nó nằm ở đây)
+    Ghi-Log "Hệ thống nhận diện đây là Laptop. Vui lòng đợi trích xuất dữ liệu..."
+
+    # 2. Tạo báo cáo pin tạm thời bằng lệnh gốc của Windows (HTML)
+    $reportPath = "$env:TEMP\battery_report.html"
+    powercfg /batteryreport /output $reportPath /duration 1 | Out-Null
+    
+    # 3. Quét thông số thực tế & thiết kế (Hỗ trợ Vét cạn mọi dòng máy)
+    $fullCapWMI = (Get-CimInstance -Namespace root/wmi -ClassName BatteryFullChargedCapacity -ErrorAction SilentlyContinue).FullChargedCapacity
+    $designCapWMI = (Get-CimInstance -Namespace root/wmi -ClassName BatteryStaticData -ErrorAction SilentlyContinue).DesignCapacity
+
+    # Fallback (Dự phòng): Nếu WMI gốc bị khóa, tìm trong Win32_Battery
+    if (-not $designCapWMI -or $designCapWMI -le 0) {
         $designCapWMI = $batteryWMI.DesignCapacity
+    }
+    if (-not $fullCapWMI -or $fullCapWMI -le 0) {
+        $fullCapWMI = $batteryWMI.FullChargeCapacity
     }
 
     # 4. Phân tích kết quả
     $full = [float]$fullCapWMI
     $design = [float]$designCapWMI
     
-    # Nếu vẫn không lấy được Design từ hệ thống, MSI thường là 51000 hoặc 65000 mWh
-    # Nhưng mình sẽ báo lỗi thay vì đoán mò
-    if ($design -le 0) {
-        Ghi-Log "[!] CẢNH BÁO: Firmware MSI chặn đọc Dung lượng thiết kế."
-        $health = "KHÔNG XÁC ĐỊNH"
-    } else {
-        $healthVal = [Math]::Round(($full / $design) * 100, 1)
-        $health = "$healthVal %"
-    }
-
-    # 5. Xuất kết quả chi tiết
     Ghi-Log "------------------------------------------"
-    Ghi-Log "- Tên máy/Pin: $($batteryWMI.DeviceID)"
-    Ghi-Log "- Trạng thái sạc: $($batteryWMI.EstimatedChargeRemaining)%"
+    Ghi-Log "- Tên pin / Mã thiết bị: $($batteryWMI.DeviceID)"
+    Ghi-Log "- Lượng pin hiện tại: $($batteryWMI.EstimatedChargeRemaining)%"
     
-    # Tính toán tình trạng thực tế
-    if ($healthVal -gt 0) {
+    # Đảm bảo cả 2 thông số đều có số liệu thật mới tính toán
+    if ($design -gt 0 -and $full -gt 0) {
+        $healthVal = [Math]::Round(($full / $design) * 100, 1)
+        $wearLevel = [Math]::Round(100 - $healthVal, 1)
+        
+        # Sửa lỗi hiển thị pin "ảo" (Máy mới mua, dung lượng thực tế > dung lượng thiết kế)
+        if ($wearLevel -lt 0) { $wearLevel = 0; $healthVal = 100 }
+
         Ghi-Log "------------------------------------------"
         Ghi-Log "- Dung lượng gốc (Thiết kế): $design mWh"
         Ghi-Log "- Dung lượng thực tế hiện tại: $full mWh"
-        Ghi-Log "- Độ sức khỏe (Health): $health"
-        
-        $wearLevel = 100 - $healthVal
+        Ghi-Log "- Độ sức khỏe (Health): $healthVal %"
         Ghi-Log "- Mức độ chai pin: $wearLevel %"
 
-        # Logic đánh giá mới: Chặt chẽ hơn
+        # Logic đánh giá tình trạng
         if ($wearLevel -gt 40) {
-            Ghi-Log "=> TÌNH TRẠNG: PIN CHAI NẶNG (ĐÃ CHẾT CELL)."
+            Ghi-Log "=> TÌNH TRẠNG: PIN CHAI NẶNG (NÊN THAY THẾ)."
         } elseif ($wearLevel -gt 20) {
-            Ghi-Log "=> TÌNH TRẠNG: PIN BẮT ĐẦU CHAI."
+            Ghi-Log "=> TÌNH TRẠNG: PIN BẮT ĐẦU CHAI (BÌNH THƯỜNG)."
         } else {
             Ghi-Log "=> TÌNH TRẠNG: PIN CÒN TỐT."
         }
     } else {
-        Ghi-Log "- Dung lượng sạc đầy: $full mWh"
-        Ghi-Log "=> KHÔNG TÍNH ĐƯỢC ĐỘ CHAI DO FIRMWARE GIẤU THÔNG SỐ GỐC."
+        Ghi-Log "------------------------------------------"
+        if ($full -gt 0) { Ghi-Log "- Dung lượng sạc đầy: $full mWh" }
+        Ghi-Log "=> [!] KHÔNG THỂ TÍNH ĐỘ CHAI DO FIRMWARE MÁY ẨN THÔNG SỐ GỐC."
     }
     
     Ghi-Log "------------------------------------------"
-    Ghi-Log "[Gợi ý] Bạn có thể xem chi tiết tại: $env:TEMP\battery_report.html"
+    Ghi-Log "[Gợi ý] Bạn có thể xem báo cáo chuẩn của Windows tại: $reportPath"
 }
 
 # Tích hợp vào VietToolbox
 if (Get-Command "ChayTacVu" -ErrorAction SilentlyContinue) {
     ChayTacVu "Kiểm tra Pin Laptop" $LogicThucThi
 } else {
-    &$logicThucThi
+    &$LogicThucThi
 }
