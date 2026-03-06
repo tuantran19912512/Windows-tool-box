@@ -140,11 +140,36 @@ function Global:ChayTacVu($tenTacVu, $logic) {
 function Update-UI {
     $null = $groupContainer.Children.Clear()
     if (!(Test-Path $scriptFolder)) { return }
+    
     $subFolders = Get-ChildItem -Path $scriptFolder -Directory | Sort-Object Name
     foreach ($folder in $subFolders) {
         $expander = New-Object System.Windows.Controls.Expander
-        $expander.Header = $folder.Name.Substring($folder.Name.IndexOf('_') + 1).Replace('_',' ')
-        $expander.Foreground = "#007ACC"; $expander.FontWeight = "Bold"; $expander.FontSize = 16; $expander.Margin = "0,0,0,12"; $expander.IsExpanded = $false 
+        $tenThuMuc = $folder.Name.Substring($folder.Name.IndexOf('_') + 1).Replace('_',' ')
+        $expander.Header = $tenThuMuc
+        $expander.Foreground = "#007ACC"; $expander.FontWeight = "Bold"; $expander.FontSize = 16; $expander.Margin = "0,0,0,12"
+
+        # --- PHẦN QUAN TRỌNG: KIỂM TRA NẾU LÀ THƯ MỤC ADMIN ---
+        if ($folder.Name -like "*Admin*") {
+            # Khi người dùng bấm mở rộng (Expand) thư mục Admin
+            $expander.Add_Expanded({
+                param($sender, $e)
+                
+                # Nếu chưa có Token thì mới hỏi, có rồi thì thôi
+                if (-not $Global:GH_TOKEN) {
+                    [void][System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic')
+                    $tokenDauVao = [Microsoft.VisualBasic.Interaction]::InputBox("Vui lòng nhập Key để truy cập quyền Quản trị:", "Xác thực VietToolbox Admin", "")
+
+                    if ($tokenDauVao -and $tokenDauVao.Trim() -ne "") {
+                        $Global:GH_TOKEN = $tokenDauVao
+                        Ghi-Log ">>> Xác thực Admin thành công."
+                    } else {
+                        # Nếu hủy hoặc nhập trống thì đóng Expander lại ngay
+                        $sender.IsExpanded = $false
+                        [System.Windows.Forms.MessageBox]::Show("Bạn không có quyền truy cập vào khu vực này!", "Cảnh báo")
+                    }
+                }
+            })
+        }
 
         $stack = New-Object System.Windows.Controls.StackPanel
         $stack.Margin = "15,5,0,0"
@@ -158,7 +183,12 @@ function Update-UI {
             $btn.Add_Click({ 
                 param($sender, $e) 
                 $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
-                try { . $sender.Tag } catch { Ghi-Log "LỖI KHI GỌI FILE: $($_.Exception.Message)" } 
+                try { 
+                    # Chạy file script con
+                    . $sender.Tag 
+                } catch { 
+                    Ghi-Log "LỖI KHI GỌI FILE: $($_.Exception.Message)" 
+                } 
             })
             $null = $stack.Children.Add($btn)
         }
