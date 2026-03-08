@@ -1,5 +1,5 @@
 ﻿# ==========================================================
-# ISO CLIENT V135 - FIX LỖI 403 BẰNG ACKNOWLEDGE ABUSE
+# ISO CLIENT V136 - THÊM CHỨC NĂNG LÀM MỚI DANH SÁCH
 # ==========================================================
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 Add-Type -AssemblyName System.Net.Http
@@ -7,7 +7,7 @@ Add-Type -AssemblyName System.Net.Http
 $B64_Key = "QUl6YVN5QzlDT01WamxfZEU3enhPQ190eEF4RFhLUEotSjdXMjlR"
 $Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
 
-$LogicIsoClientV135 = {
+$LogicIsoClientV136 = {
     $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
     $script:CancelDL = $false; $script:PauseDL = $false
 
@@ -17,7 +17,7 @@ $LogicIsoClientV135 = {
     $fStd = New-Object System.Drawing.Font("Segoe UI Semibold", 10)
 
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "VIETTOOLBOX - ISO V135 (BYPASS VIRUS SCAN)"; $form.Size = "880,920"; $form.BackColor = "White"; $form.StartPosition = "CenterScreen"
+    $form.Text = "VIETTOOLBOX - ISO V136 (BYPASS VIRUS & SYNC LIST)"; $form.Size = "880,920"; $form.BackColor = "White"; $form.StartPosition = "CenterScreen"
     $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
 
     # Danh sách
@@ -40,9 +40,11 @@ $LogicIsoClientV135 = {
     $btnResume = New-Object System.Windows.Forms.Button; $btnResume.Text = "TIẾP TỤC"; $btnResume.Size = "260,55"; $btnResume.Location = "305,560"; $btnResume.Enabled = $false; $btnResume.FlatStyle = "Flat"; $btnResume.Font = $fBtn; $form.Controls.Add($btnResume)
     $btnCancel = New-Object System.Windows.Forms.Button; $btnCancel.Text = "HỦY LỆNH"; $btnCancel.Size = "260,55"; $btnCancel.Location = "585,560"; $btnCancel.Enabled = $false; $btnCancel.FlatStyle = "Flat"; $btnCancel.Font = $fBtn; $form.Controls.Add($btnCancel)
     
-    $btnDownload = New-Object System.Windows.Forms.Button; $btnDownload.Text = "BẮT ĐẦU TẢI (FAST API)"; $btnDownload.Size = "820,75"; $btnDownload.Location = "25,660"; $btnDownload.BackColor = "#007ACC"; $btnDownload.ForeColor = "White"; $btnDownload.Font = $fTitle; $form.Controls.Add($btnDownload)
+    # --- CHIA LẠI NÚT HÀNG DƯỚI CÙNG ---
+    $btnSync = New-Object System.Windows.Forms.Button; $btnSync.Text = "LÀM MỚI LIST"; $btnSync.Size = "260,75"; $btnSync.Location = "25,660"; $btnSync.BackColor = "#455A64"; $btnSync.ForeColor = "White"; $btnSync.FlatStyle = "Flat"; $btnSync.Font = $fBtn; $form.Controls.Add($btnSync)
+    
+    $btnDownload = New-Object System.Windows.Forms.Button; $btnDownload.Text = "BẮT ĐẦU TẢI (FAST API)"; $btnDownload.Size = "540,75"; $btnDownload.Location = "305,660"; $btnDownload.BackColor = "#007ACC"; $btnDownload.ForeColor = "White"; $btnDownload.Font = $fTitle; $form.Controls.Add($btnDownload)
 
-    # --- [3] LOGIC TẢI ---
     # --- [3] LOGIC TẢI ---
     $btnDownload.Add_Click({
         $items = @($lv.CheckedItems); if ($items.Count -eq 0) { return }
@@ -50,7 +52,7 @@ $LogicIsoClientV135 = {
             [System.Windows.Forms.MessageBox]::Show("Chưa dán API Key ở đầu Script!"); return
         }
 
-        $btnDownload.Enabled = $false; $btnCancel.Enabled = $true; $btnPause.Enabled = $true
+        $btnDownload.Enabled = $false; $btnCancel.Enabled = $true; $btnPause.Enabled = $true; $btnSync.Enabled = $false
         $script:CancelDL = $false; $script:PauseDL = $false
         
         $HttpClient = New-Object System.Net.Http.HttpClient
@@ -77,11 +79,10 @@ $LogicIsoClientV135 = {
                 $fileStream = [System.IO.File]::Create($dest)
                 $buffer = New-Object byte[] 102400
                 
-                # SỬA LỖI LOGIC: Tách riêng biến tổng ($totalRead) và biến nhịp tốc độ ($chunkRead)
                 $totalRead = 0; $chunkRead = 0; $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
                 while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                    if ($script:CancelDL) { break } # Thoát vòng lặp tải nếu bấm Hủy
+                    if ($script:CancelDL) { break }
                     while ($script:PauseDL) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
                     if (-not $sw.IsRunning) { $sw.Start() }
 
@@ -97,21 +98,14 @@ $LogicIsoClientV135 = {
                     }
                 }
                 
-                # --- XỬ LÝ ĐÓNG LUỒNG MẠNG VÀ TỆP TIN TRƯỚC KHI XÓA ---
                 $fileStream.Close(); $fileStream.Dispose()
                 $stream.Close(); $stream.Dispose()
                 
                 if ($script:CancelDL) { 
                     $item.SubItems[1].Text = "❌ Đã hủy"
-                    # Xóa file (ép buộc)
                     if (Test-Path $dest) { Remove-Item $dest -Force -ErrorAction SilentlyContinue }
-                    
-                    # --- RESET GIAO DIỆN ---
-                    $pgBar.Value = 0
-                    $lblSpeed.Text = "0 MB/s"
-                    $lblStatus.Text = "Đã hủy lệnh. Xóa tệp rác thành công!"
-                    
-                    break # Lệnh này rất quan trọng: Thoát luôn vòng lặp foreach, không tải tiếp file sau nữa
+                    $pgBar.Value = 0; $lblSpeed.Text = "0 MB/s"; $lblStatus.Text = "Đã hủy lệnh. Xóa tệp rác thành công!"
+                    break 
                 } else { 
                     $item.SubItems[1].Text = "✅ Xong"
                     $lblStatus.Text = "Hoàn tất tải file!" 
@@ -123,26 +117,47 @@ $LogicIsoClientV135 = {
             }
         }
         
-        # Reset tổng thể khi xong (hoặc hủy)
         $HttpClient.Dispose()
-        $btnDownload.Enabled = $true; $btnCancel.Enabled = $false
+        $btnDownload.Enabled = $true; $btnCancel.Enabled = $false; $btnSync.Enabled = $true
         $btnPause.Enabled = $false; $btnResume.Enabled = $false
         $pgBar.Value = 0; $lblSpeed.Text = "0 MB/s"
     })
 
-    # Sự kiện nút (Giữ nguyên)
+    # --- SỰ KIỆN NÚT ĐIỀU KHIỂN ---
     $btnPause.Add_Click({ $script:PauseDL = $true; $btnPause.Enabled = $false; $btnResume.Enabled = $true; $lblStatus.Text = "Đã tạm dừng..." })
     $btnResume.Add_Click({ $script:PauseDL = $false; $btnResume.Enabled = $false; $btnPause.Enabled = $true; $lblStatus.Text = "Tiếp tục tải..." })
     $btnCancel.Add_Click({ $script:CancelDL = $true; $lblStatus.Text = "Đang hủy lệnh..." })
     $btnBrowse.Add_Click({ $fb = New-Object System.Windows.Forms.FolderBrowserDialog; if ($fb.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) { $txtPath.Text = $fb.SelectedPath } })
 
-    try {
-        $csv = Invoke-WebRequest -Uri $RawUrl -UseBasicParsing | ConvertFrom-Csv
-        foreach ($r in $csv) {
-            $li = New-Object System.Windows.Forms.ListViewItem($r.Name); $li.Tag = $r.FileID; [void]$li.SubItems.Add("Sẵn sàng"); $lv.Items.Add($li)
+    # --- HÀM TẢI DANH SÁCH (DÙNG CHUNG CHO MỞ APP & NÚT SYNC) ---
+    function Load-IsoList {
+        try {
+            $lblStatus.Text = "Đang tải danh sách từ mây..."
+            [System.Windows.Forms.Application]::DoEvents()
+            
+            # Khử cache bằng thời gian thực
+            $csv = Invoke-WebRequest -Uri ($RawUrl + "?t=" + (Get-Date -UFormat %s)) -UseBasicParsing | ConvertFrom-Csv
+            $lv.Items.Clear()
+            
+            foreach ($r in $csv) {
+                if ($r.Name -and $r.FileID) {
+                    $li = New-Object System.Windows.Forms.ListViewItem($r.Name)
+                    $li.Tag = $r.FileID
+                    [void]$li.SubItems.Add("Sẵn sàng")
+                    $lv.Items.Add($li)
+                }
+            }
+            $lblStatus.Text = "✅ Đã làm mới xong $($lv.Items.Count) bản Windows!"
+        } catch {
+            $lblStatus.Text = "❌ Lỗi không tải được danh sách. Hãy kiểm tra mạng!"
         }
-    } catch {}
+    }
+
+    $btnSync.Add_Click({ Load-IsoList })
+
+    # Tự động tải lúc vừa mở form lên
+    $form.Add_Shown({ Load-IsoList })
 
     $form.ShowDialog() | Out-Null
 }
-&$LogicIsoClientV135
+&$LogicIsoClientV136
