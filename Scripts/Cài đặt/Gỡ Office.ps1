@@ -32,15 +32,41 @@ $LogicGoOfficeV22 = {
 
     $form.Controls.AddRange(@($lvOffice, $lblStatus, $pgBar, $btnRefresh, $btnCleanAll, $btnUninstall))
 
-    # --- HÀM QUÉT OFFICE ---
+    # --- HÀM QUÉT OFFICE (ĐÃ NÂNG CẤP BẮT TẬN Ổ) ---
     function Get-OfficeList {
-        $lvOffice.Items.Clear(); $lblStatus.Text = "Đang quét hệ thống..."; [System.Windows.Forms.Application]::DoEvents()
-        $paths = @("HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*")
-        $officeApps = Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { $_.DisplayName -like "*Microsoft Office*" -and $_.UninstallString -ne $null }
-        foreach ($app in $officeApps) {
-            $li = New-Object System.Windows.Forms.ListViewItem($app.DisplayName); [void]$li.SubItems.Add("Sẵn sàng gỡ"); $li.Tag = $app.UninstallString; $lvOffice.Items.Add($li)
+        $lvOffice.Items.Clear(); $lblStatus.Text = "Đang quét sâu vào hệ thống..."; [System.Windows.Forms.Application]::DoEvents()
+        
+        # 1. Bổ sung nhánh Registry giấu kín của bọn Click-to-Run
+        $paths = @(
+            "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*", 
+            "HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*",
+            "HKLM:\SOFTWARE\Microsoft\Office\ClickToRun\REGISTRY\MACHINE\Software\Microsoft\Windows\CurrentVersion\Uninstall\*"
+        )
+        
+        # 2. Mở rộng từ khóa: Hốt cả "Microsoft Office" VÀ "Microsoft 365"
+        $officeApps = Get-ItemProperty $paths -ErrorAction SilentlyContinue | Where-Object { 
+            ($_.DisplayName -match "Microsoft Office" -or $_.DisplayName -match "Microsoft 365") -and 
+            ($_.UninstallString -ne $null -or $_.QuietUninstallString -ne $null)
         }
-        $lblStatus.Text = "Tìm thấy $($lvOffice.Items.Count) bản Office."
+        
+        # Lọc trùng lặp (nhiều khi nó lưu 2 key cho 1 bản Office)
+        $officeApps = $officeApps | Sort-Object DisplayName -Unique
+
+        foreach ($app in $officeApps) {
+            # Ưu tiên lấy lệnh gỡ ngầm (Quiet) nếu có, để gỡ cho lẹ
+            $uninstCmd = if ($app.QuietUninstallString) { $app.QuietUninstallString } else { $app.UninstallString }
+            
+            $li = New-Object System.Windows.Forms.ListViewItem($app.DisplayName)
+            [void]$li.SubItems.Add("Sẵn sàng gỡ")
+            $li.Tag = $uninstCmd
+            $lvOffice.Items.Add($li)
+        }
+        
+        if ($lvOffice.Items.Count -eq 0) {
+            $lblStatus.Text = "Máy sạch sẽ! Không tìm thấy bản Office/365 nào."
+        } else {
+            $lblStatus.Text = "Tìm thấy $($lvOffice.Items.Count) bản Office/Microsoft 365."
+        }
     }
 
     # --- HÀM DỌN DẸP TẬN GỐC ---
