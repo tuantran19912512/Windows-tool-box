@@ -94,5 +94,32 @@ $btnPush.Add_Click({
         $btnPush.Enabled = $true
     }
 })
+# --- HÀM TẢI DỮ LIỆU TỪ GITHUB KHI VỪA MỞ TOOL ---
+$form.Add_Shown({
+    $lblStatus.Text = "Đang tải danh sách hiện tại từ GitHub..."
+    $lblStatus.ForeColor = "Blue"
+    [System.Windows.Forms.Application]::DoEvents()
+
+    $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
+    try {
+        # Dùng t=thời_gian để chống cache của GitHub
+        $csvData = Invoke-RestMethod -Uri ($RawUrl + "?t=" + (Get-Date -UFormat %s)) -Method Get -UseBasicParsing
+        $csv = $csvData | ConvertFrom-Csv
+        
+        $lvISO.Items.Clear()
+        foreach ($row in $csv) {
+            if ($row.Name -and $row.FileID) {
+                $item = New-Object System.Windows.Forms.ListViewItem($row.Name)
+                [void]$item.SubItems.Add($row.FileID)
+                $lvISO.Items.Add($item)
+            }
+        }
+        $lblStatus.Text = "✅ Đã tải xong $($lvISO.Items.Count) bản Windows từ Cloud!"
+        $lblStatus.ForeColor = "DarkGreen"
+    } catch {
+        $lblStatus.Text = "⚠️ Chưa có dữ liệu trên Cloud hoặc lỗi mạng. Vui lòng thêm mới!"
+        $lblStatus.ForeColor = "DarkOrange"
+    }
+})
 
 $form.ShowDialog() | Out-Null
