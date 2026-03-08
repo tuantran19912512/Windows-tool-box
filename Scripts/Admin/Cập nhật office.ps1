@@ -22,20 +22,22 @@ $LogicQuanTriOffice = {
     $fontNoiDung = New-Object System.Drawing.Font("Segoe UI", 9)
     $fontNho     = New-Object System.Drawing.Font("Segoe UI", 8, [System.Drawing.FontStyle]::Italic)
 
-    # --- KHỞI TẠO FORM (ĐÃ THU GỌN VÌ BỎ PHẦN TOKEN) ---
+    # --- KHỞI TẠO FORM ---
     $form = New-Object System.Windows.Forms.Form
     $form.Text = "VIETTOOLBOX ADMIN - QUẢN LÝ BỘ CÀI OFFICE"; $form.Size = "650,580"; $form.BackColor = "White"; $form.StartPosition = "CenterScreen"
     
-    # 1. DANH SÁCH OFFICE HIỆN TẠI
+    # 1. DANH SÁCH OFFICE HIỆN TẠI (Đổi tên cột cho chuẩn)
     $lv = New-Object System.Windows.Forms.ListView; $lv.Size = "590,250"; $lv.Location = "20,20"; $lv.View = "Details"; $lv.FullRowSelect = $true; $lv.GridLines = $true; $lv.Font = $fontNoiDung
-    [void]$lv.Columns.Add("TÊN PHIÊN BẢN OFFICE", 280); [void]$lv.Columns.Add("GOOGLE DRIVE ID", 280)
+    [void]$lv.Columns.Add("TÊN PHIÊN BẢN OFFICE", 280); [void]$lv.Columns.Add("ID GOOGLE DRIVE / LINK TẢI TRỰC TIẾP", 280)
 
-    # 2. KHU VỰC THÊM MỚI
+    # 2. KHU VỰC THÊM MỚI (Đổi nhãn dán cho phù hợp)
     $gbAdd = New-Object System.Windows.Forms.GroupBox; $gbAdd.Text = " THÊM PHIÊN BẢN MỚI "; $gbAdd.Size = "590,130"; $gbAdd.Location = "20,285"
     $lblName = New-Object System.Windows.Forms.Label; $lblName.Text = "Tên phiên bản:"; $lblName.Location = "15,30"; $lblName.Size = "100,20"
     $txtName = New-Object System.Windows.Forms.TextBox; $txtName.Location = "120,27"; $txtName.Size = "450,25"
-    $lblID = New-Object System.Windows.Forms.Label; $lblID.Text = "Google Drive ID:"; $lblID.Location = "15,65"; $lblID.Size = "100,20"
+    
+    $lblID = New-Object System.Windows.Forms.Label; $lblID.Text = "ID / Link tải:"; $lblID.Location = "15,65"; $lblID.Size = "100,20"
     $txtID = New-Object System.Windows.Forms.TextBox; $txtID.Location = "120,62"; $txtID.Size = "450,25"
+    
     $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "THÊM TẠM VÀO BẢNG"; $btnAdd.Location = "350,95"; $btnAdd.Size = "220,25"; $btnAdd.BackColor = "#607D8B"; $btnAdd.ForeColor = "White"; $btnAdd.FlatStyle = "Flat"
     $gbAdd.Controls.AddRange(@($lblName, $txtName, $lblID, $txtID, $btnAdd))
 
@@ -86,6 +88,7 @@ $LogicQuanTriOffice = {
     $btnPush.Add_Click({
         if (!$script:global_sha) { [System.Windows.Forms.MessageBox]::Show("Dữ liệu chưa được tải về, không thể cập nhật!"); return }
         
+        # Mặc dù giao diện hiển thị là "ID / Link", Cấu trúc file CSV vẫn giữ nguyên "Name,ID" để các tool tự động tương thích tốt
         $csvContent = "Name,ID`n"
         foreach ($item in $lv.Items) {
             $csvContent += "$($item.Text),$($item.SubItems[1].Text)`n"
