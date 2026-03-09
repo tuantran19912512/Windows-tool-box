@@ -141,60 +141,83 @@ function Update-UI {
     $null = $groupContainer.Children.Clear()
     if (!(Test-Path $scriptFolder)) { return }
     
-    $subFolders = Get-ChildItem -Path $scriptFolder -Directory | Sort-Object Name
-    foreach ($folder in $subFolders) {
-        $expander = New-Object System.Windows.Controls.Expander
-        $tenThuMuc = $folder.Name.Substring($folder.Name.IndexOf('_') + 1).Replace('_',' ')
-        $expander.Header = $tenThuMuc
-        $expander.Foreground = "#007ACC"; $expander.FontWeight = "Bold"; $expander.FontSize = 16; $expander.Margin = "0,0,0,12"
+    # --- HÀM ĐỆ QUY ĐỂ QUÉT SÂU VÀO THƯ MỤC CON ---
+    function Get-ScriptsRecursive ($Path, $ParentStack, $Level) {
+        # Lấy tất cả thư mục con và file ps1 trong đường dẫn hiện tại
+        $items = Get-ChildItem -Path $Path | Sort-Object @{Expression={!$_.PSIsContainer}}, Name
 
-        # --- PHẦN QUAN TRỌNG: KIỂM TRA NẾU LÀ THƯ MỤC ADMIN ---
-        if ($folder.Name -like "*Admin*") {
-            # Khi người dùng bấm mở rộng (Expand) thư mục Admin
-            $expander.Add_Expanded({
-                param($sender, $e)
+        foreach ($item in $items) {
+            if ($item.PSIsContainer) {
+                # --- NẾU LÀ THƯ MỤC: TẠO EXPANDER CON (HOẶC TEXTBLOCK) ---
+                $subExpander = New-Object System.Windows.Controls.Expander
+                # Xử lý tên hiển thị (Bỏ phần số thứ tự phía trước nếu có)
+                $displayName = if ($item.Name -match "_") { $item.Name.Substring($item.Name.IndexOf('_') + 1).Replace('_',' ') } else { $item.Name }
                 
-                # Nếu chưa có Token thì mới hỏi, có rồi thì thôi
-                if (-not $Global:GH_TOKEN) {
-                    [void][System.Reflection.Assembly]::LoadWithPartialName('Microsoft.VisualBasic')
-                    $tokenDauVao = [Microsoft.VisualBasic.Interaction]::InputBox("Vui lòng nhập Key để truy cập quyền Quản trị:", "Xác thực VietToolbox Admin", "")
+                $subExpander.Header = $displayName
+                $subExpander.Foreground = if ($Level -eq 0) { "#007ACC" } else { "#858585" } # Cấp 1 màu xanh, cấp sâu hơn màu xám
+                $subExpander.FontWeight = "Bold"
+                $subExpander.FontSize = if ($Level -eq 0) { 16 } else { 14 }
+                $subExpander.Margin = "0,5,0,5"
+                $subExpander.IsExpanded = $false # Mặc định đóng cho gọn
 
-                    if ($tokenDauVao -and $tokenDauVao.Trim() -ne "") {
-                        $Global:GH_TOKEN = $tokenDauVao
-                        Ghi-Log ">>> Xác thực Admin thành công."
-                    } else {
-                        # Nếu hủy hoặc nhập trống thì đóng Expander lại ngay
-                        $sender.IsExpanded = $false
-                        [System.Windows.Forms.MessageBox]::Show("Bạn không có quyền truy cập vào khu vực này!", "Cảnh báo")
-                    }
+                # Xử lý bảo mật: CHỈ HỎI Ở THƯ MỤC CẤP CAO NHẤT CÓ TÊN ADMIN
+                if ($item.Name -like "*Admin*" -and $Level -eq 0) {
+                    $subExpander.Add_Expanded({
+                        param($sender, $e)
+                        # Nếu chưa có Token thì mới hiện bảng hỏi
+                        if (-not $Global:GH_TOKEN) {
+                            Add-Type -AssemblyName Microsoft.VisualBasic
+                            $tokenDauVao = [Microsoft.VisualBasic.Interaction]::InputBox("Vui lòng nhập Key Admin:", "Xác thực VietToolbox", "")
+                            
+                            if ($tokenDauVao -and $tokenDauVao.Trim() -ne "") {
+                                $Global:GH_TOKEN = $tokenDauVao.Trim()
+                                Ghi-Log ">>> Xác thực Admin thành công."
+                            } else {
+                                # Nếu hủy hoặc nhập trống thì đóng lại ngay
+                                $sender.IsExpanded = $false
+                                [System.Windows.Forms.MessageBox]::Show("Truy cập bị từ chối!", "Cảnh báo")
+                            }
+                        }
+                    })
                 }
-            })
-        }
 
-        $stack = New-Object System.Windows.Controls.StackPanel
-        $stack.Margin = "15,5,0,0"
+                $subStack = New-Object System.Windows.Controls.StackPanel
+                $subStack.Margin = "15,0,0,5" # Thụt đầu dòng để phân cấp
+                
+                # Đệ quy: Chui tiếp vào thư mục con này
+                Get-ScriptsRecursive $item.FullName $subStack ($Level + 1)
+                
+                $subExpander.Content = $subStack
+                $null = $ParentStack.Children.Add($subExpander)
 
-        $files = Get-ChildItem -Path $folder.FullName -Filter "*.ps1" | Sort-Object Name
-        foreach ($file in $files) {
-            $btn = New-Object System.Windows.Controls.Button
-            $btn.Content = "● " + $file.BaseName.Substring($file.BaseName.IndexOf('_') + 1).Replace('_',' ')
-            $btn.Height = 42; $btn.Margin = "0,0,0,6"; $btn.Background = "#2D2D30"; $btn.Foreground = "White"; $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "12,0,0,0"; $btn.Tag = $file.FullName
-            
-            $btn.Add_Click({ 
-                param($sender, $e) 
-                $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
-                try { 
-                    # Chạy file script con
-                    . $sender.Tag 
-                } catch { 
-                    Ghi-Log "LỖI KHI GỌI FILE: $($_.Exception.Message)" 
-                } 
-            })
-            $null = $stack.Children.Add($btn)
+            } else {
+                # --- NẾU LÀ FILE PS1: TẠO NÚT BẤM ---
+                if ($item.Extension -eq ".ps1") {
+                    $btn = New-Object System.Windows.Controls.Button
+                    $cleanName = if ($item.BaseName -match "_") { $item.BaseName.Substring($item.BaseName.IndexOf('_') + 1).Replace('_',' ') } else { $item.BaseName }
+                    
+                    $btn.Content = "● " + $cleanName
+                    $btn.Height = 38
+                    $btn.Margin = "0,2,0,2"
+                    $btn.Background = "#2D2D30"
+                    $btn.Foreground = "#DCDCDC"
+                    $btn.HorizontalContentAlignment = "Left"
+                    $btn.Padding = "10,0,0,0"
+                    $btn.Tag = $item.FullName # Lưu đường dẫn file để chạy
+                    
+                    $btn.Add_Click({ 
+                        param($sender, $e) 
+                        $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
+                        try { . $sender.Tag } catch { Ghi-Log "LỖI: $($_.Exception.Message)" } 
+                    })
+                    $null = $ParentStack.Children.Add($btn)
+                }
+            }
         }
-        $expander.Content = $stack
-        $null = $groupContainer.Children.Add($expander)
     }
+
+    # Bắt đầu gọi đệ quy từ thư mục gốc Scripts
+    Get-ScriptsRecursive $scriptFolder $groupContainer 0
 }
 
 # --- XỬ LÝ SỰ KIỆN ĐỔI MÀU CHỮ ---

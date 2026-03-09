@@ -11,7 +11,7 @@ $LogicQuanTriCloud = {
     $tokenPath = Join-Path $env:TEMP "vt_cloud_token.txt"
 
     # --- ĐỊNH NGHĨA FONT ---
-    $fontNut    = New-Object System.Drawing.Font("Segoe UI Bold", 10)
+    $fontNut    = New-Object System.Drawing.Font("Segoe UI Bold", 9)
     $fontNoiDung = New-Object System.Drawing.Font("Segoe UI", 10)
     $fontNho    = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
 
@@ -38,27 +38,33 @@ $LogicQuanTriCloud = {
 
     # --- KHỞI TẠO FORM ---
     $form = New-Object System.Windows.Forms.Form
-    $form.Text = "VIETTOOLBOX - QUẢN TRỊ DỮ LIỆU CLOUD"; $form.Size = "900,600"; $form.BackColor = "#FFFFFF"; $form.StartPosition = "CenterScreen"
+    $form.Text = "VIETTOOLBOX - QUẢN TRỊ DỮ LIỆU CLOUD (V115)"; $form.Size = "900,650"; $form.BackColor = "#FFFFFF"; $form.StartPosition = "CenterScreen"
 
     # Bảng dữ liệu
-    $grid = New-Object System.Windows.Forms.DataGridView; $grid.Size = "840,280"; $grid.Location = "20,20"; $grid.AutoSizeColumnsMode = "Fill"; $grid.RowHeadersVisible = $false; $grid.BackgroundColor = "White"; $grid.BorderStyle = "None"
+    $grid = New-Object System.Windows.Forms.DataGridView; $grid.Size = "840,280"; $grid.Location = "20,20"; $grid.AutoSizeColumnsMode = "Fill"; $grid.RowHeadersVisible = $false; $grid.BackgroundColor = "White"; $grid.BorderStyle = "FixedSingle"; $grid.SelectionMode = "FullRowSelect"; $grid.MultiSelect = $false
     [void]$grid.Columns.Add((New-Object System.Windows.Forms.DataGridViewCheckBoxColumn -Property @{Name="Check";HeaderText="Mặc định"}))
     [void]$grid.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="Name";HeaderText="Tên Ứng Dụng"}))
     [void]$grid.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="ID";HeaderText="Winget ID"}))
     
-    # --- PHẦN TIÊU ĐỀ VÀ Ô NHẬP LIỆU (FIXED) ---
-    $lblN = New-Object System.Windows.Forms.Label; $lblN.Text = "Tên hiển thị:"; $lblN.Location = "20,315"; $lblN.Size = "250,20"; $lblN.Font = $fontNho; $lblN.ForeColor = "Gray"
-    $txtN = New-Object System.Windows.Forms.TextBox; $txtN.Location = "20,340"; $txtN.Size = "250,25"; $txtN.Font = $fontNoiDung
+    # --- Ô NHẬP LIỆU ---
+    $lblN = New-Object System.Windows.Forms.Label; $lblN.Text = "Tên hiển thị:"; $lblN.Location = "20,315"; $lblN.Size = "220,20"; $lblN.Font = $fontNho; $lblN.ForeColor = "Gray"
+    $txtN = New-Object System.Windows.Forms.TextBox; $txtN.Location = "20,340"; $txtN.Size = "220,25"; $txtN.Font = $fontNoiDung
     
-    $lblI = New-Object System.Windows.Forms.Label; $lblI.Text = "Winget ID:"; $lblI.Location = "280,315"; $lblI.Size = "250,20"; $lblI.Font = $fontNho; $lblI.ForeColor = "Gray"
-    $txtI = New-Object System.Windows.Forms.TextBox; $txtI.Location = "280,340"; $txtI.Size = "250,25"; $txtI.Font = $fontNoiDung
+    $lblI = New-Object System.Windows.Forms.Label; $lblI.Text = "Winget ID:"; $lblI.Location = "250,315"; $lblI.Size = "220,20"; $lblI.Font = $fontNho; $lblI.ForeColor = "Gray"
+    $txtI = New-Object System.Windows.Forms.TextBox; $txtI.Location = "250,340"; $txtI.Size = "220,25"; $txtI.Font = $fontNoiDung
     
-    $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "THÊM MỚI"; $btnAdd.Location = "540,338"; $btnAdd.Size = "150,30"; $btnAdd.BackColor = "#4CAF50"; $btnAdd.ForeColor = "White"; $btnAdd.FlatStyle = "Flat"; $btnAdd.Font = $fontNut
+    # --- BỘ NÚT ĐIỀU KHIỂN ---
+    $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "THÊM MỚI"; $btnAdd.Location = "480,338"; $btnAdd.Size = "95,30"; $btnAdd.BackColor = "#4CAF50"; $btnAdd.ForeColor = "White"; $btnAdd.FlatStyle = "Flat"; $btnAdd.Font = $fontNut
     
-    $btnPush = New-Object System.Windows.Forms.Button; $btnPush.Text = "CẬP NHẬT DỮ LIỆU LÊN CLOUD"; $btnPush.Size = "840,60"; $btnPush.Location = "20,450"; $btnPush.BackColor = "#0D47A1"; $btnPush.ForeColor = "White"; $btnPush.FlatStyle = "Flat"; $btnPush.Font = $fontNut
+    $btnEdit = New-Object System.Windows.Forms.Button; $btnEdit.Text = "SỬA / LƯU"; $btnEdit.Location = "580,338"; $btnEdit.Size = "95,30"; $btnEdit.BackColor = "#FF9800"; $btnEdit.ForeColor = "White"; $btnEdit.FlatStyle = "Flat"; $btnEdit.Font = $fontNut
+
+    $btnDel = New-Object System.Windows.Forms.Button; $btnDel.Text = "XOÁ DÒNG"; $btnDel.Location = "680,338"; $btnDel.Size = "95,30"; $btnDel.BackColor = "#E57373"; $btnDel.ForeColor = "White"; $btnDel.FlatStyle = "Flat"; $btnDel.Font = $fontNut
+
+    $btnClear = New-Object System.Windows.Forms.Button; $btnClear.Text = "XOÁ SẠCH"; $btnClear.Location = "780,338"; $btnClear.Size = "80,30"; $btnClear.BackColor = "#B71C1C"; $btnClear.ForeColor = "White"; $btnClear.FlatStyle = "Flat"; $btnClear.Font = $fontNut
+
+    $btnPush = New-Object System.Windows.Forms.Button; $btnPush.Text = "CẬP NHẬT DỮ LIỆU LÊN CLOUD (GITHUB)"; $btnPush.Size = "840,60"; $btnPush.Location = "20,500"; $btnPush.BackColor = "#0D47A1"; $btnPush.ForeColor = "White"; $btnPush.FlatStyle = "Flat"; $btnPush.Font = $fontNut
     
-    # Thêm tất cả vào Form
-    $form.Controls.AddRange(@($grid, $lblN, $txtN, $lblI, $txtI, $btnAdd, $btnPush))
+    $form.Controls.AddRange(@($grid, $lblN, $txtN, $lblI, $txtI, $btnAdd, $btnEdit, $btnDel, $btnClear, $btnPush))
 
     # --- HÀM TẢI DỮ LIỆU ---
     function Reload-Admin {
@@ -76,8 +82,49 @@ $LogicQuanTriCloud = {
     }
 
     # --- SỰ KIỆN ---
-    $btnAdd.Add_Click({ if ($txtN.Text) { [void]$grid.Rows.Add($true, $txtN.Text, $txtI.Text); $txtN.Text=""; $txtI.Text="" } })
+
+    # Click vào dòng trong Grid -> Đưa lên ô nhập
+    $grid.Add_SelectionChanged({
+        if ($grid.SelectedRows.Count -gt 0) {
+            $row = $grid.SelectedRows[0]
+            if (!$row.IsNewRow) {
+                $txtN.Text = $row.Cells['Name'].Value
+                $txtI.Text = $row.Cells['ID'].Value
+            }
+        }
+    })
     
+    # Thêm mới
+    $btnAdd.Add_Click({ 
+        if ($txtN.Text) { 
+            [void]$grid.Rows.Add($true, $txtN.Text, $txtI.Text)
+            $txtN.Text=""; $txtI.Text="" 
+        } 
+    })
+    
+    # Sửa dòng đang chọn
+    $btnEdit.Add_Click({
+        if ($grid.SelectedRows.Count -gt 0) {
+            $row = $grid.SelectedRows[0]
+            if ($txtN.Text) {
+                $row.Cells['Name'].Value = $txtN.Text
+                $row.Cells['ID'].Value = $txtI.Text
+                [System.Windows.Forms.MessageBox]::Show("Đã sửa dòng thành công! Nhớ bấm Cập nhật Cloud để lưu.")
+            }
+        }
+    })
+
+    # Xoá dòng
+    $btnDel.Add_Click({
+        foreach ($row in $grid.SelectedRows) { if (!$row.IsNewRow) { $grid.Rows.Remove($row) } }
+    })
+
+    # Xoá sạch
+    $btnClear.Add_Click({
+        if ([System.Windows.Forms.MessageBox]::Show("Xoá sạch bảng?", "Xác nhận", "YesNo") -eq "Yes") { $grid.Rows.Clear() }
+    })
+    
+    # Đẩy dữ liệu
     $btnPush.Add_Click({
         try {
             $csv = "Check,Name,ID`n" + (($grid.Rows | ForEach-Object { if ($_.Cells['Name'].Value) { "$($_.Cells['Check'].Value),$($_.Cells['Name'].Value),$($_.Cells['ID'].Value)" } }) -join "`n")
@@ -85,7 +132,7 @@ $LogicQuanTriCloud = {
             $info = Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Get
             $body = @{ message="Admin Update"; content=[Convert]::ToBase64String([System.Text.Encoding]::UTF8.GetBytes($csv.Trim())); sha=$info.sha } | ConvertTo-Json
             Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Put -Body $body
-            [System.Windows.Forms.MessageBox]::Show("Đã cập nhật dữ liệu lên Cloud thành công!"); Reload-Admin
+            [System.Windows.Forms.MessageBox]::Show("Đã cập nhật dữ liệu Cloud thành công!"); Reload-Admin
         } catch { [System.Windows.Forms.MessageBox]::Show("Lỗi kết nối Cloud!") }
     })
 
