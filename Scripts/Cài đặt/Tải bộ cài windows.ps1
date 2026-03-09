@@ -4,7 +4,7 @@
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 Add-Type -AssemblyName System.Net.Http
 
-$B64_Key = "QUl6YVN5QzlDT01WamxfZEU3enhPQ190eEF4RFhLUEotSjdXMjlR"
+$B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
 $Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
 
 $LogicIsoClientV136 = {
