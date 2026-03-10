@@ -110,13 +110,38 @@ $btnShutdown = $window.FindName("BtnShutdown")
 $btnRestart = $window.FindName("BtnRestart")
 $txtThongBao = $window.FindName("TxtThongBao")
 
-# TẢI THÔNG BÁO TỪ GITHUB
+# ==========================================================
+# CƠ CHẾ TẢI THÔNG BÁO V180 - BẢN FIX LỖI BYTES
+# ==========================================================
 try {
-    $urlThongBao = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/ThongBao.txt"
-    $request = Invoke-WebRequest -Uri ($urlThongBao + "?t=" + [DateTime]::Now.Ticks) -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-    $noiDung = [System.Text.Encoding]::UTF8.GetString($request.Content).Trim()
-    if ($noiDung -ne "") { $txtThongBao.Text = "🔥 $noiDung" } else { $txtThongBao.Text = "" }
-} catch { $txtThongBao.Text = "🔥 VietToolbox Pro - Hệ thống sẵn sàng!" }
+    [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+    
+    $urlRaw = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/ThongBao.txt"
+    $urlTurbo = $urlRaw + "?t=" + [DateTime]::Now.Ticks
+    
+    # 1. Tải thẳng nội dung về dạng chữ (String)
+    $rawText = Invoke-RestMethod -Uri $urlTurbo -UseBasicParsing -TimeoutSec 5 -ErrorAction Stop
+    
+    # 2. Xử lý tách dòng và lọc tin Khách
+    $lines = $rawText -split "`n"
+    $foundLine = ""
+    foreach ($line in $lines) {
+        if ($line -match "Khách:") {
+            $foundLine = $line -replace ".*Khách:\s*", ""
+            break
+        }
+    }
+
+    if ($foundLine.Trim() -ne "") {
+        $txtThongBao.Text = "🔥 " + $foundLine.Trim()
+    } else {
+        # Nếu file không có chữ Khách:, hiện dòng đầu tiên cho nó máu
+        $txtThongBao.Text = "🔥 " + $lines[0].Trim()
+    }
+} catch {
+    # Nếu ổn rồi thì ông đổi lại câu chào: "🔥 VietToolbox Pro - Hệ thống ổn định!"
+    $txtThongBao.Text = "❌ Lỗi kết nối Server: " + $_.Exception.Message
+}
 
 $Global:LogColorGreen = $true
 
