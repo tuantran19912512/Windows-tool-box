@@ -1,9 +1,14 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO (BẢN KHÁCH / TIÊU CHUẨN)
+# Tên công cụ: VIETTOOLBOX PRO (BẢN ADMIN / KỸ THUẬT VIÊN)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
+
+# 🚨 CẤP THẺ VIP NGẦM (GIẢI MÃ TỪ BASE64) 🚨
+$B64_Token = "Z2hwX0FhRkJVV2UzSmowNXRvZEFLVVdMMUNNdUUxOXhoVjA1bDh5aQ=="
+$Global:GH_TOKEN = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Token))
 
 $showWindowAsync = Add-Type -MemberDefinition @"
 [DllImport("user32.dll")]
@@ -26,13 +31,13 @@ $logoPath = Join-Path $PSScriptRoot "logo2.png"
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox Pro - Standard Edition" Height="850" Width="1200" 
+        Title="VietToolbox Pro - Admin Panel" Height="850" Width="1200" 
         Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen">
-    <Border CornerRadius="15" BorderBrush="#007ACC" BorderThickness="2">
+    <Border CornerRadius="15" BorderBrush="#D32F2F" BorderThickness="2">
         <Border.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#0A1628" Offset="0"/>
-                <GradientStop Color="#02050A" Offset="1"/>
+                <GradientStop Color="#1A0505" Offset="0"/>
+                <GradientStop Color="#0A0202" Offset="1"/>
             </LinearGradientBrush>
         </Border.Background>
         <Grid>
@@ -43,14 +48,14 @@ $inputXML = @"
                 </Grid.ColumnDefinitions>
 
                 <Image Grid.Column="0" Source="$logoPath" Height="140" Width="140" HorizontalAlignment="Left" Margin="0,0,30,0">
-                    <Image.Effect><DropShadowEffect BlurRadius="20" Color="#007ACC" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
+                    <Image.Effect><DropShadowEffect BlurRadius="20" Color="#D32F2F" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
                 </Image>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
-                    <TextBlock Text="Hệ thống tối ưu tự động - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
+                    <TextBlock Text="WINDOWS TOOL BOX PRO - ADMIN PANEL" Foreground="#D32F2F" FontSize="36" FontWeight="Bold"/>
+                    <TextBlock Text="Quyền lực tối thượng - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
                     
-                    <TextBlock Name="TxtThongBao" Text="Đang kết nối hệ thống..." Foreground="#FF3333" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
+                    <TextBlock Name="TxtThongBao" Text="Đang kết nối hệ thống Admin..." Foreground="#FFB300" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
                         <TextBlock.Triggers>
                             <EventTrigger RoutedEvent="TextBlock.Loaded">
                                 <BeginStoryboard>
@@ -70,7 +75,7 @@ $inputXML = @"
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <GroupBox Header="NHÓM CÔNG CỤ" Foreground="#007ACC" BorderBrush="#333333">
+                <GroupBox Header="TẤT CẢ CÔNG CỤ" Foreground="#D32F2F" BorderBrush="#333333">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Name="GroupContainer" Margin="10"/>
                     </ScrollViewer>
@@ -88,7 +93,7 @@ $inputXML = @"
                 <Button Name="BtnRestart" Content="KHỞI ĐỘNG LẠI" Width="130" Height="45" Margin="0,0,10,0" Background="#2980B9" Foreground="White" BorderThickness="0" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
-                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#007ACC" FontWeight="Bold">
+                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#D32F2F" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
                 <Button Name="BtnClose" Content="THOÁT ✕" Width="110" Height="45" Background="#CC1123" Foreground="White" BorderThickness="0" FontWeight="Bold">
@@ -110,13 +115,12 @@ $btnShutdown = $window.FindName("BtnShutdown")
 $btnRestart = $window.FindName("BtnRestart")
 $txtThongBao = $window.FindName("TxtThongBao")
 
-# TẢI THÔNG BÁO TỪ GITHUB
 try {
     $urlThongBao = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/ThongBao.txt"
     $request = Invoke-WebRequest -Uri ($urlThongBao + "?t=" + [DateTime]::Now.Ticks) -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
     $noiDung = [System.Text.Encoding]::UTF8.GetString($request.Content).Trim()
-    if ($noiDung -ne "") { $txtThongBao.Text = "🔥 $noiDung" } else { $txtThongBao.Text = "" }
-} catch { $txtThongBao.Text = "🔥 VietToolbox Pro - Hệ thống sẵn sàng!" }
+    if ($noiDung -ne "") { $txtThongBao.Text = "🚨 TIN ADMIN: $noiDung" } else { $txtThongBao.Text = "" }
+} catch { $txtThongBao.Text = "🚨 VietToolbox Admin - Quyền lực tối thượng!" }
 
 $Global:LogColorGreen = $true
 
@@ -144,15 +148,13 @@ function Update-UI {
         $items = Get-ChildItem -Path $Path | Sort-Object @{Expression={!$_.PSIsContainer}}, Name
 
         foreach ($item in $items) {
-            # 🚨 BỘ LỌC TÀNG HÌNH: TỰ ĐỘNG BỎ QUA MỌI THỨ CÓ CHỮ "ADMIN" 🚨
-            if ($item.Name -match "Admin" -or $item.Name -match "admin") { continue }
-
+            # BẢN ADMIN KHÔNG LỌC GÌ CẢ, QUÉT SẠCH BÁCH MỌI THƯ MỤC
             if ($item.PSIsContainer) {
                 $subExpander = New-Object System.Windows.Controls.Expander
                 $displayName = if ($item.Name -match "_") { $item.Name.Substring($item.Name.IndexOf('_') + 1).Replace('_',' ') } else { $item.Name }
                 
                 $subExpander.Header = $displayName
-                $subExpander.Foreground = if ($Level -eq 0) { "#007ACC" } else { "#858585" } 
+                $subExpander.Foreground = if ($Level -eq 0) { "#D32F2F" } else { "#858585" } 
                 $subExpander.FontWeight = "Bold"
                 $subExpander.FontSize = if ($Level -eq 0) { 16 } else { 14 }
                 $subExpander.Margin = "0,5,0,5"
