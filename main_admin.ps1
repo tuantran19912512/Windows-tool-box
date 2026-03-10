@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO - ADMIN EDITION (V182)
+# Tên công cụ: VIETTOOLBOX PRO - ADMIN EDITION (V183)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Ghi chú: Bản đặc biệt dành cho Admin - Chạy thẳng không hỏi Key
+# Ghi chú: Bản Admin - Có bảo mật Key khi mở thư mục nhạy cảm
 # ==============================================================================
 
 # 1. THIẾT LẬP MÔI TRƯỜNG & FIX LỖI CHẠY ONLINE (IEX)
@@ -33,7 +33,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# 4. GIAO DIỆN XAML (THEME AMBER - VÀNG CAM)
+# 4. GIAO DIỆN XAML
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -111,7 +111,7 @@ $inputXML = @"
 </Window>
 "@
 
-# 5. KHỞI TẠO BIẾN GIAO DIỆN
+# 5. KHỞI TẠO BIẾN
 $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader] $inputXML)
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
 $groupContainer = $window.FindName("GroupContainer")
@@ -122,7 +122,7 @@ $btnShutdown = $window.FindName("BtnShutdown")
 $btnRestart = $window.FindName("BtnRestart")
 $txtThongBao = $window.FindName("TxtThongBao")
 
-# 6. TẢI THÔNG BÁO ADMIN TỪ GITHUB (CACHE BUSTER)
+# 6. TẢI THÔNG BÁO (CACHE BUSTER)
 try {
     $urlRaw = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/ThongBao.txt"
     $urlTurbo = $urlRaw + "?t=" + [DateTime]::Now.Ticks
@@ -133,7 +133,7 @@ try {
     else { $txtThongBao.Text = "🚨 HỆ THỐNG ADMIN ĐÃ SẴN SÀNG" }
 } catch { $txtThongBao.Text = "🚨 ĐANG CHẠY CHẾ ĐỘ OFFLINE" }
 
-# 7. CÁC HÀM HỆ THỐNG
+# 7. HÀM HỆ THỐNG
 $Global:LogColorGreen = $true
 
 function Global:Ghi-Log($msg) {
@@ -159,6 +159,23 @@ function Update-UI {
                 $subExpander.FontWeight = "Bold"; $subExpander.FontSize = if ($Level -eq 0) { 16 } else { 14 }
                 $subExpander.Margin = "0,5,0,5"; $subExpander.IsExpanded = $false 
                 
+                # --- CHÈN LẠI Ô NHẬP KEY CHO THƯ MỤC ADMIN ---
+                if ($item.Name -like "*Admin*" -and $Level -eq 0) {
+                    $subExpander.Add_Expanded({
+                        param($sender, $e)
+                        if (-not $Global:GH_TOKEN) {
+                            $inputKey = [Microsoft.VisualBasic.Interaction]::InputBox("Vui lòng nhập Key xác thực Admin:", "Xác thực VietToolbox", "")
+                            if ($inputKey -and $inputKey.Trim() -ne "") {
+                                $Global:GH_TOKEN = $inputKey.Trim()
+                                Ghi-Log ">>> Xác thực Admin thành công."
+                            } else {
+                                $sender.IsExpanded = $false
+                                [System.Windows.Forms.MessageBox]::Show("Truy cập bị từ chối!", "Lỗi xác thực")
+                            }
+                        }
+                    })
+                }
+
                 $subStack = New-Object System.Windows.Controls.StackPanel
                 $subStack.Margin = "15,0,0,5" 
                 Get-ScriptsRecursive $item.FullName $subStack ($Level + 1)
@@ -171,7 +188,6 @@ function Update-UI {
                     $btn.Content = "● " + $cleanName; $btn.Height = 38; $btn.Margin = "0,2,0,2"
                     $btn.Background = "#2D2D30"; $btn.Foreground = "#DCDCDC"; $btn.Padding = "10,0,0,0"
                     $btn.HorizontalContentAlignment = "Left"; $btn.Tag = $item.FullName 
-                    
                     $btn.Add_Click({ 
                         param($sender, $e) 
                         $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
