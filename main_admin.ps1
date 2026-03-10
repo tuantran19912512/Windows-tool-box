@@ -1,14 +1,9 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO (BẢN ADMIN / KỸ THUẬT VIÊN)
+# Tên công cụ: VIETTOOLBOX PRO (BẢN ADMIN - CÓ KHUNG NHẬP KEY XÁC THỰC)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-[Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12
-
-# 🚨 CẤP THẺ VIP NGẦM (GIẢI MÃ TỪ BASE64) 🚨
-$B64_Token = "Z2hwX0FhRkJVV2UzSmowNXRvZEFLVVdMMUNNdUUxOXhoVjA1bDh5aQ=="
-$Global:GH_TOKEN = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Token))
 
 $showWindowAsync = Add-Type -MemberDefinition @"
 [DllImport("user32.dll")]
@@ -33,11 +28,11 @@ $inputXML = @"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="VietToolbox Pro - Admin Panel" Height="850" Width="1200" 
         Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen">
-    <Border CornerRadius="15" BorderBrush="#D32F2F" BorderThickness="2">
+    <Border CornerRadius="15" BorderBrush="#FFB300" BorderThickness="2">
         <Border.Background>
             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#1A0505" Offset="0"/>
-                <GradientStop Color="#0A0202" Offset="1"/>
+                <GradientStop Color="#1A1305" Offset="0"/>
+                <GradientStop Color="#0A0702" Offset="1"/>
             </LinearGradientBrush>
         </Border.Background>
         <Grid>
@@ -48,14 +43,14 @@ $inputXML = @"
                 </Grid.ColumnDefinitions>
 
                 <Image Grid.Column="0" Source="$logoPath" Height="140" Width="140" HorizontalAlignment="Left" Margin="0,0,30,0">
-                    <Image.Effect><DropShadowEffect BlurRadius="20" Color="#D32F2F" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
+                    <Image.Effect><DropShadowEffect BlurRadius="20" Color="#FFB300" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
                 </Image>
 
                 <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="WINDOWS TOOL BOX PRO - ADMIN PANEL" Foreground="#D32F2F" FontSize="36" FontWeight="Bold"/>
-                    <TextBlock Text="Quyền lực tối thượng - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
+                    <TextBlock Text="WINDOWS TOOL BOX PRO - ADMIN" Foreground="#FFB300" FontSize="36" FontWeight="Bold"/>
+                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
                     
-                    <TextBlock Name="TxtThongBao" Text="Đang kết nối hệ thống Admin..." Foreground="#FFB300" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
+                    <TextBlock Name="TxtThongBao" Text="Đang kết nối hệ thống..." Foreground="#00FF00" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
                         <TextBlock.Triggers>
                             <EventTrigger RoutedEvent="TextBlock.Loaded">
                                 <BeginStoryboard>
@@ -75,7 +70,7 @@ $inputXML = @"
                     <ColumnDefinition Width="*"/>
                 </Grid.ColumnDefinitions>
 
-                <GroupBox Header="TẤT CẢ CÔNG CỤ" Foreground="#D32F2F" BorderBrush="#333333">
+                <GroupBox Header="NHÓM CÔNG CỤ" Foreground="#FFB300" BorderBrush="#333333">
                     <ScrollViewer VerticalScrollBarVisibility="Auto">
                         <StackPanel Name="GroupContainer" Margin="10"/>
                     </ScrollViewer>
@@ -93,7 +88,7 @@ $inputXML = @"
                 <Button Name="BtnRestart" Content="KHỞI ĐỘNG LẠI" Width="130" Height="45" Margin="0,0,10,0" Background="#2980B9" Foreground="White" BorderThickness="0" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
-                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#D32F2F" FontWeight="Bold">
+                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#FFB300" FontWeight="Bold">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources>
                 </Button>
                 <Button Name="BtnClose" Content="THOÁT ✕" Width="110" Height="45" Background="#CC1123" Foreground="White" BorderThickness="0" FontWeight="Bold">
@@ -115,14 +110,15 @@ $btnShutdown = $window.FindName("BtnShutdown")
 $btnRestart = $window.FindName("BtnRestart")
 $txtThongBao = $window.FindName("TxtThongBao")
 
+# NẠP TIN TỪ GITHUB
 try {
     $urlThongBao = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/ThongBao.txt"
     $request = Invoke-WebRequest -Uri ($urlThongBao + "?t=" + [DateTime]::Now.Ticks) -UseBasicParsing -TimeoutSec 2 -ErrorAction Stop
-    $noiDung = [System.Text.Encoding]::UTF8.GetString($request.Content).Trim()
-    if ($noiDung -ne "") { $txtThongBao.Text = "🚨 TIN ADMIN: $noiDung" } else { $txtThongBao.Text = "" }
-} catch { $txtThongBao.Text = "🚨 VietToolbox Admin - Quyền lực tối thượng!" }
-
-$Global:LogColorGreen = $true
+    $fullContent = [System.Text.Encoding]::UTF8.GetString($request.Content).Split("`n")
+    $tinAdmin = ($fullContent | Where-Object { $_ -match "Admin:" }) -replace "Admin:", ""
+    if ($tinAdmin.Trim() -ne "") { $txtThongBao.Text = "🚨 TIN ADMIN: " + $tinAdmin.Trim() } 
+    else { $txtThongBao.Text = "🚨 CHẾ ĐỘ ADMIN: Sẵn sàng!" }
+} catch { $txtThongBao.Text = "🚨 ĐANG CHẠY CHẾ ĐỘ OFFLINE" }
 
 function Global:Ghi-Log($msg) {
     $window.Dispatcher.Invoke([action]{
@@ -130,14 +126,6 @@ function Global:Ghi-Log($msg) {
         $txtLog.ScrollToEnd()
     })
     [System.Windows.Forms.Application]::DoEvents()
-}
-
-function Global:ChayTacVu($tenTacVu, $logic) {
-    $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
-    Ghi-Log "=========================================="
-    Ghi-Log ">>> ĐANG THỰC HIỆN: $tenTacVu"
-    Ghi-Log "=========================================="
-    try { &$logic } catch { Ghi-Log "!!! LỖI: $($_.Exception.Message)" }
 }
 
 function Update-UI {
@@ -148,21 +136,34 @@ function Update-UI {
         $items = Get-ChildItem -Path $Path | Sort-Object @{Expression={!$_.PSIsContainer}}, Name
 
         foreach ($item in $items) {
-            # BẢN ADMIN KHÔNG LỌC GÌ CẢ, QUÉT SẠCH BÁCH MỌI THƯ MỤC
             if ($item.PSIsContainer) {
                 $subExpander = New-Object System.Windows.Controls.Expander
                 $displayName = if ($item.Name -match "_") { $item.Name.Substring($item.Name.IndexOf('_') + 1).Replace('_',' ') } else { $item.Name }
                 
                 $subExpander.Header = $displayName
-                $subExpander.Foreground = if ($Level -eq 0) { "#D32F2F" } else { "#858585" } 
-                $subExpander.FontWeight = "Bold"
-                $subExpander.FontSize = if ($Level -eq 0) { 16 } else { 14 }
-                $subExpander.Margin = "0,5,0,5"
-                $subExpander.IsExpanded = $false 
+                $subExpander.Foreground = if ($Level -eq 0) { "#FFB300" } else { "#858585" } 
+                $subExpander.FontWeight = "Bold"; $subExpander.FontSize = if ($Level -eq 0) { 16 } else { 14 }
+                $subExpander.Margin = "0,5,0,5"; $subExpander.IsExpanded = $false 
+
+                # --- ĐÂY RỒI: CƠ CHẾ HIỆN BẢNG NHẬP KEY ---
+                if ($item.Name -like "*Admin*" -and $Level -eq 0) {
+                    $subExpander.Add_Expanded({
+                        param($sender, $e)
+                        if (-not $Global:GH_TOKEN) {
+                            $inputKey = [Microsoft.VisualBasic.Interaction]::InputBox("Vui lòng nhập Key xác thực Admin:", "Xác thực VietToolbox", "")
+                            if ($inputKey -and $inputKey.Trim() -ne "") {
+                                $Global:GH_TOKEN = $inputKey.Trim()
+                                Ghi-Log ">>> Đã nạp Key xác thực Admin."
+                            } else {
+                                $sender.IsExpanded = $false
+                                [System.Windows.Forms.MessageBox]::Show("Truy cập bị từ chối!", "Lỗi xác thực")
+                            }
+                        }
+                    })
+                }
 
                 $subStack = New-Object System.Windows.Controls.StackPanel
                 $subStack.Margin = "15,0,0,5" 
-                
                 Get-ScriptsRecursive $item.FullName $subStack ($Level + 1)
                 $subExpander.Content = $subStack
                 $null = $ParentStack.Children.Add($subExpander)
@@ -170,12 +171,9 @@ function Update-UI {
                 if ($item.Extension -eq ".ps1") {
                     $btn = New-Object System.Windows.Controls.Button
                     $cleanName = if ($item.BaseName -match "_") { $item.BaseName.Substring($item.BaseName.IndexOf('_') + 1).Replace('_',' ') } else { $item.BaseName }
-                    
                     $btn.Content = "● " + $cleanName; $btn.Height = 38; $btn.Margin = "0,2,0,2"
                     $btn.Background = "#2D2D30"; $btn.Foreground = "#DCDCDC"
-                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"
-                    $btn.Tag = $item.FullName 
-                    
+                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Tag = $item.FullName 
                     $btn.Add_Click({ 
                         param($sender, $e) 
                         $window.Dispatcher.Invoke([action]{ $txtLog.Clear() })
@@ -193,14 +191,7 @@ $btnColor.Add_Click({
     if ($Global:LogColorGreen) { $txtLog.Foreground = "#FFFFFF"; $btnColor.Content = "MÀU CHỮ: TRẮNG"; $Global:LogColorGreen = $false } 
     else { $txtLog.Foreground = "#00FF00"; $btnColor.Content = "MÀU CHỮ: XANH"; $Global:LogColorGreen = $true }
 })
-$btnShutdown.Add_Click({
-    if ([System.Windows.Forms.MessageBox]::Show("Tắt máy?", "VietToolbox", 4, 48) -eq "Yes") { Stop-Computer -Force }
-})
-$btnRestart.Add_Click({
-    if ([System.Windows.Forms.MessageBox]::Show("Khởi động lại?", "VietToolbox", 4, 32) -eq "Yes") { Restart-Computer -Force }
-})
-
-Update-UI
 $btnClose.Add_Click({ $window.Close() })
 $window.Add_MouseLeftButtonDown({ $window.DragMove() })
+Update-UI
 $window.ShowDialog() | Out-Null
