@@ -1,47 +1,50 @@
-# [1] DÒNG TRÊN LÀ KHOẢNG TRẮNG ĐỂ NÉ LỖI KÝ TỰ LẠ
 Clear-Host
 $ProgressPreference = 'SilentlyContinue'
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# [2] KIỂM TRA QUYỀN ADMIN
+# [1] KIỂM TRA QUYỀN ADMIN
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -Command `"irm https://maclife.vn/admintools | iex`"" -Verb RunAs
     exit
 }
 
-Write-Host ">>> DANG KHOI TAO MOI TRUONG ADMIN (VIETTOOLBOX PRO)..." -ForegroundColor Magenta
+Write-Host ">>> DANG KHOI TAO MOI TRUONG ADMIN (V185) - CHONG KET FILE..." -ForegroundColor Magenta
 
-# Cấu hình đường dẫn tạm
+# 🚨 CHIÊU MỚI: TẠO TÊN THƯ MỤC RIÊNG BIỆT THEO GIÂY ĐỂ KHÔNG BỊ TRÙNG
+$TimeID = Get-Date -Format "HHmmss"
 $RepoZipUrl = "https://github.com/tuantran19912512/Windows-tool-box/archive/refs/heads/main.zip"
-$ZipFile = "$env:TEMP\VT_Admin.zip"
-$ExtractPath = "$env:TEMP\VT_Admin_Ext"
+$ZipFile = "$env:TEMP\VT_Admin_$TimeID.zip"
+$ExtractPath = "$env:TEMP\VT_Admin_$TimeID"
 
-# [3] DỌN DẸP RÁC CŨ
-if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
-
-# [4] TẢI VÀ GIẢI NÉN
-Write-Host "-> Dang tai va giai nen du lieu..." -ForegroundColor Yellow
+# [2] TẢI VÀ GIẢI NÉN VÀO THƯ MỤC MỚI TINH
+Write-Host "-> Dang tai du lieu moi..." -ForegroundColor Yellow
 $webClient = New-Object System.Net.WebClient
 try {
     $webClient.DownloadFile($RepoZipUrl, $ZipFile)
+    # Tạo thư mục trước khi giải nén
+    New-Item -ItemType Directory -Path $ExtractPath -Force | Out-Null
     Expand-Archive -Path $ZipFile -DestinationPath $ExtractPath -Force
 } catch {
-    Write-Host "!!! LOI KET NOI GITHUB!" -ForegroundColor Red; pause; exit
+    Write-Host "!!! LOI KET NOI GITHUB HOAC FILE DANG BI KHOA!" -ForegroundColor Red; pause; exit
 }
 
-# [5] TÌM VÀ CHẠY FILE ADMIN
+# [3] TÌM VÀ CHẠY FILE ADMIN
 $MainScript = Get-ChildItem -Path "$ExtractPath\main_admin.ps1" -Recurse | Select-Object -First 1
 
 if ($MainScript) {
     Set-Location $MainScript.Directory.FullName
     Write-Host ">>> VIETTOOLBOX ADMIN DANG KICH HOAT..." -ForegroundColor Cyan
+    
+    # Chạy Tool
     & $MainScript.FullName
     
-    # [6] DỌN DẸP SAU KHI ĐÓNG
+    # [4] DỌN DẸP SAU KHI ĐÓNG TOOL
+    # Chờ 1 chút để giải phóng file ảnh trước khi xóa
+    Start-Sleep -Seconds 1
     Set-Location $env:TEMP
     Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue
     Remove-Item $ZipFile -Force -ErrorAction SilentlyContinue
-    Write-Host ">>> DA DON DEP. TAM BIET BOSS TUAN!" -ForegroundColor Green
+    Write-Host ">>> DA DON DEP SACH SE. CHAO BOSS!" -ForegroundColor Green
 } else {
     Write-Host "!!! LOI: Khong tim thay main_admin.ps1!" -ForegroundColor Red; pause
 }
