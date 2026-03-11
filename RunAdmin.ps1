@@ -17,7 +17,7 @@ $ZipFile = "$env:TEMP\VT_Admin.zip"
 $ExtractPath = "$env:TEMP\VT_Admin_Ext"
 
 # [3] DỌN DẸP RÁC CŨ
-if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recit -Force -ErrorAction SilentlyContinue }
+if (Test-Path $ExtractPath) { Remove-Item $ExtractPath -Recurse -Force -ErrorAction SilentlyContinue }
 
 # [4] TẢI VÀ GIẢI NÉN
 Write-Host "-> Dang tai va giai nen du lieu..." -ForegroundColor Yellow
