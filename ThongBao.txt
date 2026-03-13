@@ -1,2 +1,2 @@
-Khách: Đã hoàn tất tính năng tải office tự động cài đặt
+Khách: Đang phát triển chức năng tải phần mềm cơ bản không cài 
 Admin: Chào Sếp! Hệ thống ổn định.
