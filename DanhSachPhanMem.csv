@@ -15,3 +15,6 @@ False,VLC (Xem video),VideoLAN.VLC.Nightly
 False,Mozilla Firefox (vi),Mozilla.Firefox.vi
 False,Cốc Cốc,CocCoc.CocCoc
 False,Java,Oracle.JavaRuntimeEnvironment
+False,Thư viện Visual C++(64 bit),Microsoft.VCRedist.2015+.x64
+False,Thư viện Visual C++(x86),Microsoft.VCRedist.2015+.x86
+False,DirectX End-User Runtime Installer,Microsoft.DirectX
