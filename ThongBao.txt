@@ -1,2 +1,2 @@
-Khách: Đang phát triển chức năng tải phần mềm cơ bản không cài 
+Khách: Đang phát triển tính năng quét IP mạng....
 Admin: Chào Sếp! Hệ thống ổn định.
