@@ -126,22 +126,35 @@ $LogicNgoaiVi = {
     $pnlCamBg.Controls.AddRange(@($lblCam, $cbCam, $camScreen, $btnStartCam))
     $form.Controls.Add($pnlCamBg)
 
-    # --- LOGIC MỞ CAM ---
+    # --- LOGIC MỞ CAM (BẢN FIX ĐỨNG HÌNH) ---
     $btnStartCam.Add_Click({
         if ($btnStartCam.Text -eq "BẬT MÁY ẢNH") {
             $idx = $cbCam.SelectedIndex
+            # Tạo cửa sổ capture
             $handle = [VietToolbox.HardwareAPI]::capCreateCaptureWindowA("Webcam", 0x50000000, 0, 0, 330, 260, $camScreen.Handle, 0)
             $btnStartCam.Tag = $handle 
             
+            # 1. Kết nối tới Driver (WM_CAP_DRIVER_CONNECT = 0x40a)
             [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40a, $idx, 0) | Out-Null
-            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x435, 1, 0) | Out-Null
+            
+            # 2. Set Preview Rate (WM_CAP_SET_PREVIEWRATE = 0x435) 
+            # Thay vì 1ms, mình để 40ms (khoảng 25-30 khung hình/giây) cho ổn định
+            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x435, 40, 0) | Out-Null
+            
+            # 3. Ép Webcam co giãn hình cho khớp khung (WM_CAP_SET_SCALE = 0x433) -> Cực kỳ quan trọng để fix đứng hình
+            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x433, 1, 0) | Out-Null
+            
+            # 4. Bật chế độ Preview (WM_CAP_SET_PREVIEW = 0x432)
             [VietToolbox.HardwareAPI]::SendMessage($handle, 0x432, 1, 0) | Out-Null
             
             $btnStartCam.Text = "TẮT MÁY ẢNH"; $btnStartCam.BackColor = "#E74C3C"
             $cbCam.Enabled = $false
         } else {
             $handle = $btnStartCam.Tag
-            if ($null -ne $handle) { [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40b, 0, 0) | Out-Null }
+            if ($null -ne $handle) { 
+                # Ngắt kết nối Driver (WM_CAP_DRIVER_DISCONNECT = 0x40b)
+                [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40b, 0, 0) | Out-Null 
+            }
             $btnStartCam.Tag = $null
             $btnStartCam.Text = "BẬT MÁY ẢNH"; $btnStartCam.BackColor = "#0068FF"
             $cbCam.Enabled = $true
