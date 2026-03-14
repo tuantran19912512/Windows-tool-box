@@ -23,8 +23,8 @@ $LogicIPScannerV12 = {
     $myIp = (Get-NetIPAddress -AddressFamily IPv4 -InterfaceAlias Wi-Fi, Ethernet -ErrorAction SilentlyContinue | Where-Object { $_.IPAddress -match "^(192\.168|10\.|172\.)" } | Select-Object -First 1).IPAddress
     $txtSub.Text = if ($myIp) { $myIp.Substring(0, $myIp.LastIndexOf('.')) } else { "192.168.1" }
 
-    $btnScan = New-Object System.Windows.Forms.Button; $btnScan.Text = "🚀 QUÉT NGAY"; $btnScan.Location = "550,15"; $btnScan.Size = "140,35"; $btnScan.BackColor = "#D35400"; $btnScan.ForeColor = "White"; $btnScan.FlatStyle = "Flat"; $btnScan.Font = $fNut; $btnScan.Enabled = $false
-    $btnStop = New-Object System.Windows.Forms.Button; $btnStop.Text = "🛑 DỪNG"; $btnStop.Location = "700,15"; $btnStop.Size = "120,35"; $btnStop.BackColor = "#C0392B"; $btnStop.ForeColor = "White"; $btnStop.FlatStyle = "Flat"; $btnStop.Font = $fNut; $btnStop.Enabled = $false
+    $btnScan = New-Object System.Windows.Forms.Button; $btnScan.Text = "QUÉT NGAY"; $btnScan.Location = "550,15"; $btnScan.Size = "140,35"; $btnScan.BackColor = "#D35400"; $btnScan.ForeColor = "White"; $btnScan.FlatStyle = "Flat"; $btnScan.Font = $fNut; $btnScan.Enabled = $false
+    $btnStop = New-Object System.Windows.Forms.Button; $btnStop.Text = "DỪNG"; $btnStop.Location = "700,15"; $btnStop.Size = "120,35"; $btnStop.BackColor = "#C0392B"; $btnStop.ForeColor = "White"; $btnStop.FlatStyle = "Flat"; $btnStop.Font = $fNut; $btnStop.Enabled = $false
 
     $lv = New-Object System.Windows.Forms.ListView; $lv.Size = "990,450"; $lv.Location = "20,85"; $lv.View = "Details"; $lv.FullRowSelect = $true; $lv.Font = $fChu; $lv.BackColor = "#252526"; $lv.ForeColor = "#E0E0E0"; $lv.BorderStyle = "FixedSingle"
     $BindingFlags = [Reflection.BindingFlags]::NonPublic -bor [Reflection.BindingFlags]::Instance
