@@ -1,21 +1,21 @@
-Check,Name,ID
-False,Google Chrome,Google.Chrome
-False,Zalo,VNGCorp.Zalo
-False,Unikey,UniKey.UniKey
-False,UltraViewer,DucFabulous.UltraViewer
-False,Foxit PDF Reader,Foxit.FoxitReader
-False,EVKey,lamquangminh.EVKey
-False,WPS Office,Kingsoft.WPSOffice
-False,Sougou ( Gõ Tiếng Trung),Sogou.SogouInput
-False,Notepad++ ,Notepad++.Notepad++
-False,7-Zip (xả nén),7zip.7zip
-False,WPS (Tiếng Trung),Kingsoft.WPSOffice.CN
-False,K-Lite (Xem video),CodecGuide.K-LiteCodecPack.Mega
-False,VLC (Xem video),VideoLAN.VLC.Nightly
-False,Mozilla Firefox (vi),Mozilla.Firefox.vi
-False,Cốc Cốc,CocCoc.CocCoc
-False,Java,Oracle.JavaRuntimeEnvironment
-False,Thư viện Visual C++(64 bit),Microsoft.VCRedist.2015+.x64
-False,Thư viện Visual C++(x86),Microsoft.VCRedist.2015+.x86
-False,DirectX End-User Runtime Installer,Microsoft.DirectX
-False,Wechat,Tencent.WeChat
+Check,Name,WingetID,ChocoID,GDriveID,SilentArgs
+False,Google Chrome,Google.Chrome,googlechrome,,
+False,Zalo,VNGCorp.Zalo,zalopc,,
+False,Unikey,UniKey.UniKey,unikey,,
+False,UltraViewer,DucFabulous.UltraViewer,ultraviewer.install,,
+False,Foxit PDF Reader,Foxit.FoxitReader,foxitreader,,
+False,EVKey,lamquangminh.EVKey,,,
+False,WPS Office,Kingsoft.WPSOffice,,,
+False,Sougou ( Gõ Tiếng Trung),Sogou.SogouInput,,,
+False,Notepad++ ,Notepad++.Notepad++,notepadplusplus.install,,
+False,7-Zip (xả nén),7zip.7zip,7zip,,
+False,WPS (Tiếng Trung),Kingsoft.WPSOffice.CN,,,
+False,K-Lite (Xem video),CodecGuide.K-LiteCodecPack.Mega,,,
+False,VLC (Xem video),VideoLAN.VLC.Nightly,,,
+False,Mozilla Firefox (vi),Mozilla.Firefox.vi,,,
+False,Cốc Cốc,CocCoc.CocCoc,,,
+False,Java,Oracle.JavaRuntimeEnvironment,,,
+False,Thư viện Visual C++(64 bit),Microsoft.VCRedist.2015+.x64,,,
+False,Thư viện Visual C++(x86),Microsoft.VCRedist.2015+.x86,,,
+False,DirectX End-User Runtime Installer,Microsoft.DirectX,,,
+False,Wechat,Tencent.WeChat,,,
