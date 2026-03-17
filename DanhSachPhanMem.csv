@@ -1,5 +1,5 @@
 Check,Name,WingetID,ChocoID,GDriveID,SilentArgs
-False,Google Chrome,Google.Chrome,addtoany-chrome,,
+False,Google Chrome,Google.Chrome,googlechrome,,
 False,Zalo,VNGCorp.Zalo,zalopc,,
 False,Unikey,UniKey.UniKey,Unikey,,
 False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,
