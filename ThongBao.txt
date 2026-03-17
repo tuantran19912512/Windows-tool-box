@@ -1,2 +1,2 @@
-Khách: Đang phát triển tính năng quét IP mạng....
+Khách: Cập nhật tính năng sửa lỗi tạo file office từ menu chuột phải - đang nâng cấp cài phần mềm cơ bản 
 Admin: Chào Sếp! Hệ thống ổn định.
