@@ -1,0 +1,8 @@
+# Bỏ qua file chứa API Key bí mật
+apikey.txt
+
+# Bỏ qua các file thực thi (nếu sau này có đóng gói ra exe thì cũng không up lên)
+*.exe
+
+# Bỏ qua các file rác của hệ thống Windows
+Thumbs.db
