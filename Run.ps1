@@ -4,6 +4,7 @@ $ProgressPreference = 'SilentlyContinue'
 
 # [2] ÉP DÙNG TLS 1.2
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ErrorActionPreference = "SilentlyContinue"
 
 # [3] KIỂM TRA QUYỀN ADMIN
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
