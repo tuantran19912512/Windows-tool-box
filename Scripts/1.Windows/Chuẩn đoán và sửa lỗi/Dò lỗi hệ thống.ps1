@@ -1,5 +1,5 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX: CHẨN ĐOÁN PRO (V69.1 - FIX LỖI PROGRESS BAR)
+# VIETTOOLBOX: CHẨN ĐOÁN PRO (V69.2 - THÊM NÚT MINIMIZE)
 # LƯU Ý: Vẫn phải Save As -> Encoding: UTF-8 with BOM nhé ông!
 # ==============================================================================
 
@@ -47,7 +47,11 @@ $script:ProgressValue = 0 # Biến chạy phần trăm (0 đến 100)
 # --- 1. GIAO DIỆN ĐANG QUÉT ---
 $diagForm = New-Object System.Windows.Forms.Form
 $diagForm.Text = "VietToolbox Pro"; $diagForm.Size = "520,280"
-$diagForm.StartPosition = "CenterScreen"; $diagForm.FormBorderStyle = "FixedToolWindow"
+$diagForm.StartPosition = "CenterScreen"
+# [FIX] Đổi thành FixedSingle và bật nút Minimize
+$diagForm.FormBorderStyle = "FixedSingle" 
+$diagForm.MinimizeBox = $true             
+$diagForm.MaximizeBox = $false            
 $diagForm.TopMost = $true; $diagForm.BackColor = $Color_BG
 
 $container = New-Object System.Windows.Forms.Panel
