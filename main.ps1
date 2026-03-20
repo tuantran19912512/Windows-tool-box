@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO - STANDARD EDITION (V182.6)
+# Tên công cụ: VIETTOOLBOX PRO - STANDARD EDITION (V182.7)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính & Gemini
-# Cập nhật: Tăng size chữ Menu, Fix nút Màu Chữ (WPF Brush), Thêm nút Minimize Top
+# Cập nhật: Thêm Đồng hồ Ngày/Giờ thời gian thực ở góc phải trên cùng
 # ==============================================================================
 
 # 1. THIẾT LẬP MÔI TRƯỜNG
@@ -36,7 +36,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
 
-# 4. GIAO DIỆN XAML (THÊM NÚT TOP RIGHT)
+# 4. GIAO DIỆN XAML (THÊM ĐỒNG HỒ TẠI STACKPANEL GÓC TRÊN PHẢI)
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -50,6 +50,7 @@ $inputXML = @"
         </Border.Background>
         <Grid>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,15,20,0" Panel.ZIndex="999">
+                <TextBlock Name="TxtClock" Text="00:00:00" Foreground="#007ACC" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,20,0"/>
                 <Button Name="BtnTopMin" Content=" 🗕 " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Thu nhỏ"/>
                 <Button Name="BtnTopClose" Content=" ✕ " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Đóng"/>
             </StackPanel>
@@ -98,6 +99,16 @@ $groupContainer = $window.FindName("GroupContainer"); $txtLog = $window.FindName
 $txtChatBox = $window.FindName("TxtChatBox"); $txtInputAI = $window.FindName("TxtInputAI"); $btnSendAI = $window.FindName("BtnSendAI")
 $txtSysInfo = $window.FindName("TxtSysInfo") 
 $btnTopMin = $window.FindName("BtnTopMin"); $btnTopClose = $window.FindName("BtnTopClose")
+$txtClock = $window.FindName("TxtClock")
+
+# --- KHỞI ĐỘNG BỘ ĐẾM ĐỒNG HỒ ---
+$clockTimer = New-Object System.Windows.Threading.DispatcherTimer
+$clockTimer.Interval = [TimeSpan]::FromSeconds(1)
+$clockTimer.Add_Tick({
+    $txtClock.Text = (Get-Date).ToString("HH:mm:ss  |  dd/MM/yyyy")
+})
+$clockTimer.Start()
+$txtClock.Text = (Get-Date).ToString("HH:mm:ss  |  dd/MM/yyyy") # Gán giá trị ngay lúc mở lên
 
 # 6. TẢI THÔNG BÁO TỪ GITHUB
 try {
@@ -114,7 +125,7 @@ function Global:Ghi-Log($msg) {
     [System.Windows.Forms.Application]::DoEvents()
 }
 
-# 8. CẬP NHẬT DANH SÁCH SCRIPTS (CHỮ TO, RÕ)
+# 8. CẬP NHẬT DANH SÁCH SCRIPTS
 function Update-UI {
     $null = $groupContainer.Children.Clear(); $Global:DanhSachScript = @()
     if (!(Test-Path $scriptFolder)) { return }
@@ -128,11 +139,7 @@ function Update-UI {
 
             if ($_.PSIsContainer) {
                 $subExp = New-Object System.Windows.Controls.Expander; $subExp.Header = $_.Name; $subExp.Foreground = if ($Level -eq 0) { "#007ACC" } else { "#858585" }; 
-                $subExp.FontWeight = "Bold"
-                # [FIX] Tăng font size thư mục
-                $subExp.FontSize = 15
-                $subExp.Margin = "0,5,0,5"
-
+                $subExp.FontWeight = "Bold"; $subExp.FontSize = 15; $subExp.Margin = "0,5,0,5"
                 $subStack = New-Object System.Windows.Controls.StackPanel; $subStack.Margin = "15,0,0,5"
                 Get-ScriptsRecursive $_.FullName $subStack ($Level + 1)
                 $subExp.Content = $subStack; $null = $ParentStack.Children.Add($subExp)
@@ -140,14 +147,8 @@ function Update-UI {
                 if ($_.Extension -eq ".ps1") {
                     if ($Global:DanhSachScript -notcontains $_.FullName) { $Global:DanhSachScript += $_.FullName }
                     $btn = New-Object System.Windows.Controls.Button; $btn.Content = "● " + $_.BaseName; 
-                    # [FIX] Tăng size và chỉnh giao diện nút bấm
-                    $btn.Height = 40; 
-                    $btn.FontSize = 14;
-                    $btn.Background = "#2D2D2D"; $btn.Foreground = "#DCDCDC"; 
-                    $btn.HorizontalContentAlignment = "Left"
-                    $btn.Padding = "10,0,0,0"
-                    $btn.Margin = "0,2,0,2"
-                    $btn.Tag = $_.FullName
+                    $btn.Height = 40; $btn.FontSize = 14; $btn.Background = "#2D2D2D"; $btn.Foreground = "#DCDCDC"; 
+                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Margin = "0,2,0,2"; $btn.Tag = $_.FullName
                     $btn.Add_Click({ param($sender, $e) $window.Dispatcher.Invoke([action]{ $txtLog.Clear() }); try { . $sender.Tag } catch { Ghi-Log "LỖI: $($_.Exception.Message)" } })
                     $null = $ParentStack.Children.Add($btn)
                 }
