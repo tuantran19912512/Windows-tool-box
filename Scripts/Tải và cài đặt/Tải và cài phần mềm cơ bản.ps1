@@ -1,7 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX PRO V44.9 - BẢN BẤT TỬ (CÂN MỌI WINDOWS)
+# VIETTOOLBOX PRO V44.10 - BẢN TỐI ƯU TỐC ĐỘ (FIX LẶP LẠI CÀI ĐẶT MÔI TRƯỜNG)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Ghi chú: Tự động tải VCLibs & UI.Xaml lót đường cho Win 10 cũ. Tự động Fallback sang Choco.
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
@@ -13,7 +12,11 @@ $script:IsSelectAll = $true
 $githubUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhSachPhanMem.csv"
 $localPath = Join-Path $env:TEMP "VietToolbox_List.csv"
 
-# --- 1. GIẢI MÃ KEY AI (DÁN CHUỖI MÃ HÓA VÀO ĐÂY) ---
+# --- BIẾN TOÀN CỤC ĐỂ GHI NHỚ TRẠNG THÁI (TRÁNH CÀI LẠI NHIỀU LẦN) ---
+$Global:WingetReady = $false
+$Global:ChocoReady = $false
+
+# --- 1. GIẢI MÃ KEY AI ---
 $EncStr = "DÁN_CHUỖI_MÃ_HÓA_CỦA_TUẤN_VÀO_ĐÂY"
 try {
     $S = [Text.Encoding]::UTF8.GetBytes("VietToolbox"); $K = (New-Object Security.Cryptography.Rfc2898DeriveBytes "Admin@2512", $S, 1000).GetBytes(32); $I = (New-Object Security.Cryptography.Rfc2898DeriveBytes "Admin@2512", $S, 1000).GetBytes(16); $A = [Security.Cryptography.Aes]::Create(); $A.Key = $K; $A.IV = $I; $D = $A.CreateDecryptor(); $EB = [Convert]::FromBase64String($EncStr); $DB = $D.TransformFinalBlock($EB, 0, $EB.Length); $Global:apiKey = [Text.Encoding]::UTF8.GetString($DB); $A.Dispose()
@@ -21,7 +24,7 @@ try {
 
 # --- 2. KHỞI TẠO FORM ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "VIETTOOLBOX PRO V44.9 - TRÌNH CÀI ĐẶT BẤT TỬ"
+$form.Text = "VIETTOOLBOX PRO V44.10 - TRÌNH CÀI ĐẶT BẤT TỬ"
 $form.Size = "1050,720"; $form.MinimumSize = "900,650"; $form.StartPosition = "CenterScreen"; $form.BackColor = "#F5F5F5"
 
 $fontTieuDe = New-Object System.Drawing.Font("Segoe UI Bold", 14)
@@ -79,42 +82,62 @@ $btnStop = Quick-B "🛑 DỪNG LẠI" "#C62828"
 $btnPanel.Controls.AddRange(@($btnReload, $btnQuet, $btnSelect, $btnInstall, $btnStop))
 $form.Controls.AddRange(@($lblHeader, $dgv, $lblQuetXong, $pbTotal, $gbLog, $btnPanel))
 
-# --- 3. LOGIC XỬ LÝ (TỰ ĐỘNG BÙ ĐẮP THƯ VIỆN & FALLBACK) ---
+# --- 3. LOGIC XỬ LÝ ĐÃ ĐƯỢC FIX LỖI "MẤT TRÍ NHỚ" ---
 function Refresh-UI { [System.Windows.Forms.Application]::DoEvents() }
 
 function Initialize-Env {
     param($Method)
     $wc = New-Object System.Net.WebClient
     
-    if ($Method -eq "Winget" -and !(Get-Command winget -ErrorAction SilentlyContinue)) {
+    if ($Method -eq "Winget") {
+        # Nếu đã check/cài thành công ở các app trước, báo OK luôn không làm lại
+        if ($Global:WingetReady) { return $true }
+        
+        $wgPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
+        if ((Get-Command winget -ErrorAction SilentlyContinue) -or (Test-Path $wgPath)) {
+            $Global:WingetReady = $true
+            return $true
+        }
+
         try {
-            # BƯỚC 1: Lót đường bằng VCLibs
             $lblQuetXong.Text = "🛠 Đang nạp thư viện VCLibs (1/3)..."; Refresh-UI
             $vcUrl = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
             $vcPath = Join-Path $env:TEMP "vclibs.appx"
             $wc.DownloadFile($vcUrl, $vcPath); Add-AppxPackage -Path $vcPath -ErrorAction SilentlyContinue
 
-            # BƯỚC 2: Lót đường bằng UI.Xaml
             $lblQuetXong.Text = "🛠 Đang nạp thư viện UI.Xaml (2/3)..."; Refresh-UI
             $uiUrl = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
             $uiPath = Join-Path $env:TEMP "uixaml.appx"
             $wc.DownloadFile($uiUrl, $uiPath); Add-AppxPackage -Path $uiPath -ErrorAction SilentlyContinue
 
-            # BƯỚC 3: Cài đặt Winget Core
             $lblQuetXong.Text = "🛠 Đang nạp Winget Core (3/3)..."; Refresh-UI
             $wgUrl = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-            $wgPath = Join-Path $env:TEMP "winget.msixbundle"
-            $wc.DownloadFile($wgUrl, $wgPath); Add-AppxPackage -Path $wgPath -ErrorAction Stop
+            $wgPathBundle = Join-Path $env:TEMP "winget.msixbundle"
+            $wc.DownloadFile($wgUrl, $wgPathBundle); Add-AppxPackage -Path $wgPathBundle -ErrorAction Stop
+            
+            # Cài xong thì bật cờ ghi nhớ
+            $Global:WingetReady = $true
+            return $true
         } catch {
-            return $false # Trả về false nếu Winget kiên quyết không nhận (VD: Win 7/8)
+            return $false
         }
     }
-    elseif ($Method -eq "Choco" -and !(Get-Command choco -ErrorAction SilentlyContinue)) {
+    elseif ($Method -eq "Choco") {
+        if ($Global:ChocoReady) { return $true }
+
+        if (Get-Command choco -ErrorAction SilentlyContinue) {
+            $Global:ChocoReady = $true
+            return $true
+        }
+
         try {
             $lblQuetXong.Text = "🛠 Đang nạp Chocolatey..."; Refresh-UI
             Set-ExecutionPolicy Bypass -Scope Process -Force
             [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
             iex ($wc.DownloadString('https://community.chocolatey.org/install.ps1'))
+            
+            $Global:ChocoReady = $true
+            return $true
         } catch { return $false }
     }
     return $true
@@ -163,7 +186,7 @@ $btnInstall.Add_Click({
         try {
             $method = if ($wId) { "Winget" } elseif ($cId) { "Choco" } else { "Skip" }
             
-            # --- TỰ ĐỘNG CHUYỂN SÚNG (FALLBACK) NẾU WINGET CHẾT ---
+            # Khởi tạo hoặc lướt qua nếu đã init
             if (-not (Initialize-Env -Method $method)) {
                 if ($method -eq "Winget" -and $cId) {
                     $s.Text = "Winget từ chối, dùng Choco..."; Refresh-UI
@@ -177,7 +200,6 @@ $btnInstall.Add_Click({
             $s.Text = "🚀 Cài qua $method..."; Refresh-UI
             $proc = $null
             
-            # Kiểm tra xem có phải do User hiện tại chưa load môi trường không
             $wgPath = if (Get-Command winget -ErrorAction SilentlyContinue) { "winget" } else { "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" }
 
             if ($method -eq "Winget") {
