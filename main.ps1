@@ -282,8 +282,8 @@ $btnColor.Add_Click({
     } 
 })
 
-$btnShutdown.Add_Click({ if ([System.Windows.Forms.MessageBox]::Show("Tuấn có chắc chắn TẮT MÁY?", "VietToolbox", 4, 48) -eq "Yes") { Stop-Computer -Force } })
-$btnRestart.Add_Click({ if ([System.Windows.Forms.MessageBox]::Show("Tuấn có chắc chắn RESTART?", "VietToolbox", 4, 32) -eq "Yes") { Restart-Computer -Force } })
+$btnShutdown.Add_Click({ if ([System.Windows.Forms.MessageBox]::Show("Bạn có chắc chắn TẮT MÁY?", "VietToolbox", 4, 48) -eq "Yes") { Stop-Computer -Force } })
+$btnRestart.Add_Click({ if ([System.Windows.Forms.MessageBox]::Show("Bạn có chắc chắn RESTART?", "VietToolbox", 4, 32) -eq "Yes") { Restart-Computer -Force } })
 $btnSendAI.Add_Click({ Gui-AI })
 $txtInputAI.Add_KeyDown({ if ($_.Key -eq "Enter") { Gui-AI } })
 $window.Add_MouseLeftButtonDown({ $window.DragMove() })
