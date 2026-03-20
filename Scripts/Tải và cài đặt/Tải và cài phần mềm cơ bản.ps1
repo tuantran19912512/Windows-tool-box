@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX PRO V44.8 - BẢN RESPONSIVE (TỰ CO GIÃN THEO ĐỘ PHÂN GIẢI)
+# VIETTOOLBOX PRO V44.9 - BẢN BẤT TỬ (CÂN MỌI WINDOWS)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Ghi chú: Chống mất nút trên màn hình nhỏ, hỗ trợ phóng to (Maximize) tràn viền.
+# Ghi chú: Tự động tải VCLibs & UI.Xaml lót đường cho Win 10 cũ. Tự động Fallback sang Choco.
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
@@ -13,69 +13,53 @@ $script:IsSelectAll = $true
 $githubUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhSachPhanMem.csv"
 $localPath = Join-Path $env:TEMP "VietToolbox_List.csv"
 
-# --- 1. GIẢI MÃ KEY AI (DÁN CHUỖI BƯỚC 1 VÀO ĐÂY) ---
+# --- 1. GIẢI MÃ KEY AI (DÁN CHUỖI MÃ HÓA VÀO ĐÂY) ---
 $EncStr = "DÁN_CHUỖI_MÃ_HÓA_CỦA_TUẤN_VÀO_ĐÂY"
 try {
     $S = [Text.Encoding]::UTF8.GetBytes("VietToolbox"); $K = (New-Object Security.Cryptography.Rfc2898DeriveBytes "Admin@2512", $S, 1000).GetBytes(32); $I = (New-Object Security.Cryptography.Rfc2898DeriveBytes "Admin@2512", $S, 1000).GetBytes(16); $A = [Security.Cryptography.Aes]::Create(); $A.Key = $K; $A.IV = $I; $D = $A.CreateDecryptor(); $EB = [Convert]::FromBase64String($EncStr); $DB = $D.TransformFinalBlock($EB, 0, $EB.Length); $Global:apiKey = [Text.Encoding]::UTF8.GetString($DB); $A.Dispose()
 } catch { $Global:apiKey = "" }
 
-# --- 2. KHỞI TẠO FORM (Thu nhỏ mặc định, hỗ trợ kéo giãn) ---
+# --- 2. KHỞI TẠO FORM ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "VIETTOOLBOX PRO V44.8 - TRÌNH CÀI ĐẶT CHUYÊN NGHIỆP"
-$form.Size = "1050,720" # Thu gọn để vừa màn hình nhỏ
-$form.MinimumSize = "900,650" # Khóa không cho bóp quá nhỏ làm nát giao diện
-$form.StartPosition = "CenterScreen"
-$form.BackColor = "#F5F5F5"
+$form.Text = "VIETTOOLBOX PRO V44.9 - TRÌNH CÀI ĐẶT BẤT TỬ"
+$form.Size = "1050,720"; $form.MinimumSize = "900,650"; $form.StartPosition = "CenterScreen"; $form.BackColor = "#F5F5F5"
 
 $fontTieuDe = New-Object System.Drawing.Font("Segoe UI Bold", 14)
 $fontNut = New-Object System.Drawing.Font("Segoe UI Bold", 10)
 $fontList = New-Object System.Drawing.Font("Segoe UI", 10)
 
-# Header
 $lblHeader = New-Object System.Windows.Forms.Label
 $lblHeader.Text = "DANH SÁCH PHẦN MỀM HỆ THỐNG"
 $lblHeader.Location = "20,15"; $lblHeader.Size = "500,30"; $lblHeader.Font = $fontTieuDe; $lblHeader.ForeColor = "#1A237E"
 
-# DataGridView (Tự động bám cả 4 góc)
 $dgv = New-Object System.Windows.Forms.DataGridView
-$dgv.Location = "20,55"; $dgv.Size = "990,230"; $dgv.BackgroundColor = "White"
-$dgv.Anchor = "Top, Bottom, Left, Right" # NEO VÀO 4 GÓC ĐỂ TỰ CO GIÃN
+$dgv.Location = "20,55"; $dgv.Size = "990,230"; $dgv.BackgroundColor = "White"; $dgv.Anchor = "Top, Bottom, Left, Right"
 $dgv.RowHeadersVisible = $false; $dgv.AllowUserToAddRows = $false
 $dgv.SelectionMode = "FullRowSelect"; $dgv.BorderStyle = "FixedSingle"
 $dgv.EnableHeadersVisualStyles = $false; $dgv.ColumnHeadersHeight = 45
-$dgv.ColumnHeadersDefaultCellStyle.BackColor = "#303F9F"; $dgv.ColumnHeadersDefaultCellStyle.ForeColor = "White"
-$dgv.ColumnHeadersDefaultCellStyle.Font = $fontNut
+$dgv.ColumnHeadersDefaultCellStyle.BackColor = "#303F9F"; $dgv.ColumnHeadersDefaultCellStyle.ForeColor = "White"; $dgv.ColumnHeadersDefaultCellStyle.Font = $fontNut
 
-# Ép các cột tự động chia đều chiều rộng khi Form phóng to
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewCheckBoxColumn -Property @{Name="Check";HeaderText="CHỌN";Width=60;AutoSizeMode="None"}))
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="Name";HeaderText="TÊN PHẦN MỀM";AutoSizeMode="Fill"}))
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="Status";HeaderText="TRẠNG THÁI KIỂM TRA";AutoSizeMode="Fill"}))
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="WID";Visible=$false}))
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="CID";Visible=$false}))
 
-# Progress Area (Bám đáy)
 $lblQuetXong = New-Object System.Windows.Forms.Label
-$lblQuetXong.Text = "Sẵn sàng khởi động..."; $lblQuetXong.Location = "20,295"; $lblQuetXong.Size = "500,25"; $lblQuetXong.Font = $fontNut
-$lblQuetXong.Anchor = "Bottom, Left" 
+$lblQuetXong.Text = "Sẵn sàng khởi động..."; $lblQuetXong.Location = "20,295"; $lblQuetXong.Size = "500,25"; $lblQuetXong.Font = $fontNut; $lblQuetXong.Anchor = "Bottom, Left"
 
 $pbTotal = New-Object System.Windows.Forms.ProgressBar
-$pbTotal.Location = "20,325"; $pbTotal.Size = "990,20"; $pbTotal.Style = "Continuous"
-$pbTotal.Anchor = "Bottom, Left, Right" # NEO ĐỂ TỰ KÉO DÀI
+$pbTotal.Location = "20,325"; $pbTotal.Size = "990,20"; $pbTotal.Style = "Continuous"; $pbTotal.Anchor = "Bottom, Left, Right"
 
-# Log Area (Bám đáy)
 $gbLog = New-Object System.Windows.Forms.GroupBox
-$gbLog.Text = " CHI TIẾT QUÁ TRÌNH CÀI ĐẶT "; $gbLog.Location = "20,355"; $gbLog.Size = "990,220"; $gbLog.Font = $fontNut
-$gbLog.Anchor = "Bottom, Left, Right"
+$gbLog.Text = " CHI TIẾT QUÁ TRÌNH CÀI ĐẶT "; $gbLog.Location = "20,355"; $gbLog.Size = "990,220"; $gbLog.Font = $fontNut; $gbLog.Anchor = "Bottom, Left, Right"
 
 $flowHub = New-Object System.Windows.Forms.FlowLayoutPanel
 $flowHub.Dock = "Fill"; $flowHub.BackColor = "White"; $flowHub.AutoScroll = $true; $flowHub.Padding = New-Object System.Windows.Forms.Padding(10)
 $gbLog.Controls.Add($flowHub)
 
-# Footer Buttons (Bám đáy)
 $btnPanel = New-Object System.Windows.Forms.TableLayoutPanel
-$btnPanel.Location = "20,590"; $btnPanel.Size = "990,70"; $btnPanel.ColumnCount = 5
-$btnPanel.Anchor = "Bottom, Left, Right" 
-
+$btnPanel.Location = "20,590"; $btnPanel.Size = "990,70"; $btnPanel.ColumnCount = 5; $btnPanel.Anchor = "Bottom, Left, Right"
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
@@ -88,26 +72,50 @@ function Quick-B($t, $c) {
     $b.FlatAppearance.BorderSize = 0; return $b 
 }
 
-$btnReload = Quick-B "↻ NẠP LẠI LIST" "#2E7D32"
-$btnQuet   = Quick-B "🔍 QUÉT HỆ THỐNG" "#455A64"
-$btnSelect = Quick-B "✓ CHỌN HẾT" "#1565C0"
-$btnInstall = Quick-B "🚀 CÀI ĐẶT NGAY" "#E65100"
-$btnStop    = Quick-B "🛑 DỪNG LẠI" "#C62828"
+$btnReload = Quick-B "↻ NẠP LẠI LIST" "#2E7D32"; $btnQuet = Quick-B "🔍 QUÉT HỆ THỐNG" "#455A64"
+$btnSelect = Quick-B "✓ CHỌN HẾT" "#1565C0"; $btnInstall = Quick-B "🚀 CÀI ĐẶT NGAY" "#E65100"
+$btnStop = Quick-B "🛑 DỪNG LẠI" "#C62828"
 
 $btnPanel.Controls.AddRange(@($btnReload, $btnQuet, $btnSelect, $btnInstall, $btnStop))
 $form.Controls.AddRange(@($lblHeader, $dgv, $lblQuetXong, $pbTotal, $gbLog, $btnPanel))
 
-# --- 3. LOGIC XỬ LÝ ---
+# --- 3. LOGIC XỬ LÝ (TỰ ĐỘNG BÙ ĐẮP THƯ VIỆN & FALLBACK) ---
 function Refresh-UI { [System.Windows.Forms.Application]::DoEvents() }
 
 function Initialize-Env {
     param($Method)
+    $wc = New-Object System.Net.WebClient
+    
     if ($Method -eq "Winget" -and !(Get-Command winget -ErrorAction SilentlyContinue)) {
-        $lblQuetXong.Text = "🛠 Đang cài Winget cho máy khách..."; Refresh-UI
-        $url = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-        $path = Join-Path $env:TEMP "winget.msixbundle"
-        (New-Object System.Net.WebClient).DownloadFile($url, $path)
-        Add-AppxPackage -Path $path -ErrorAction SilentlyContinue
+        try {
+            # BƯỚC 1: Lót đường bằng VCLibs
+            $lblQuetXong.Text = "🛠 Đang nạp thư viện VCLibs (1/3)..."; Refresh-UI
+            $vcUrl = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
+            $vcPath = Join-Path $env:TEMP "vclibs.appx"
+            $wc.DownloadFile($vcUrl, $vcPath); Add-AppxPackage -Path $vcPath -ErrorAction SilentlyContinue
+
+            # BƯỚC 2: Lót đường bằng UI.Xaml
+            $lblQuetXong.Text = "🛠 Đang nạp thư viện UI.Xaml (2/3)..."; Refresh-UI
+            $uiUrl = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
+            $uiPath = Join-Path $env:TEMP "uixaml.appx"
+            $wc.DownloadFile($uiUrl, $uiPath); Add-AppxPackage -Path $uiPath -ErrorAction SilentlyContinue
+
+            # BƯỚC 3: Cài đặt Winget Core
+            $lblQuetXong.Text = "🛠 Đang nạp Winget Core (3/3)..."; Refresh-UI
+            $wgUrl = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+            $wgPath = Join-Path $env:TEMP "winget.msixbundle"
+            $wc.DownloadFile($wgUrl, $wgPath); Add-AppxPackage -Path $wgPath -ErrorAction Stop
+        } catch {
+            return $false # Trả về false nếu Winget kiên quyết không nhận (VD: Win 7/8)
+        }
+    }
+    elseif ($Method -eq "Choco" -and !(Get-Command choco -ErrorAction SilentlyContinue)) {
+        try {
+            $lblQuetXong.Text = "🛠 Đang nạp Chocolatey..."; Refresh-UI
+            Set-ExecutionPolicy Bypass -Scope Process -Force
+            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+            iex ($wc.DownloadString('https://community.chocolatey.org/install.ps1'))
+        } catch { return $false }
     }
     return $true
 }
@@ -148,21 +156,33 @@ $btnInstall.Add_Click({
         
         $p = New-Object System.Windows.Forms.Panel; $p.Size = "$($flowHub.Width - 30),45"; $p.BackColor = "White"; $p.Margin = New-Object System.Windows.Forms.Padding(0,0,0,5)
         $l = New-Object System.Windows.Forms.Label; $l.Text = $name; $l.Location = "10,12"; $l.Size = "200,20"; $l.Font = $fontList
-        $b = New-Object System.Windows.Forms.ProgressBar; $b.Location = "220,12"; $b.Size = "450,20"; $b.Value = 10
-        $b.Anchor = "Left, Right, Top" # Tiến độ nhỏ cũng co giãn
-        $s = New-Object System.Windows.Forms.Label; $s.Text = "Đang khởi tạo..."; $s.Location = "$($p.Width - 190),12"; $s.Size = "180,20"
-        $s.Anchor = "Right, Top"
+        $b = New-Object System.Windows.Forms.ProgressBar; $b.Location = "220,12"; $b.Size = "450,20"; $b.Value = 10; $b.Anchor = "Left, Right, Top"
+        $s = New-Object System.Windows.Forms.Label; $s.Text = "Đang khởi tạo..."; $s.Location = "$($p.Width - 190),12"; $s.Size = "180,20"; $s.Anchor = "Right, Top"
         $p.Controls.AddRange(@($l, $b, $s)); $flowHub.Controls.Add($p); $flowHub.ScrollControlIntoView($p); Refresh-UI
 
         try {
             $method = if ($wId) { "Winget" } elseif ($cId) { "Choco" } else { "Skip" }
-            Initialize-Env -Method $method
-            $s.Text = "🚀 Cài qua $method..."; Refresh-UI
             
+            # --- TỰ ĐỘNG CHUYỂN SÚNG (FALLBACK) NẾU WINGET CHẾT ---
+            if (-not (Initialize-Env -Method $method)) {
+                if ($method -eq "Winget" -and $cId) {
+                    $s.Text = "Winget từ chối, dùng Choco..."; Refresh-UI
+                    $method = "Choco"
+                    Initialize-Env -Method $method | Out-Null
+                } else {
+                    throw "Windows quá cũ, không độ được!"
+                }
+            }
+
+            $s.Text = "🚀 Cài qua $method..."; Refresh-UI
             $proc = $null
+            
+            # Kiểm tra xem có phải do User hiện tại chưa load môi trường không
+            $wgPath = if (Get-Command winget -ErrorAction SilentlyContinue) { "winget" } else { "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe" }
+
             if ($method -eq "Winget") {
                 $arg = "install --id `"$wId`" -e --silent --accept-package-agreements --accept-source-agreements --force"
-                $proc = Start-Process "winget" -ArgumentList $arg -PassThru -WindowStyle Hidden
+                $proc = Start-Process $wgPath -ArgumentList $arg -PassThru -WindowStyle Hidden
             } elseif ($method -eq "Choco") {
                 $arg = "install `"$cId`" -y --force --silent"
                 $proc = Start-Process "choco" -ArgumentList $arg -PassThru -WindowStyle Hidden
@@ -170,10 +190,18 @@ $btnInstall.Add_Click({
 
             if ($proc) { 
                 while (!$proc.HasExited) { if ($b.Value -lt 95) { $b.Value += 2 }; Refresh-UI; Start-Sleep -Milliseconds 200 } 
-                if ($proc.ExitCode -eq 0) { $b.Value = 100; $s.Text = "✓ Thành công"; $s.ForeColor = "Green"; $row.Cells['Status'].Value = "✓ Cài thành công" } 
-                else { $b.Value = 100; $s.Text = "✕ Lỗi Code: $($proc.ExitCode)"; $s.ForeColor = "Red"; $row.Cells['Status'].Value = "✕ Lỗi mã $($proc.ExitCode)" }
+                if ($proc.ExitCode -eq 0) { 
+                    $b.Value = 100; $s.Text = "✓ Thành công"; $s.ForeColor = "Green"
+                    $row.Cells['Status'].Value = "✓ Cài thành công" 
+                } else { 
+                    $b.Value = 100; $s.Text = "✕ Lỗi Code: $($proc.ExitCode)"; $s.ForeColor = "Red"
+                    $row.Cells['Status'].Value = "✕ Lỗi mã $($proc.ExitCode)" 
+                }
             }
-        } catch { $s.Text = "✕ Lỗi hệ thống" }
+        } catch { 
+            $s.Text = "✕ $($_.Exception.Message)"; $s.ForeColor = "Red"
+            $row.Cells['Status'].Value = "✕ Bỏ qua"
+        }
         $done++; $pbTotal.Value = [int](($done / $selected.Count) * 100); Refresh-UI
     }
     $btnInstall.Enabled = $true; $lblQuetXong.Text = "✓ HOÀN TẤT TẤT CẢ NHIỆM VỤ!"; Refresh-UI
@@ -186,6 +214,5 @@ $btnSelect.Add_Click({
 })
 $btnStop.Add_Click({ $script:HuyCaiDat = $true; $lblQuetXong.Text = "🛑 Đang ngắt tiến trình..." })
 
-# Tự động nạp khi mở
 $form.Add_Shown({ Sync-List })
 $form.ShowDialog() | Out-Null
