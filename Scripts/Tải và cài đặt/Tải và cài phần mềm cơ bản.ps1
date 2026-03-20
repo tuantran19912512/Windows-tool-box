@@ -1,6 +1,7 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX PRO V44.10 - BẢN TỐI ƯU TỐC ĐỘ (FIX LẶP LẠI CÀI ĐẶT MÔI TRƯỜNG)
+# VIETTOOLBOX PRO V44.11 - BẢN KIỂM TRA MÔI TRƯỜNG TRƯỚC KHI CÀI
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
+# Ghi chú: Có thanh trạng thái hệ thống. Tách biệt hoàn toàn bước Setup Môi trường.
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.ServicePointManager]::SecurityProtocol -bor [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
@@ -12,7 +13,7 @@ $script:IsSelectAll = $true
 $githubUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhSachPhanMem.csv"
 $localPath = Join-Path $env:TEMP "VietToolbox_List.csv"
 
-# --- BIẾN TOÀN CỤC ĐỂ GHI NHỚ TRẠNG THÁI (TRÁNH CÀI LẠI NHIỀU LẦN) ---
+# --- BIẾN GHI NHỚ TRẠNG THÁI MÔI TRƯỜNG ---
 $Global:WingetReady = $false
 $Global:ChocoReady = $false
 
@@ -24,8 +25,8 @@ try {
 
 # --- 2. KHỞI TẠO FORM ---
 $form = New-Object System.Windows.Forms.Form
-$form.Text = "VIETTOOLBOX PRO V44.10 - TRÌNH CÀI ĐẶT BẤT TỬ"
-$form.Size = "1050,720"; $form.MinimumSize = "900,650"; $form.StartPosition = "CenterScreen"; $form.BackColor = "#F5F5F5"
+$form.Text = "VIETTOOLBOX PRO V44.11 - HỆ THỐNG CÀI ĐẶT THÔNG MINH"
+$form.Size = "1050,780"; $form.MinimumSize = "900,700"; $form.StartPosition = "CenterScreen"; $form.BackColor = "#F5F5F5"
 
 $fontTieuDe = New-Object System.Drawing.Font("Segoe UI Bold", 14)
 $fontNut = New-Object System.Drawing.Font("Segoe UI Bold", 10)
@@ -35,8 +36,22 @@ $lblHeader = New-Object System.Windows.Forms.Label
 $lblHeader.Text = "DANH SÁCH PHẦN MỀM HỆ THỐNG"
 $lblHeader.Location = "20,15"; $lblHeader.Size = "500,30"; $lblHeader.Font = $fontTieuDe; $lblHeader.ForeColor = "#1A237E"
 
+# --- KHU VỰC KIỂM TRA MÔI TRƯỜNG (PRE-CHECK) ---
+$gbEnv = New-Object System.Windows.Forms.GroupBox
+$gbEnv.Text = " TRẠNG THÁI MÔI TRƯỜNG HỆ THỐNG "; $gbEnv.Location = "20,55"; $gbEnv.Size = "990,65"
+$gbEnv.Font = $fontNut; $gbEnv.Anchor = "Top, Left, Right"; $gbEnv.ForeColor = "#424242"
+
+$lblWingetStat = New-Object System.Windows.Forms.Label
+$lblWingetStat.Text = "⏳ Winget: Đang chờ kiểm tra..."; $lblWingetStat.Location = "20,30"; $lblWingetStat.Size = "450,25"
+
+$lblChocoStat = New-Object System.Windows.Forms.Label
+$lblChocoStat.Text = "⏳ Chocolatey: Đang chờ kiểm tra..."; $lblChocoStat.Location = "480,30"; $lblChocoStat.Size = "450,25"
+
+$gbEnv.Controls.AddRange(@($lblWingetStat, $lblChocoStat))
+
+# --- BẢNG DANH SÁCH ---
 $dgv = New-Object System.Windows.Forms.DataGridView
-$dgv.Location = "20,55"; $dgv.Size = "990,230"; $dgv.BackgroundColor = "White"; $dgv.Anchor = "Top, Bottom, Left, Right"
+$dgv.Location = "20,135"; $dgv.Size = "990,200"; $dgv.BackgroundColor = "White"; $dgv.Anchor = "Top, Bottom, Left, Right"
 $dgv.RowHeadersVisible = $false; $dgv.AllowUserToAddRows = $false
 $dgv.SelectionMode = "FullRowSelect"; $dgv.BorderStyle = "FixedSingle"
 $dgv.EnableHeadersVisualStyles = $false; $dgv.ColumnHeadersHeight = 45
@@ -49,20 +64,20 @@ $dgv.ColumnHeadersDefaultCellStyle.BackColor = "#303F9F"; $dgv.ColumnHeadersDefa
 [void]$dgv.Columns.Add((New-Object System.Windows.Forms.DataGridViewTextBoxColumn -Property @{Name="CID";Visible=$false}))
 
 $lblQuetXong = New-Object System.Windows.Forms.Label
-$lblQuetXong.Text = "Sẵn sàng khởi động..."; $lblQuetXong.Location = "20,295"; $lblQuetXong.Size = "500,25"; $lblQuetXong.Font = $fontNut; $lblQuetXong.Anchor = "Bottom, Left"
+$lblQuetXong.Text = "Hệ thống đang khởi động..."; $lblQuetXong.Location = "20,345"; $lblQuetXong.Size = "700,25"; $lblQuetXong.Font = $fontNut; $lblQuetXong.Anchor = "Bottom, Left"
 
 $pbTotal = New-Object System.Windows.Forms.ProgressBar
-$pbTotal.Location = "20,325"; $pbTotal.Size = "990,20"; $pbTotal.Style = "Continuous"; $pbTotal.Anchor = "Bottom, Left, Right"
+$pbTotal.Location = "20,375"; $pbTotal.Size = "990,20"; $pbTotal.Style = "Continuous"; $pbTotal.Anchor = "Bottom, Left, Right"
 
 $gbLog = New-Object System.Windows.Forms.GroupBox
-$gbLog.Text = " CHI TIẾT QUÁ TRÌNH CÀI ĐẶT "; $gbLog.Location = "20,355"; $gbLog.Size = "990,220"; $gbLog.Font = $fontNut; $gbLog.Anchor = "Bottom, Left, Right"
+$gbLog.Text = " CHI TIẾT QUÁ TRÌNH CÀI ĐẶT "; $gbLog.Location = "20,405"; $gbLog.Size = "990,220"; $gbLog.Font = $fontNut; $gbLog.Anchor = "Bottom, Left, Right"
 
 $flowHub = New-Object System.Windows.Forms.FlowLayoutPanel
 $flowHub.Dock = "Fill"; $flowHub.BackColor = "White"; $flowHub.AutoScroll = $true; $flowHub.Padding = New-Object System.Windows.Forms.Padding(10)
 $gbLog.Controls.Add($flowHub)
 
 $btnPanel = New-Object System.Windows.Forms.TableLayoutPanel
-$btnPanel.Location = "20,590"; $btnPanel.Size = "990,70"; $btnPanel.ColumnCount = 5; $btnPanel.Anchor = "Bottom, Left, Right"
+$btnPanel.Location = "20,640"; $btnPanel.Size = "990,70"; $btnPanel.ColumnCount = 5; $btnPanel.Anchor = "Bottom, Left, Right"
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
 $btnPanel.ColumnStyles.Add((New-Object System.Windows.Forms.ColumnStyle([System.Windows.Forms.SizeType]::Percent, 20)))
@@ -79,77 +94,63 @@ $btnReload = Quick-B "↻ NẠP LẠI LIST" "#2E7D32"; $btnQuet = Quick-B "🔍 
 $btnSelect = Quick-B "✓ CHỌN HẾT" "#1565C0"; $btnInstall = Quick-B "🚀 CÀI ĐẶT NGAY" "#E65100"
 $btnStop = Quick-B "🛑 DỪNG LẠI" "#C62828"
 
+$btnInstall.Enabled = $false # KHÓA NÚT CHỜ MÔI TRƯỜNG SETUP XONG
 $btnPanel.Controls.AddRange(@($btnReload, $btnQuet, $btnSelect, $btnInstall, $btnStop))
-$form.Controls.AddRange(@($lblHeader, $dgv, $lblQuetXong, $pbTotal, $gbLog, $btnPanel))
+$form.Controls.AddRange(@($lblHeader, $gbEnv, $dgv, $lblQuetXong, $pbTotal, $gbLog, $btnPanel))
 
-# --- 3. LOGIC XỬ LÝ ĐÃ ĐƯỢC FIX LỖI "MẤT TRÍ NHỚ" ---
+# --- 3. LOGIC XỬ LÝ: CHUẨN BỊ MÔI TRƯỜNG ---
 function Refresh-UI { [System.Windows.Forms.Application]::DoEvents() }
 
-function Initialize-Env {
-    param($Method)
+function Setup-Environment {
     $wc = New-Object System.Net.WebClient
     
-    if ($Method -eq "Winget") {
-        # Nếu đã check/cài thành công ở các app trước, báo OK luôn không làm lại
-        if ($Global:WingetReady) { return $true }
-        
-        $wgPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
-        if ((Get-Command winget -ErrorAction SilentlyContinue) -or (Test-Path $wgPath)) {
-            $Global:WingetReady = $true
-            return $true
-        }
-
+    # 1. KIỂM TRA VÀ CÀI ĐẶT WINGET
+    $wgPath = "$env:LOCALAPPDATA\Microsoft\WindowsApps\winget.exe"
+    if ((Get-Command winget -ErrorAction SilentlyContinue) -or (Test-Path $wgPath)) {
+        $lblWingetStat.Text = "✅ Winget: Đã sẵn sàng"; $lblWingetStat.ForeColor = "Green"; $Global:WingetReady = $true
+    } else {
+        $lblWingetStat.Text = "⚙️ Winget: Đang tải và cài đặt..."; $lblWingetStat.ForeColor = "#E65100"; Refresh-UI
         try {
-            $lblQuetXong.Text = "🛠 Đang nạp thư viện VCLibs (1/3)..."; Refresh-UI
-            $vcUrl = "https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx"
-            $vcPath = Join-Path $env:TEMP "vclibs.appx"
-            $wc.DownloadFile($vcUrl, $vcPath); Add-AppxPackage -Path $vcPath -ErrorAction SilentlyContinue
-
-            $lblQuetXong.Text = "🛠 Đang nạp thư viện UI.Xaml (2/3)..."; Refresh-UI
-            $uiUrl = "https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx"
-            $uiPath = Join-Path $env:TEMP "uixaml.appx"
-            $wc.DownloadFile($uiUrl, $uiPath); Add-AppxPackage -Path $uiPath -ErrorAction SilentlyContinue
-
-            $lblQuetXong.Text = "🛠 Đang nạp Winget Core (3/3)..."; Refresh-UI
-            $wgUrl = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-            $wgPathBundle = Join-Path $env:TEMP "winget.msixbundle"
-            $wc.DownloadFile($wgUrl, $wgPathBundle); Add-AppxPackage -Path $wgPathBundle -ErrorAction Stop
+            $vcPath = Join-Path $env:TEMP "vclibs.appx"; $uiPath = Join-Path $env:TEMP "uixaml.appx"; $wgPathBundle = Join-Path $env:TEMP "winget.msixbundle"
+            $wc.DownloadFile("https://aka.ms/Microsoft.VCLibs.x64.14.00.Desktop.appx", $vcPath)
+            Add-AppxPackage -Path $vcPath -ErrorAction SilentlyContinue
+            $wc.DownloadFile("https://github.com/microsoft/microsoft-ui-xaml/releases/download/v2.8.6/Microsoft.UI.Xaml.2.8.x64.appx", $uiPath)
+            Add-AppxPackage -Path $uiPath -ErrorAction SilentlyContinue
+            $wc.DownloadFile("https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle", $wgPathBundle)
+            Add-AppxPackage -Path $wgPathBundle -ErrorAction Stop
             
-            # Cài xong thì bật cờ ghi nhớ
-            $Global:WingetReady = $true
-            return $true
+            $lblWingetStat.Text = "✅ Winget: Cài đặt thành công"; $lblWingetStat.ForeColor = "Green"; $Global:WingetReady = $true
         } catch {
-            return $false
+            $lblWingetStat.Text = "❌ Winget: Lỗi (Win quá cũ). Sẽ dùng Choco!"; $lblWingetStat.ForeColor = "Red"
         }
     }
-    elseif ($Method -eq "Choco") {
-        if ($Global:ChocoReady) { return $true }
 
-        if (Get-Command choco -ErrorAction SilentlyContinue) {
-            $Global:ChocoReady = $true
-            return $true
-        }
-
+    # 2. KIỂM TRA VÀ CÀI ĐẶT CHOCO
+    if (Get-Command choco -ErrorAction SilentlyContinue) {
+        $lblChocoStat.Text = "✅ Chocolatey: Đã sẵn sàng"; $lblChocoStat.ForeColor = "Green"; $Global:ChocoReady = $true
+    } else {
+        $lblChocoStat.Text = "⚙️ Chocolatey: Đang tải và cài đặt..."; $lblChocoStat.ForeColor = "#E65100"; Refresh-UI
         try {
-            $lblQuetXong.Text = "🛠 Đang nạp Chocolatey..."; Refresh-UI
             Set-ExecutionPolicy Bypass -Scope Process -Force
             [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
             iex ($wc.DownloadString('https://community.chocolatey.org/install.ps1'))
-            
-            $Global:ChocoReady = $true
-            return $true
-        } catch { return $false }
+            $lblChocoStat.Text = "✅ Chocolatey: Cài đặt thành công"; $lblChocoStat.ForeColor = "Green"; $Global:ChocoReady = $true
+        } catch {
+            $lblChocoStat.Text = "❌ Chocolatey: Lỗi cài đặt!"; $lblChocoStat.ForeColor = "Red"
+        }
     }
-    return $true
+
+    # Mở khóa nút cài đặt
+    $btnInstall.Enabled = $true
+    $lblQuetXong.Text = "✓ Đã chuẩn bị xong môi trường! Sẵn sàng làm việc."
 }
 
 function Sync-List {
-    $dgv.Rows.Clear(); $lblQuetXong.Text = "🔄 Đang đồng bộ danh sách từ GitHub..."; Refresh-UI
+    $dgv.Rows.Clear(); Refresh-UI
     try {
         $wc = New-Object System.Net.WebClient; $wc.Headers.Add("User-Agent", "Mozilla/5.0")
         $wc.DownloadFile($githubUrl + "?t=" + (Get-Date).Ticks, $localPath)
         Import-Csv $localPath -Encoding UTF8 | foreach { if ($_.Name) { [void]$dgv.Rows.Add($false, $_.Name, "Chờ quét...", $_.WingetID, $_.ChocoID) } }
-        $lblQuetXong.Text = "✓ Đã tìm thấy $($dgv.Rows.Count) ứng dụng có sẵn."; Refresh-UI
     } catch { $lblQuetXong.Text = "✕ Không thể kết nối Internet!"; $lblQuetXong.ForeColor = "Red" }
 }
 
@@ -186,15 +187,15 @@ $btnInstall.Add_Click({
         try {
             $method = if ($wId) { "Winget" } elseif ($cId) { "Choco" } else { "Skip" }
             
-            # Khởi tạo hoặc lướt qua nếu đã init
-            if (-not (Initialize-Env -Method $method)) {
-                if ($method -eq "Winget" -and $cId) {
-                    $s.Text = "Winget từ chối, dùng Choco..."; Refresh-UI
-                    $method = "Choco"
-                    Initialize-Env -Method $method | Out-Null
-                } else {
-                    throw "Windows quá cũ, không độ được!"
+            # Kiểm tra chéo xem môi trường được chọn có sống không
+            if ($method -eq "Winget" -and -not $Global:WingetReady) {
+                if ($cId -and $Global:ChocoReady) { 
+                    $method = "Choco" 
+                } else { 
+                    throw "Thiếu cả Winget lẫn Choco!" 
                 }
+            } elseif ($method -eq "Choco" -and -not $Global:ChocoReady) {
+                throw "Choco chưa được cài đặt!"
             }
 
             $s.Text = "🚀 Cài qua $method..."; Refresh-UI
@@ -236,5 +237,10 @@ $btnSelect.Add_Click({
 })
 $btnStop.Add_Click({ $script:HuyCaiDat = $true; $lblQuetXong.Text = "🛑 Đang ngắt tiến trình..." })
 
-$form.Add_Shown({ Sync-List })
+# SỰ KIỆN KHI MỞ FORM (CHẠY ĐỒNG THỜI LIST VÀ CHECK MÔI TRƯỜNG)
+$form.Add_Shown({ 
+    Sync-List
+    Setup-Environment
+})
+
 $form.ShowDialog() | Out-Null
