@@ -153,7 +153,7 @@ $btnInstall.Add_Click({
         $pbTotal.Value = [int](($done / $selected.Count) * 100)
         $lblQuetXong.Text = "Đã hoàn thành $done/$($selected.Count) app."; Refresh-UI
     }
-    $btnInstall.Enabled = $true; $lblQuetXong.Text = "✓ HOÀN TẤT CÀI ĐẶT!"; Refresh-GUI
+    $btnInstall.Enabled = $true; $lblQuetXong.Text = "✓ HOÀN TẤT CÀI ĐẶT!"; Refresh-UI
 })
 
 # Tự nạp List khi mở
