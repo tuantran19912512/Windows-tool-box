@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX PRO - STANDARD EDITION (V182.7)
-# Tác giả: Tuấn Kỹ Thuật Máy Tính & Gemini
-# Cập nhật: Thêm Đồng hồ Ngày/Giờ thời gian thực ở góc phải trên cùng
+# Tên công cụ: VIETTOOLBOX PRO - TỰ ĐỘNG CHUYỂN TAB (V182.10)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# Cập nhật: Tự động chuyển sang Tab Nhật ký khi chạy chức năng
 # ==============================================================================
 
 # 1. THIẾT LẬP MÔI TRƯỜNG
@@ -10,6 +10,15 @@
 if ($PSScriptRoot -eq "" -or $null -eq $PSScriptRoot) { $Global:CurrentPath = $pwd } else { $Global:CurrentPath = $PSScriptRoot }
 $scriptFolder = Join-Path $Global:CurrentPath "Scripts"
 $logoPath = Join-Path $Global:CurrentPath "logo2.png"
+
+# --- TÍNH TOÁN KÍCH THƯỚC CỬA SỔ PHÙ HỢP VỚI MÀN HÌNH ---
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, Microsoft.VisualBasic
+$screenWidth = [System.Windows.SystemParameters]::WorkArea.Width
+$screenHeight = [System.Windows.SystemParameters]::WorkArea.Height
+
+# Kích thước gốc thiết kế là 1200x850
+$winW = if ($screenWidth -lt 1250) { $screenWidth * 0.95 } else { 1200 }
+$winH = if ($screenHeight -lt 900) { $screenHeight * 0.95 } else { 850 }
 
 # --- GIẢI MÃ KEY AI ---
 $EncStr = "B9vMDEyC5peZeIP4Wjc8u32aWyJN9xa9+pGS1p9iS4GQEfN1xAXtzTsaseDNR4vjFqKU065hbGBnMy5kMUlH3w=="
@@ -29,72 +38,87 @@ public static extern bool ShowWindowAsync(IntPtr hWnd, int nCmdShow);
 $hwnd = (Get-Process -Id $PID).MainWindowHandle
 if ($hwnd -ne [IntPtr]::Zero) { $showWindowAsync::ShowWindowAsync($hwnd, 0) | Out-Null }
 
-Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, Microsoft.VisualBasic
-
 # 3. TỰ ĐỘNG YÊU CẦU QUYỀN ADMIN
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
 
-# 4. GIAO DIỆN XAML (THÊM ĐỒNG HỒ TẠI STACKPANEL GÓC TRÊN PHẢI)
+# 4. GIAO DIỆN XAML
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox Pro" Height="850" Width="1200" 
+        Title="VietToolbox Pro" Width="$winW" Height="$winH" 
         Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen">
-    <Border CornerRadius="15" BorderBrush="#007ACC" BorderThickness="2">
-        <Border.Background>
-            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                <GradientStop Color="#0A1628" Offset="0"/><GradientStop Color="#02050A" Offset="1"/>
-            </LinearGradientBrush>
-        </Border.Background>
-        <Grid>
-            <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,15,20,0" Panel.ZIndex="999">
-                <TextBlock Name="TxtClock" Text="00:00:00" Foreground="#007ACC" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,20,0"/>
-                <Button Name="BtnTopMin" Content=" 🗕 " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Thu nhỏ"/>
-                <Button Name="BtnTopClose" Content=" ✕ " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Đóng"/>
-            </StackPanel>
+    
+    <Viewbox Stretch="Uniform">
+        <Border Width="1200" Height="850" CornerRadius="15" BorderBrush="#007ACC" BorderThickness="2">
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#0A1628" Offset="0"/><GradientStop Color="#02050A" Offset="1"/>
+                </LinearGradientBrush>
+            </Border.Background>
+            <Grid>
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Top" Margin="0,15,20,0" Panel.ZIndex="999">
+                    <TextBlock Name="TxtClock" Text="00:00:00" Foreground="#007ACC" FontSize="16" FontWeight="Bold" VerticalAlignment="Center" Margin="0,0,20,0"/>
+                    <Button Name="BtnTopMin" Content=" 🗕 " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Thu nhỏ"/>
+                    <Button Name="BtnTopClose" Content=" ✕ " Width="45" Height="30" Background="Transparent" Foreground="#858585" BorderThickness="0" FontSize="16" Cursor="Hand" ToolTip="Đóng"/>
+                </StackPanel>
 
-            <Grid VerticalAlignment="Top" Margin="30,30,30,0">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <Image Grid.Column="0" Source="$logoPath" Height="140" Width="140" HorizontalAlignment="Left" Margin="0,0,30,0">
-                    <Image.Effect><DropShadowEffect BlurRadius="20" Color="#007ACC" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
-                </Image>
-                <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                    <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
-                    <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
-                    <TextBlock Name="TxtThongBao" Text="Đang kiểm tra cập nhật..." Foreground="#FF3333" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
-                        <TextBlock.Triggers><EventTrigger RoutedEvent="TextBlock.Loaded"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.2" Duration="0:0:0.8" AutoReverse="True" RepeatBehavior="Forever"/></Storyboard></BeginStoryboard></EventTrigger></TextBlock.Triggers>
-                    </TextBlock>
+                <Grid VerticalAlignment="Top" Margin="30,30,30,0">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Image Grid.Column="0" Source="$logoPath" Height="140" Width="140" HorizontalAlignment="Left" Margin="0,0,30,0">
+                        <Image.Effect><DropShadowEffect BlurRadius="20" Color="#007ACC" ShadowDepth="0" Opacity="0.8"/></Image.Effect>
+                    </Image>
+                    <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                        <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#007ACC" FontSize="36" FontWeight="Bold"/>
+                        <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#858585" FontSize="16" Margin="0,8,0,0"/>
+                        <TextBlock Name="TxtThongBao" Text="Đang kiểm tra cập nhật..." Foreground="#FF3333" FontSize="15" FontWeight="Bold" Margin="0,10,0,0">
+                            <TextBlock.Triggers><EventTrigger RoutedEvent="TextBlock.Loaded"><BeginStoryboard><Storyboard><DoubleAnimation Storyboard.TargetProperty="Opacity" From="1.0" To="0.2" Duration="0:0:0.8" AutoReverse="True" RepeatBehavior="Forever"/></Storyboard></BeginStoryboard></EventTrigger></TextBlock.Triggers>
+                        </TextBlock>
+                    </StackPanel>
+                </Grid>
+                <Separator VerticalAlignment="Top" Background="#3E3E42" Margin="30,190,30,0" Opacity="0.5"/>
+                <Grid Margin="20,210,20,85">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="350"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <GroupBox Header="NHÓM CÔNG CỤ" Foreground="#007ACC" BorderBrush="#333333"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Name="GroupContainer" Margin="10"/></ScrollViewer></GroupBox>
+                    <GroupBox Grid.Column="1" Header="BẢNG ĐIỀU KHIỂN" Foreground="#00FF00" BorderBrush="#333333" Margin="15,0,0,0">
+                        
+                        <TabControl Name="MainTabControl" Background="Transparent" BorderThickness="0">
+                            
+                            <TabItem Header=" THÔNG TIN MÁY " Foreground="#E67E22">
+                                <TextBox Name="TxtSysInfo" Background="#050505" Foreground="#E67E22" FontFamily="Consolas" FontSize="15" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" Padding="15" Opacity="0.9"/>
+                            </TabItem>
+                            <TabItem Header=" NHẬT KÝ HỆ THỐNG " Foreground="#00FF00">
+                                <TextBox Name="TxtLog" Background="#050505" Foreground="#00FF00" FontFamily="Consolas" FontSize="14" IsReadOnly="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" Padding="15" Opacity="0.9"/>
+                            </TabItem>
+                            <TabItem Header=" TRỢ LÝ AI (AUTO RUN) " Foreground="#007ACC">
+                                <Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                                    <TextBox Name="TxtChatBox" Grid.Row="0" Background="#0A101A" Foreground="#DCDCDC" FontSize="14" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderBrush="#333333" Padding="10"/>
+                                    <Grid Grid.Row="1" Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+                                        <TextBox Name="TxtInputAI" Grid.Column="0" Height="35" Background="#1A1A1A" Foreground="White" BorderBrush="#007ACC" VerticalContentAlignment="Center" Padding="10,0" />
+                                        <Button Name="BtnSendAI" Grid.Column="1" Content="GỬI" Margin="10,0,0,0" Background="#007ACC" Foreground="White" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="5"/></Style></Button.Resources></Button>
+                                    </Grid>
+                                </Grid>
+                            </TabItem>
+                        </TabControl>
+                    </GroupBox>
+                </Grid>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="25">
+                    <Button Name="BtnShutdown" Content="TẮT MÁY" Width="130" Height="45" Margin="0,0,10,0" Background="#D35400" Foreground="White" BorderThickness="0" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
+                    <Button Name="BtnRestart" Content="KHỞI ĐỘNG LẠI" Width="130" Height="45" Margin="0,0,10,0" Background="#2980B9" Foreground="White" BorderThickness="0" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
+                    <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#007ACC" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
                 </StackPanel>
             </Grid>
-            <Separator VerticalAlignment="Top" Background="#3E3E42" Margin="30,190,30,0" Opacity="0.5"/>
-            <Grid Margin="20,210,20,85">
-                <Grid.ColumnDefinitions><ColumnDefinition Width="350"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                <GroupBox Header="NHÓM CÔNG CỤ" Foreground="#007ACC" BorderBrush="#333333"><ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Name="GroupContainer" Margin="10"/></ScrollViewer></GroupBox>
-                <GroupBox Grid.Column="1" Header="BẢNG ĐIỀU KHIỂN" Foreground="#00FF00" BorderBrush="#333333" Margin="15,0,0,0">
-                    <TabControl Background="Transparent" BorderThickness="0">
-                        <TabItem Header=" THÔNG TIN MÁY " Foreground="#E67E22">
-                            <TextBox Name="TxtSysInfo" Background="#050505" Foreground="#E67E22" FontFamily="Consolas" FontSize="15" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" Padding="15" Opacity="0.9"/>
-                        </TabItem>
-                        <TabItem Header=" NHẬT KÝ HỆ THỐNG " Foreground="#00FF00"><TextBox Name="TxtLog" Background="#050505" Foreground="#00FF00" FontFamily="Consolas" FontSize="14" IsReadOnly="True" TextWrapping="NoWrap" VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" BorderThickness="0" Padding="15" Opacity="0.9"/></TabItem>
-                        <TabItem Header=" TRỢ LÝ AI (AUTO RUN) " Foreground="#007ACC"><Grid Margin="10"><Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-                            <TextBox Name="TxtChatBox" Grid.Row="0" Background="#0A101A" Foreground="#DCDCDC" FontSize="14" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderBrush="#333333" Padding="10"/>
-                            <Grid Grid.Row="1" Margin="0,10,0,0"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
-                                <TextBox Name="TxtInputAI" Grid.Column="0" Height="35" Background="#1A1A1A" Foreground="White" BorderBrush="#007ACC" VerticalContentAlignment="Center" Padding="10,0" /><Button Name="BtnSendAI" Grid.Column="1" Content="GỬI" Margin="10,0,0,0" Background="#007ACC" Foreground="White" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="5"/></Style></Button.Resources></Button>
-                            </Grid></Grid></TabItem>
-                    </TabControl></GroupBox></Grid>
-            <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Right" Margin="25">
-                <Button Name="BtnShutdown" Content="TẮT MÁY" Width="130" Height="45" Margin="0,0,10,0" Background="#D35400" Foreground="White" BorderThickness="0" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
-                <Button Name="BtnRestart" Content="KHỞI ĐỘNG LẠI" Width="130" Height="45" Margin="0,0,10,0" Background="#2980B9" Foreground="White" BorderThickness="0" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
-                <Button Name="BtnColor" Content="MÀU CHỮ" Width="110" Height="45" Margin="0,0,10,0" Background="#333337" Foreground="White" BorderThickness="1" BorderBrush="#007ACC" FontWeight="Bold"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="10"/></Style></Button.Resources></Button>
-            </StackPanel>
-        </Grid></Border>
+        </Border>
+    </Viewbox>
 </Window>
 "@
 
 # 5. KHỞI TẠO GIAO DIỆN
 $stringReader = New-Object System.IO.StringReader($inputXML); $xmlReader = [System.Xml.XmlReader]::Create($stringReader); $window = [Windows.Markup.XamlReader]::Load($xmlReader)
+
+# Ánh xạ các biến XAML
+$mainTabControl = $window.FindName("MainTabControl") # Đã thêm dòng này
 $groupContainer = $window.FindName("GroupContainer"); $txtLog = $window.FindName("TxtLog"); $btnColor = $window.FindName("BtnColor"); $btnShutdown = $window.FindName("BtnShutdown"); $btnRestart = $window.FindName("BtnRestart"); $txtThongBao = $window.FindName("TxtThongBao")
 $txtChatBox = $window.FindName("TxtChatBox"); $txtInputAI = $window.FindName("TxtInputAI"); $btnSendAI = $window.FindName("BtnSendAI")
 $txtSysInfo = $window.FindName("TxtSysInfo") 
@@ -108,7 +132,7 @@ $clockTimer.Add_Tick({
     $txtClock.Text = (Get-Date).ToString("HH:mm:ss  |  dd/MM/yyyy")
 })
 $clockTimer.Start()
-$txtClock.Text = (Get-Date).ToString("HH:mm:ss  |  dd/MM/yyyy") # Gán giá trị ngay lúc mở lên
+$txtClock.Text = (Get-Date).ToString("HH:mm:ss  |  dd/MM/yyyy") 
 
 # 6. TẢI THÔNG BÁO TỪ GITHUB
 try {
@@ -149,7 +173,16 @@ function Update-UI {
                     $btn = New-Object System.Windows.Controls.Button; $btn.Content = "● " + $_.BaseName; 
                     $btn.Height = 40; $btn.FontSize = 14; $btn.Background = "#2D2D2D"; $btn.Foreground = "#DCDCDC"; 
                     $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Margin = "0,2,0,2"; $btn.Tag = $_.FullName
-                    $btn.Add_Click({ param($sender, $e) $window.Dispatcher.Invoke([action]{ $txtLog.Clear() }); try { . $sender.Tag } catch { Ghi-Log "LỖI: $($_.Exception.Message)" } })
+                    
+                    # LOGIC KHI BẤM NÚT CÔNG CỤ Ở ĐÂY
+                    $btn.Add_Click({ 
+                        param($sender, $e) 
+                        $window.Dispatcher.Invoke([action]{ 
+                            $mainTabControl.SelectedIndex = 1 # <--- TỰ ĐỘNG CHUYỂN SANG TAB NHẬT KÝ
+                            $txtLog.Clear() 
+                        })
+                        try { . $sender.Tag } catch { Ghi-Log "LỖI: $($_.Exception.Message)" } 
+                    })
                     $null = $ParentStack.Children.Add($btn)
                 }
             }
@@ -158,7 +191,7 @@ function Update-UI {
     Get-ScriptsRecursive $scriptFolder $groupContainer 0
 }
 
-# 9. HÀM AI
+# 9. HÀM AI (GIỮ NGUYÊN)
 function Gui-AI {
     if ($Global:IsAiRunning -or [string]::IsNullOrWhiteSpace($txtInputAI.Text)) { return }
     $userT = $txtInputAI.Text; $txtInputAI.Clear(); $Global:IsAiRunning = $true; $btnSendAI.IsEnabled = $false
@@ -270,7 +303,6 @@ function Load-SysInfo {
 $btnTopMin.Add_Click({ $window.WindowState = "Minimized" })
 $btnTopClose.Add_Click({ $window.Close() })
 
-# [FIX] Đổi màu WPF phải dùng BrushConverter
 $brushConverter = New-Object System.Windows.Media.BrushConverter
 $btnColor.Add_Click({ 
     if ($Global:LogColorGreen) { 
