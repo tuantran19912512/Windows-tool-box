@@ -1,6 +1,6 @@
 Check,Name,WingetID,ChocoID,GDriveID,SilentArgs
 False,Google Chrome,Google.Chrome,googlechrome,,
-False,Zalopc,VNGCorp.Zalo,zalopc,,
+False,Zalo,VNGCorp.Zalo,zalopc,,
 False,Unikey,UniKey.UniKey,Unikey,,
 False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,
 False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,
