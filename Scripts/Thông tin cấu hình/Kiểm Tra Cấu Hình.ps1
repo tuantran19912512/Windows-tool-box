@@ -1,19 +1,46 @@
-﻿Add-Type -AssemblyName PresentationFramework
-Add-Type -AssemblyName System.Windows.Forms
+﻿# ==============================================================================
+# VIETTOOLBOX - SYSTEM CENTER ULTRA PRO (BẢN PURE WPF - KHÔNG WINDOWS FORMS)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# ==============================================================================
+
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 # 1. Khởi tạo đối tượng đo hiệu năng siêu nhanh (Fix lag)
 $cpuCounter = New-Object System.Diagnostics.PerformanceCounter("Processor", "% Processor Time", "_Total")
 $null = $cpuCounter.NextValue()
 
-# 2. Giao diện XAML (Nới rộng 1200x800 để chứa toàn bộ dữ liệu)
+# 2. Giao diện XAML (Kích thước gốc 1200x800)
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="VietToolbox - System Center Ultra Pro" Height="800" Width="1200" 
-        Background="#121212" WindowStyle="None" AllowsTransparency="True" WindowStartupLocation="CenterScreen">
+        Background="#121212" WindowStyle="None" AllowsTransparency="True" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="8">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.5"/>
+                </Trigger>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Border CornerRadius="15" Background="#1E1E1E" BorderBrush="#007ACC" BorderThickness="2">
         <Grid>
-            <TextBlock Text="TRUNG TÂM PHÂN TÍCH HỆ THỐNG TOÀN DIỆN (BẢN FULL CHI TIẾT)" Foreground="#007ACC" FontSize="22" FontWeight="Bold" 
+            <TextBlock Text="TRUNG TÂM PHÂN TÍCH HỆ THỐNG TOÀN DIỆN (BẢN PURE WPF)" Foreground="#007ACC" FontSize="22" FontWeight="Bold" 
                        HorizontalAlignment="Center" Margin="0,15,0,0"/>
             
             <Grid Margin="20,70,20,100">
@@ -23,49 +50,45 @@ $xaml = @"
                 </Grid.ColumnDefinitions>
 
                 <StackPanel Grid.Column="0" VerticalAlignment="Top" Margin="0,10,0,0">
-                    <GroupBox Header="GIÁM SÁT TẢI (%)" Foreground="#007ACC" BorderBrush="#333333" Margin="5">
+                    <GroupBox Header="GIÁM SÁT TẢI (%)" Foreground="#007ACC" BorderBrush="#333333" Margin="5" FontWeight="Bold">
                         <StackPanel Margin="10">
                             <DockPanel LastChildFill="False">
                                 <TextBlock Text="CPU USAGE" Foreground="White" DockPanel.Dock="Left"/>
                                 <TextBlock Name="CpuPct" Text="0%" Foreground="#FF3B30" FontWeight="Bold" DockPanel.Dock="Right"/>
                             </DockPanel>
-                            <ProgressBar Name="CpuBar" Height="10" Margin="0,5,0,15" Minimum="0" Maximum="100" Foreground="#FF3B30" Background="#333333"/>
+                            <ProgressBar Name="CpuBar" Height="10" Margin="0,5,0,15" Minimum="0" Maximum="100" Foreground="#FF3B30" Background="#333333" BorderThickness="0"/>
                             
                             <DockPanel LastChildFill="False">
                                 <TextBlock Text="RAM USAGE" Foreground="White" DockPanel.Dock="Left"/>
                                 <TextBlock Name="RamPct" Text="0%" Foreground="#4CD964" FontWeight="Bold" DockPanel.Dock="Right"/>
                             </DockPanel>
-                            <ProgressBar Name="RamBar" Height="10" Margin="0,5,0,15" Minimum="0" Maximum="100" Foreground="#4CD964" Background="#333333"/>
+                            <ProgressBar Name="RamBar" Height="10" Margin="0,5,0,15" Minimum="0" Maximum="100" Foreground="#4CD964" Background="#333333" BorderThickness="0"/>
                             
                             <DockPanel LastChildFill="False">
                                 <TextBlock Text="DISK C: USAGE" Foreground="White" DockPanel.Dock="Left"/>
                                 <TextBlock Name="DiskPct" Text="0%" Foreground="#007ACC" FontWeight="Bold" DockPanel.Dock="Right"/>
                             </DockPanel>
-                            <ProgressBar Name="DiskBar" Height="10" Margin="0,5,0,0" Minimum="0" Maximum="100" Foreground="#007ACC" Background="#333333"/>
+                            <ProgressBar Name="DiskBar" Height="10" Margin="0,5,0,0" Minimum="0" Maximum="100" Foreground="#007ACC" Background="#333333" BorderThickness="0"/>
                         </StackPanel>
                     </GroupBox>
                     
-                    <GroupBox Header="SỨC KHỎE PIN" Name="BoxPin" Foreground="#007ACC" BorderBrush="#333333" Margin="5" Visibility="Collapsed">
+                    <GroupBox Header="SỨC KHỎE PIN" Name="BoxPin" Foreground="#007ACC" BorderBrush="#333333" Margin="5" Visibility="Collapsed" FontWeight="Bold">
                         <StackPanel Margin="10">
                             <TextBlock Name="PinText" Text="Sức khỏe: 0%" Foreground="White" HorizontalAlignment="Center" FontWeight="Bold"/>
-                            <ProgressBar Name="PinBar" Height="10" Margin="0,5,0,0" Minimum="0" Maximum="100" Foreground="#FFCC00" Background="#333333"/>
+                            <ProgressBar Name="PinBar" Height="10" Margin="0,5,0,0" Minimum="0" Maximum="100" Foreground="#FFCC00" Background="#333333" BorderThickness="0"/>
                         </StackPanel>
                     </GroupBox>
                 </StackPanel>
 
-                <GroupBox Grid.Column="1" Header="HỒ SƠ PHẦN CỨNG CHI TIẾT &amp; CHẨN ĐOÁN" Foreground="#007ACC" BorderBrush="#333333" Margin="10,0,0,0">
-                    <TextBox Name="TxtDetail" Background="#0F0F0F" Foreground="#00FF00" FontFamily="Consolas" FontSize="13" 
-                             IsReadOnly="True" BorderThickness="0" VerticalScrollBarVisibility="Auto" Padding="15" AcceptsReturn="True"/>
+                <GroupBox Grid.Column="1" Header="HỒ SƠ PHẦN CỨNG CHI TIẾT &amp; CHẨN ĐOÁN" Foreground="#007ACC" BorderBrush="#333333" Margin="10,0,0,0" FontWeight="Bold">
+                    <TextBox Name="TxtDetail" Background="#0F0F0F" Foreground="#00FF00" FontFamily="Consolas" FontSize="14" 
+                             IsReadOnly="True" BorderThickness="0" VerticalScrollBarVisibility="Auto" Padding="15" AcceptsReturn="True" TextWrapping="Wrap"/>
                 </GroupBox>
             </Grid>
 
             <StackPanel Orientation="Horizontal" VerticalAlignment="Bottom" HorizontalAlignment="Center" Margin="0,0,0,30">
-                <Button Name="BtnRefresh" Content="QUÉT LẠI CẤU HÌNH" Height="45" Width="220" Margin="10,0" Background="#007ACC" Foreground="White" BorderThickness="0" FontWeight="Bold">
-                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
-                </Button>
-                <Button Name="BtnExit" Content="THOÁT TRUNG TÂM" Height="45" Width="220" Margin="10,0" Background="#333333" Foreground="White" BorderThickness="0" FontWeight="Bold">
-                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
-                </Button>
+                <Button Name="BtnRefresh" Content="QUÉT LẠI CẤU HÌNH" Height="45" Width="220" Margin="10,0" Background="#007ACC" Foreground="White" FontWeight="Bold"/>
+                <Button Name="BtnExit" Content="THOÁT TRUNG TÂM" Height="45" Width="220" Margin="10,0" Background="#333333" Foreground="White" FontWeight="Bold"/>
             </StackPanel>
         </Grid>
     </Border>
@@ -82,16 +105,24 @@ $diskBar = $window.FindName("DiskBar"); $diskPct = $window.FindName("DiskPct")
 $pinBar = $window.FindName("PinBar"); $pinText = $window.FindName("PinText"); $boxPin = $window.FindName("BoxPin")
 $txtDetail = $window.FindName("TxtDetail"); $btnExit = $window.FindName("BtnExit"); $btnRefresh = $window.FindName("BtnRefresh")
 
-# 3. HÀM QUÉT DỮ LIỆU CÓ HIỆU ỨNG IN TỪNG MỤC
+# --- HÀM DOEVENTS CHUẨN WPF (THAY THẾ WINDOWS FORMS) ---
+$CapNhatGiaoDien = {
+    $Dispatcher = [System.Windows.Threading.Dispatcher]::CurrentDispatcher
+    $Dispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+}
+
+# 3. HÀM QUÉT DỮ LIỆU CÓ HIỆU ỨNG IN TỪNG MỤC (PURE WPF)
 function Update-DetailText {
     $btnRefresh.IsEnabled = $false
     $txtDetail.Clear()
-    [System.Windows.Forms.Application]::DoEvents()
+    &$CapNhatGiaoDien
 
     function Add-Live ($Text, $Delay = 300) {
-        $txtDetail.AppendText($Text)
-        $txtDetail.ScrollToEnd()
-        [System.Windows.Forms.Application]::DoEvents()
+        $window.Dispatcher.Invoke([action]{
+            $txtDetail.AppendText($Text)
+            $txtDetail.ScrollToEnd()
+        })
+        &$CapNhatGiaoDien
         if ($Delay -gt 0) { Start-Sleep -Milliseconds $Delay }
     }
 
@@ -123,7 +154,7 @@ function Update-DetailText {
     
     # Tính số khe RAM còn trống
     $emptySlots = $ramSlots - $ramChips.Count
-    if ($emptySlots -lt 0) { $emptySlots = 0 } # Đề phòng WMI báo lỗi số liệu ảo
+    if ($emptySlots -lt 0) { $emptySlots = 0 }
 
     $t3 = "`r`n>>> [ 3. BỘ NHỚ TRONG (RAM) ] <<<`r`n"
     $t3 += ("{0,-22}: {1} khe (Đang cắm: {2} | Trống: {3})`r`n" -f "Tình trạng khe cắm", $ramSlots, $ramChips.Count, $emptySlots)
@@ -234,7 +265,7 @@ function Update-DetailText {
     $btnRefresh.IsEnabled = $true
 }
 
-# 4. TIMER CẬP NHẬT (%) SIÊU MƯỢT
+# 4. TIMER CẬP NHẬT (%) SIÊU MƯỢT (WPF DISPATCHER TIMER)
 $timer = New-Object System.Windows.Threading.DispatcherTimer
 $timer.Interval = [TimeSpan]::FromMilliseconds(800)
 $timer.Add_Tick({
