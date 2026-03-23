@@ -1,6 +1,10 @@
-﻿# ÉP POWERSHELL HIỂU TIẾNG VIỆT 100%
+﻿# ==========================================================
+# VIETTOOLBOX - KIỂM TRA WEBCAM & MICROPHONE (PURE WPF EDITION)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# ==========================================================
+
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 # --- NẠP THƯ VIỆN ĐIỀU KHIỂN MULTIMEDIA ---
 if (-not ([Ref].Assembly.GetType("VietToolbox.HardwareAPI"))) {
@@ -25,146 +29,185 @@ if (-not ([Ref].Assembly.GetType("VietToolbox.HardwareAPI"))) {
 }
 
 $LogicNgoaiVi = {
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "VietToolbox - Kiểm tra Webcam & Microphone"; $form.Size = "820,540"
-    $form.BackColor = "#FFFFFF"; $form.StartPosition = "CenterScreen"; $form.FormBorderStyle = "FixedDialog"
+    # --- 1. GIAO DIỆN XAML PURE WPF ---
+    $MaGiaoDien = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VietToolbox - Kiểm tra Webcam &amp; Microphone" Width="820" Height="540"
+        WindowStartupLocation="CenterScreen" ResizeMode="NoResize" Background="#FFFFFF" FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Opacity" Value="0.6"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
 
-    $fontTieuDe = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
-    $fontChu = New-Object System.Drawing.Font("Segoe UI", 10)
+    <Grid Margin="20">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="*"/>
+            <ColumnDefinition Width="20"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
 
-    # ==========================================
-    # KHU VỰC 1: MICROPHONE (TRÁI)
-    # ==========================================
-    $pnlMic = New-Object System.Windows.Forms.Panel
-    $pnlMic.Location = "20,20"; $pnlMic.Size = "370,450"; $pnlMic.BackColor = "#F4F5F7"
-    
-    $lblMic = New-Object System.Windows.Forms.Label
-    $lblMic.Text = "KIỂM TRA MICROPHONE"; $lblMic.Font = $fontTieuDe; $lblMic.Location = "20,20"; $lblMic.Size = "330,30"; $lblMic.ForeColor = "#394E60"
-    
-    $lblMicDesc = New-Object System.Windows.Forms.Label
-    $lblMicDesc.Text = "Hệ thống sẽ ghi âm 3 giây và phát lại để xác nhận thiết bị thu âm hoạt động tốt."; $lblMicDesc.Location = "20,60"; $lblMicDesc.Size = "330,40"; $lblMicDesc.ForeColor = "#666666"
+        <Border Grid.Column="0" Background="#F4F5F7" CornerRadius="8" Padding="20">
+            <StackPanel>
+                <TextBlock Text="KIỂM TRA MICROPHONE" FontSize="20" FontWeight="Bold" Foreground="#394E60" Margin="0,0,0,10"/>
+                <TextBlock Text="Hệ thống sẽ ghi âm 3 giây và phát lại để xác nhận thiết bị thu âm hoạt động tốt." Foreground="#666666" TextWrapping="Wrap" Margin="0,0,0,20"/>
+                
+                <ComboBox Name="cbMic" Height="35" FontSize="14" Margin="0,0,0,20" VerticalContentAlignment="Center"/>
+                
+                <Button Name="btnRecord" Content="GHI ÂM &amp; PHÁT LẠI (3s)" Height="45" Background="#0068FF" Foreground="White" FontWeight="Bold" FontSize="14" Margin="0,0,0,15"/>
+                <Button Name="btnOpenSound" Content="Mở Cài đặt Âm thanh" Height="35" Background="#E1E4E8" Foreground="#394E60" FontWeight="SemiBold"/>
+            </StackPanel>
+        </Border>
 
-    $cbMic = New-Object System.Windows.Forms.ComboBox
-    $cbMic.Location = "20,110"; $cbMic.Size = "330,30"; $cbMic.DropDownStyle = "DropDownList"; $cbMic.Font = $fontChu
+        <Border Grid.Column="2" Background="#F4F5F7" CornerRadius="8" Padding="20">
+            <StackPanel>
+                <TextBlock Text="KIỂM TRA WEBCAM" FontSize="20" FontWeight="Bold" Foreground="#394E60" Margin="0,0,0,15"/>
+                
+                <ComboBox Name="cbCam" Height="35" FontSize="14" Margin="0,0,0,15" VerticalContentAlignment="Center"/>
+                
+                <Border Name="CamScreen" Height="260" Background="#1A1A1A" Margin="0,0,0,15" CornerRadius="4"/>
+                
+                <Button Name="btnStartCam" Content="BẬT MÁY ẢNH" Height="45" Background="#0068FF" Foreground="White" FontWeight="Bold" FontSize="14"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>
+"@
+
+    # --- 2. KHỞI TẠO CỬA SỔ & ÁNH XẠ BIẾN ---
+    $DocChuoi = New-Object System.IO.StringReader($MaGiaoDien)
+    $DocXml = [System.Xml.XmlReader]::Create($DocChuoi)
+    $form = [Windows.Markup.XamlReader]::Load($DocXml)
+
+    $cbMic = $form.FindName("cbMic")
+    $btnRecord = $form.FindName("btnRecord")
+    $btnOpenSound = $form.FindName("btnOpenSound")
     
+    $cbCam = $form.FindName("cbCam")
+    $CamScreen = $form.FindName("CamScreen")
+    $btnStartCam = $form.FindName("btnStartCam")
+
+    # --- 3. ĐỔ DỮ LIỆU THIẾT BỊ ---
+    # Đổ dữ liệu Mic
     $mics = Get-CimInstance Win32_PnPEntity | Where-Object { $_.Caption -match "Microphone" -or $_.Caption -match "Audio Input" }
     foreach ($m in $mics) { [void]$cbMic.Items.Add($m.Caption) }
     if ($cbMic.Items.Count -eq 0) { [void]$cbMic.Items.Add("Thiết bị mặc định của Windows") }
     $cbMic.SelectedIndex = 0
 
-    $btnRecord = New-Object System.Windows.Forms.Button
-    $btnRecord.Text = "GHI ÂM & PHÁT LẠI (3s)"; $btnRecord.Location = "20,160"; $btnRecord.Size = "330,45"
-    $btnRecord.BackColor = "#0068FF"; $btnRecord.ForeColor = "White"; $btnRecord.FlatStyle = "Flat"; $btnRecord.Font = $fontTieuDe
-    $btnRecord.FlatAppearance.BorderSize = 0
-
-    $btnOpenSound = New-Object System.Windows.Forms.Button
-    $btnOpenSound.Text = "Mở Cài đặt Âm thanh"; $btnOpenSound.Location = "20,220"; $btnOpenSound.Size = "330,35"
-    $btnOpenSound.BackColor = "#E1E4E8"; $btnOpenSound.ForeColor = "#394E60"; $btnOpenSound.FlatStyle = "Flat"
-    $btnOpenSound.FlatAppearance.BorderSize = 0
-    $btnOpenSound.Add_Click({ Start-Process "mmsys.cpl" })
-
-    $pnlMic.Controls.AddRange(@($lblMic, $lblMicDesc, $cbMic, $btnRecord, $btnOpenSound))
-    $form.Controls.Add($pnlMic)
-
-    # --- LOGIC GHI ÂM ---
-    $btnRecord.Add_Click({
-        $btnRecord.Enabled = $false
-        $btnRecord.Text = "ĐANG THU ÂM... NÓI GÌ ĐÓ ĐI!"; $btnRecord.BackColor = "#E74C3C"
-        $form.Refresh()
-        
-        [VietToolbox.HardwareAPI]::mciSendString("open new Type waveaudio Alias recsound", $null, 0, [IntPtr]::Zero) | Out-Null
-        [VietToolbox.HardwareAPI]::mciSendString("record recsound", $null, 0, [IntPtr]::Zero) | Out-Null
-        Start-Sleep -Seconds 3
-        
-        $btnRecord.Text = "ĐANG PHÁT LẠI..."; $btnRecord.BackColor = "#2ECC71"
-        $form.Refresh()
-        
-        $tempWav = "$($env:TEMP)\viettoolbox_mic_test.wav"
-        [VietToolbox.HardwareAPI]::mciSendString("save recsound $tempWav", $null, 0, [IntPtr]::Zero) | Out-Null
-        [VietToolbox.HardwareAPI]::mciSendString("close recsound", $null, 0, [IntPtr]::Zero) | Out-Null
-        
-        if (Test-Path $tempWav) {
-            $player = New-Object System.Media.SoundPlayer $tempWav; $player.PlaySync(); $player.Dispose()
-            Remove-Item -Path $tempWav -Force -ErrorAction SilentlyContinue
-        }
-
-        $btnRecord.Text = "GHI ÂM & PHÁT LẠI (3s)"; $btnRecord.BackColor = "#0068FF"; $btnRecord.Enabled = $true
-    })
-
-    # ==========================================
-    # KHU VỰC 2: WEBCAM (PHẢI)
-    # ==========================================
-    $pnlCamBg = New-Object System.Windows.Forms.Panel
-    $pnlCamBg.Location = "410,20"; $pnlCamBg.Size = "370,450"; $pnlCamBg.BackColor = "#F4F5F7"
-    
-    $lblCam = New-Object System.Windows.Forms.Label
-    $lblCam.Text = "KIỂM TRA WEBCAM"; $lblCam.Font = $fontTieuDe; $lblCam.Location = "20,20"; $lblCam.Size = "330,30"; $lblCam.ForeColor = "#394E60"
-
-    # --- COMBOBOX CHỌN WEBCAM ---
-    $cbCam = New-Object System.Windows.Forms.ComboBox
-    $cbCam.Location = "20,60"; $cbCam.Size = "330,30"; $cbCam.DropDownStyle = "DropDownList"; $cbCam.Font = $fontChu
-    
+    # Đổ dữ liệu Cam
     $cams = Get-CimInstance Win32_PnPEntity | Where-Object { $_.PNPClass -match "Camera|Image" -or $_.Caption -match "Camera|Webcam" }
     foreach ($c in $cams) { [void]$cbCam.Items.Add($c.Caption) }
-    
-    $camScreen = New-Object System.Windows.Forms.Panel
-    $camScreen.Location = "20,105"; $camScreen.Size = "330,260"; $camScreen.BackColor = "#1A1A1A"
-    
-    $btnStartCam = New-Object System.Windows.Forms.Button
-    $btnStartCam.Text = "BẬT MÁY ẢNH"; $btnStartCam.Location = "20,380"; $btnStartCam.Size = "330,45"
-    $btnStartCam.BackColor = "#0068FF"; $btnStartCam.ForeColor = "White"; $btnStartCam.FlatStyle = "Flat"; $btnStartCam.Font = $fontTieuDe; $btnStartCam.FlatAppearance.BorderSize = 0
-
     if ($cbCam.Items.Count -eq 0) { 
         [void]$cbCam.Items.Add("Không có thiết bị Webcam")
-        $cbCam.Enabled = $false
-        $btnStartCam.Enabled = $false
-        $btnStartCam.BackColor = "#999999"
+        $cbCam.IsEnabled = $false
+        $btnStartCam.IsEnabled = $false
+        $btnStartCam.Background = "#999999"
     } else {
         $cbCam.SelectedIndex = 0
     }
 
-    $pnlCamBg.Controls.AddRange(@($lblCam, $cbCam, $camScreen, $btnStartCam))
-    $form.Controls.Add($pnlCamBg)
+    $btnOpenSound.Add_Click({ Start-Process "mmsys.cpl" })
 
-    # --- LOGIC MỞ CAM (BẢN FIX ĐỨNG HÌNH) ---
+    # --- 4. LOGIC GHI ÂM (DÙNG DISPATCHER TIMER CHỐNG ĐƠ) ---
+    $tempWav = "$($env:TEMP)\viettoolbox_mic_test.wav"
+    
+    $recTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $recTimer.Interval = [TimeSpan]::FromSeconds(3)
+    $recTimer.Add_Tick({
+        $recTimer.Stop()
+        
+        $btnRecord.Content = "ĐANG PHÁT LẠI..."
+        $btnRecord.Background = "#2ECC71"
+        
+        [VietToolbox.HardwareAPI]::mciSendString("save recsound $tempWav", $null, 0, [IntPtr]::Zero) | Out-Null
+        [VietToolbox.HardwareAPI]::mciSendString("close recsound", $null, 0, [IntPtr]::Zero) | Out-Null
+        
+        if (Test-Path $tempWav) {
+            $player = New-Object System.Media.SoundPlayer $tempWav
+            $player.PlaySync()
+            $player.Dispose()
+            Remove-Item -Path $tempWav -Force -ErrorAction SilentlyContinue
+        }
+
+        $btnRecord.Content = "GHI ÂM & PHÁT LẠI (3s)"
+        $btnRecord.Background = "#0068FF"
+        $btnRecord.IsEnabled = $true
+    })
+
+    $btnRecord.Add_Click({
+        $btnRecord.IsEnabled = $false
+        $btnRecord.Content = "ĐANG THU ÂM... NÓI GÌ ĐÓ ĐI!"
+        $btnRecord.Background = "#E74C3C"
+        
+        [VietToolbox.HardwareAPI]::mciSendString("open new Type waveaudio Alias recsound", $null, 0, [IntPtr]::Zero) | Out-Null
+        [VietToolbox.HardwareAPI]::mciSendString("record recsound", $null, 0, [IntPtr]::Zero) | Out-Null
+        
+        # Kích hoạt bộ đếm ngầm 3 giây thay vì dùng Start-Sleep
+        $recTimer.Start()
+    })
+
+    # --- 5. LOGIC MỞ WEBCAM (TÍNH TỌA ĐỘ ẢO CHO WPF) ---
     $btnStartCam.Add_Click({
-        if ($btnStartCam.Text -eq "BẬT MÁY ẢNH") {
+        if ($btnStartCam.Content -eq "BẬT MÁY ẢNH") {
             $idx = $cbCam.SelectedIndex
-            # Tạo cửa sổ capture
-            $handle = [VietToolbox.HardwareAPI]::capCreateCaptureWindowA("Webcam", 0x50000000, 0, 0, 330, 260, $camScreen.Handle, 0)
-            $btnStartCam.Tag = $handle 
             
-            # 1. Kết nối tới Driver (WM_CAP_DRIVER_CONNECT = 0x40a)
-            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40a, $idx, 0) | Out-Null
+            # Lấy HWND của cửa sổ WPF chính
+            $interop = New-Object System.Windows.Interop.WindowInteropHelper($form)
+            $hwnd = $interop.Handle
             
-            # 2. Set Preview Rate (WM_CAP_SET_PREVIEWRATE = 0x435) 
-            # Thay vì 1ms, mình để 40ms (khoảng 25-30 khung hình/giây) cho ổn định
-            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x435, 40, 0) | Out-Null
+            # Tính toán DPI và Tọa độ thực tế của khung nền đen
+            $source = [System.Windows.PresentationSource]::FromVisual($form)
+            $dpiX = $source.CompositionTarget.TransformToDevice.M11
+            $dpiY = $source.CompositionTarget.TransformToDevice.M22
             
-            # 3. Ép Webcam co giãn hình cho khớp khung (WM_CAP_SET_SCALE = 0x433) -> Cực kỳ quan trọng để fix đứng hình
-            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x433, 1, 0) | Out-Null
+            $point = $CamScreen.TranslatePoint([System.Windows.Point]::new(0,0), $form)
+            $x = [int]($point.X * $dpiX)
+            $y = [int]($point.Y * $dpiY)
+            $w = [int]($CamScreen.ActualWidth * $dpiX)
+            $h = [int]($CamScreen.ActualHeight * $dpiY)
+
+            # Khởi tạo cửa sổ Capture đè lên tọa độ đã tính
+            $camHandle = [VietToolbox.HardwareAPI]::capCreateCaptureWindowA("Webcam", 0x50000000, $x, $y, $w, $h, $hwnd, 0)
+            $btnStartCam.Tag = $camHandle 
             
-            # 4. Bật chế độ Preview (WM_CAP_SET_PREVIEW = 0x432)
-            [VietToolbox.HardwareAPI]::SendMessage($handle, 0x432, 1, 0) | Out-Null
+            # Kết nối & Cấu hình luồng ảnh
+            [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x40a, $idx, 0) | Out-Null
+            [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x435, 40, 0) | Out-Null # 40ms Preview rate
+            [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x433, 1, 0) | Out-Null  # Co giãn theo khung
+            [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x432, 1, 0) | Out-Null  # Mở Preview
             
-            $btnStartCam.Text = "TẮT MÁY ẢNH"; $btnStartCam.BackColor = "#E74C3C"
-            $cbCam.Enabled = $false
+            $btnStartCam.Content = "TẮT MÁY ẢNH"; $btnStartCam.Background = "#E74C3C"
+            $cbCam.IsEnabled = $false
         } else {
-            $handle = $btnStartCam.Tag
-            if ($null -ne $handle) { 
-                # Ngắt kết nối Driver (WM_CAP_DRIVER_DISCONNECT = 0x40b)
-                [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40b, 0, 0) | Out-Null 
+            $camHandle = $btnStartCam.Tag
+            if ($null -ne $camHandle) { 
+                [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x40b, 0, 0) | Out-Null 
             }
             $btnStartCam.Tag = $null
-            $btnStartCam.Text = "BẬT MÁY ẢNH"; $btnStartCam.BackColor = "#0068FF"
-            $cbCam.Enabled = $true
-            $camScreen.Refresh()
+            $btnStartCam.Content = "BẬT MÁY ẢNH"; $btnStartCam.Background = "#0068FF"
+            $cbCam.IsEnabled = $true
         }
     })
 
-    $form.Add_FormClosing({
-        $handle = $btnStartCam.Tag
-        if ($null -ne $handle) { [VietToolbox.HardwareAPI]::SendMessage($handle, 0x40b, 0, 0) | Out-Null }
+    # Dọn dẹp thiết bị khi đóng cửa sổ
+    $form.Add_Closing({
+        $camHandle = $btnStartCam.Tag
+        if ($null -ne $camHandle) { [VietToolbox.HardwareAPI]::SendMessage($camHandle, 0x40b, 0, 0) | Out-Null }
         [VietToolbox.HardwareAPI]::mciSendString("close recsound", $null, 0, [IntPtr]::Zero) | Out-Null
     })
 
