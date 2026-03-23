@@ -1,202 +1,218 @@
-﻿# ==============================================================================
-# VIETTOOLBOX: CHẨN ĐOÁN PRO (V69.2 - THÊM NÚT MINIMIZE)
-# LƯU Ý: Vẫn phải Save As -> Encoding: UTF-8 with BOM nhé ông!
-# ==============================================================================
+﻿# ==========================================================
+# VIETTOOLBOX: CHẨN ĐOÁN PRO (WPF V69.6 - FIX ĐƠ & KÍNH LÚP CHẠY)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# ==========================================================
 
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell.exe -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    break
-}
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-[System.Windows.Forms.Application]::EnableVisualStyles()
+$LogicChanDoanProV69_6 = {
+    $script:ReportData = [PSCustomObject]@{ SFC = "Chưa quét"; DISM = "Chưa quét"; Latency = 0; Processes = 0; Status = "OK" }
+    $script:StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
+    $script:UserStopped = $false
+    $script:CurrentStep = 0 # 0: SFC, 1: DISM, 2: Done
+    $script:SubProcess = $null
 
-# --- 🎯 BẢNG MÀU CHUYÊN NGHIỆP (DARK THEME) ---
-$Color_BG = [System.Drawing.ColorTranslator]::FromHtml("#1E1E1E") 
-$Color_Box = [System.Drawing.ColorTranslator]::FromHtml("#2D2D2D") 
-$Color_Text = [System.Drawing.ColorTranslator]::FromHtml("#E0E0E0") 
-$Color_Sub = [System.Drawing.ColorTranslator]::FromHtml("#A0A0A0") 
-$Color_Accent = [System.Drawing.ColorTranslator]::FromHtml("#0078D7") # Xanh Windows
-$Color_Danger = [System.Drawing.ColorTranslator]::FromHtml("#D32F2F") # Đỏ
-$Color_Success = [System.Drawing.ColorTranslator]::FromHtml("#388E3C") # Xanh lá
-
-# Font chuẩn
-$Font_Title = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
-$Font_Text = New-Object System.Drawing.Font("Segoe UI", 11)
-$Font_Mono = New-Object System.Drawing.Font("Consolas", 11, [System.Drawing.FontStyle]::Bold)
-$Font_Btn = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-
-# Ép ký tự bằng BOM & UTF32 để hiện icon thực tế
-$Chu_D = [char]0x0110 # Đ
-$Icon_Disk = [char]::ConvertFromUtf32(0x1F4BE) # 💾
-$Icon_Proc = [char]::ConvertFromUtf32(0x1F4CA) # 📊
-$Icon_Scan = [char]::ConvertFromUtf32(0x1F50D) # 🔍
-$Icon_Stop = [char]::ConvertFromUtf32(0x26D4)  # ⛔
-$Icon_V = [char]::ConvertFromUtf32(0x2705) # ✅
-$Icon_X = [char]::ConvertFromUtf32(0x274C) # ❌
-$Spinner = @("|", "/", "-", "\")
-
-$script:ReportData = @{ SFC = ""; DISM = ""; Latency = ""; Processes = ""; Status = "OK" }
-$script:CurrentTask = 0
-$script:GlobalProc = $null
-$script:StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
-$script:UserStopped = $false
-$script:AnimIndex = 0
-$script:ProgressValue = 0 # Biến chạy phần trăm (0 đến 100)
-
-# --- 1. GIAO DIỆN ĐANG QUÉT ---
-$diagForm = New-Object System.Windows.Forms.Form
-$diagForm.Text = "VietToolbox Pro"; $diagForm.Size = "520,280"
-$diagForm.StartPosition = "CenterScreen"
-# [FIX] Đổi thành FixedSingle và bật nút Minimize
-$diagForm.FormBorderStyle = "FixedSingle" 
-$diagForm.MinimizeBox = $true             
-$diagForm.MaximizeBox = $false            
-$diagForm.TopMost = $true; $diagForm.BackColor = $Color_BG
-
-$container = New-Object System.Windows.Forms.Panel
-$container.Location = "20,20"; $container.Size = "465,205"; $container.BackColor = $Color_Box
-$container.BorderStyle = "FixedSingle"
-
-$diagLabel = New-Object System.Windows.Forms.Label
-$diagLabel.Text = "$Icon_Scan Đang khởi tạo..."; $diagLabel.Location = "20,20"; $diagLabel.Size = "340,30"
-$diagLabel.Font = $Font_Title; $diagLabel.ForeColor = $Color_Accent
-
-$timeLabel = New-Object System.Windows.Forms.Label
-$timeLabel.Text = "00:00"; $timeLabel.Location = "360,25"; $timeLabel.Size = "80,25"; $timeLabel.TextAlign = "MiddleRight"
-$timeLabel.ForeColor = $Color_Accent; $timeLabel.Font = $Font_Mono
-
-# [CÁCH CHẾ PROGRESS BAR BẰNG PANEL]
-$barBg = New-Object System.Windows.Forms.Panel
-$barBg.Location = "20,70"; $barBg.Size = "420,20"; $barBg.BackColor = [System.Drawing.ColorTranslator]::FromHtml("#424242")
-
-$barFill = New-Object System.Windows.Forms.Panel
-$barFill.Location = "0,0"; $barFill.Size = "0,20"; $barFill.BackColor = $Color_Accent
-$barBg.Controls.Add($barFill)
-
-$btnStop = New-Object System.Windows.Forms.Button
-$btnStop.Text = "$Icon_Stop HỦY BỎ QUÉT"; $btnStop.Location = "155,110"; $btnStop.Size = "150,45"
-$btnStop.BackColor = $Color_Danger; $btnStop.ForeColor = "White"; $btnStop.FlatStyle = "Flat"
-$btnStop.FlatAppearance.BorderSize = 0; $btnStop.Cursor = [System.Windows.Forms.Cursors]::Hand
-$btnStop.Font = $Font_Btn
-$btnStop.Add_Click({
-    $script:UserStopped = $true
-    if ($null -ne $script:GlobalProc) { try { $script:GlobalProc.Kill() } catch {} }
-    $diagTimer.Stop(); $diagForm.Close()
-})
-
-$diagSub = New-Object System.Windows.Forms.Label
-$diagSub.Text = "Tiến trình nội soi dự kiến 3 - >10 phút. Vui lòng không tắt máy."; $diagSub.Location = "10,170"; $diagSub.Size = "440,25"
-$diagSub.ForeColor = $Color_Sub; $diagSub.Font = New-Object System.Drawing.Font("Segoe UI", 9, [System.Drawing.FontStyle]::Italic)
-$diagSub.TextAlign = "MiddleCenter"
-
-$container.Controls.AddRange(@($diagLabel, $timeLabel, $barBg, $btnStop, $diagSub))
-$diagForm.Controls.Add($container)
-
-# --- 2. HÀM HIỆN BẢNG KẾT QUẢ ---
-function Show-Ket-Qua-Pro {
-    $resForm = New-Object System.Windows.Forms.Form
-    $resForm.Text = "BÁO CÁO TÌNH TRẠNG VIETTOOLBOX"; $resForm.Size = "500,450"
-    $resForm.StartPosition = "CenterScreen"; $resForm.BackColor = $Color_BG
-    $resForm.FormBorderStyle = "FixedDialog"; $resForm.MaximizeBox = $false
-
-    $title = New-Object System.Windows.Forms.Label
-    $title.Text = "KẾT QUẢ CHẨN ĐOÁN"; $title.Location = "0,20"; $title.Size = "500,40"
-    $title.TextAlign = "MiddleCenter"; $title.Font = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
-    $title.ForeColor = $Color_Accent
-
-    $box = New-Object System.Windows.Forms.Panel
-    $box.Location = "30,70"; $box.Size = "425,250"; $box.BackColor = $Color_Box; $box.BorderStyle = "FixedSingle"
-
-    $lblSFC = New-Object System.Windows.Forms.Label
-    $iconS = if ($script:ReportData.SFC -match "Tốt") { $Icon_V } else { $Icon_X }
-    $lblSFC.Text = "$iconS File hệ thống: " + $script:ReportData.SFC; $lblSFC.Location = "20,30"; $lblSFC.Size = "380,30"
-    $lblSFC.Font = $Font_Text; $lblSFC.ForeColor = if ($script:ReportData.SFC -match "Tốt") { $Color_Success } else { $Color_Danger }
-
-    $lblDISM = New-Object System.Windows.Forms.Label
-    $iconD = if ($script:ReportData.DISM -match "Sạch") { $Icon_V } else { $Icon_X }
-    $lblDISM.Text = "$iconD Kho ảnh Windows: " + $script:ReportData.DISM; $lblDISM.Location = "20,75"; $lblDISM.Size = "380,30"
-    $lblDISM.Font = $Font_Text; $lblDISM.ForeColor = if ($script:ReportData.DISM -match "Sạch") { $Color_Success } else { $Color_Danger }
-
-    $lblLat = New-Object System.Windows.Forms.Label
-    $lblLat.Text = "$Icon_Disk Độ trễ ổ cứng: " + $script:ReportData.Latency + " ms"; $lblLat.Location = "20,120"; $lblLat.Size = "380,30"
-    $lblLat.Font = $Font_Text; $lblLat.ForeColor = $Color_Text
-
-    $lblProc = New-Object System.Windows.Forms.Label
-    $lblProc.Text = "$Icon_Proc Tiến trình ngầm: " + $script:ReportData.Processes + " Processes"; $lblProc.Location = "20,165"; $lblProc.Size = "380,30"
-    $lblProc.Font = $Font_Text; $lblProc.ForeColor = $Color_Text
-
-    $advice = New-Object System.Windows.Forms.Label
-    $adviceText = if ($script:ReportData.Status -eq "OK") { "✅ MÁY ĐANG HOẠT ĐỘNG TỐT" } else { "⚠️ CẦN CHẠY BỘ SỬA LỖI CHUYÊN SÂU" }
-    $advice.Text = $adviceText; $advice.Location = "20,210"; $advice.Size = "380,30"; $advice.TextAlign = "MiddleCenter"
-    $advice.Font = New-Object System.Drawing.Font("Segoe UI", 11, [System.Drawing.FontStyle]::Bold)
-    $advice.ForeColor = if ($script:ReportData.Status -eq "OK") { $Color_Accent } else { [System.Drawing.ColorTranslator]::FromHtml("#FF9100") }
-
-    $box.Controls.AddRange(@($lblSFC, $lblDISM, $lblLat, $lblProc, $advice))
-
-    $btnOk = New-Object System.Windows.Forms.Button
-    $btnOk.Text = "ĐÃ HIỂU"; $btnOk.Location = "175,340"; $btnOk.Size = "150,45"
-    $btnOk.BackColor = $Color_Accent; $btnOk.ForeColor = "White"; $btnOk.FlatStyle = "Flat"
-    $btnOk.FlatAppearance.BorderSize = 0; $btnOk.Font = $Font_Btn; $btnOk.Cursor = [System.Windows.Forms.Cursors]::Hand
-    $btnOk.Add_Click({ $resForm.Close() })
-
-    $resForm.Controls.AddRange(@($title, $box, $btnOk))
-    $resForm.ShowDialog()
-}
-
-# --- 3. BỘ NÃO TIMER ---
-$diagTimer = New-Object System.Windows.Forms.Timer
-$diagTimer.Interval = 200 
-$diagTimer.Add_Tick({
-    $timeLabel.Text = "{0:00}:{1:00}" -f $script:StopWatch.Elapsed.Minutes, $script:StopWatch.Elapsed.Seconds
-    $script:AnimIndex++
-    $spin = $Spinner[$script:AnimIndex % 4]
-    $dots = "." * ($script:AnimIndex % 5)
-    $taskTitle = if ($script:CurrentTask -eq 0) { "nội soi File hệ thống" } else { "quét kho ảnh Windows" }
+    # --- 1. GIAO DIỆN XAML PURE WPF ---
+    $MaGiaoDien = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VietToolbox Pro" Width="520" Height="380"
+        WindowStartupLocation="CenterScreen" Background="Transparent" FontFamily="Segoe UI" 
+        AllowsTransparency="True" WindowStyle="None">
     
-    $diagLabel.Text = "[$spin] $Icon_Scan $Chu_D" + "ang $taskTitle $dots"
+    <Window.Resources>
+        <Storyboard x:Key="ScanAnimation" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="ScanIcon" 
+                             Storyboard.TargetProperty="(Canvas.Left)"
+                             From="20" To="420" Duration="0:0:2" AutoReverse="True">
+                <DoubleAnimation.EasingFunction>
+                    <QuadraticEase EasingMode="EaseInOut"/>
+                </DoubleAnimation.EasingFunction>
+            </DoubleAnimation>
+        </Storyboard>
 
-    if ($null -eq $script:GlobalProc) {
-        if ($script:CurrentTask -eq 0) {
-            $p = New-Object System.Diagnostics.ProcessStartInfo -Property @{FileName="cmd.exe"; Arguments="/c sfc /verifyonly"; WindowStyle="Hidden"; CreateNoWindow=$true}
-            $script:GlobalProc = [System.Diagnostics.Process]::Start($p)
-        } elseif ($script:CurrentTask -eq 1) {
-            $p = New-Object System.Diagnostics.ProcessStartInfo -Property @{FileName="cmd.exe"; Arguments="/c dism /online /cleanup-image /checkhealth"; WindowStyle="Hidden"; CreateNoWindow=$true}
-            $script:GlobalProc = [System.Diagnostics.Process]::Start($p)
-        }
-    } else {
-        # Tăng phần trăm thanh giả lập
-        if ($script:ProgressValue -lt 98) { $script:ProgressValue += 1 }
-        
-        # Cập nhật chiều dài của thanh màu Xanh
-        $barFill.Width = [math]::Round(($script:ProgressValue / 100) * $barBg.Width)
+        <Style x:Key="TitleBarButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="Foreground" Value="#0078D7"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Width" Value="40"/>
+            <Setter Property="Height" Value="30"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
 
-        if ($script:GlobalProc.HasExited) {
-            $code = $script:GlobalProc.ExitCode
-            if ($script:CurrentTask -eq 0) {
-                $script:ReportData.SFC = if ($code -eq 0) { "Tốt" } else { "Bị lỗi" }
-                if ($code -ne 0) { $script:ReportData.Status = "FAIL" }
-                $script:CurrentTask = 1; $script:ProgressValue = 50
-            } elseif ($script:CurrentTask -eq 1) {
-                $script:ReportData.DISM = if ($code -eq 0) { "Sạch" } else { "Bị hỏng" }
-                if ($code -ne 0) { $script:ReportData.Status = "FAIL" }
-                $script:CurrentTask = 2; $script:ProgressValue = 100
+    <Border Background="#2D2D2D" CornerRadius="12" BorderBrush="#3F3F3F" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="*"/>
+            </Grid.RowDefinitions>
+
+            <Grid Name="TitleBar" Grid.Row="0" Background="#252526" Height="35">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="VietToolbox Pro - Chẩn Đoán Hệ Thống" Foreground="Gray" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="11"/>
+                <Button Name="btnMinimize" Grid.Column="1" Content="—" Style="{StaticResource TitleBarButtonStyle}" Margin="0,0,5,0"/>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="25,15,25,25">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="50"/> <RowDefinition Height="*"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                </Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="0,0,0,15">
+                    <TextBlock Name="txtStatus" Text="🔍 Đang khởi tạo..." FontSize="18" FontWeight="Bold" Foreground="#0078D7" VerticalAlignment="Center"/>
+                    <TextBlock Name="txtTimer" Text="00:00" FontFamily="Consolas" FontSize="16" Foreground="#0078D7" HorizontalAlignment="Right" VerticalAlignment="Center"/>
+                </DockPanel>
+
+                <Border Grid.Row="1" Height="15" Background="#424242" CornerRadius="7" ClipToBounds="True">
+                    <ProgressBar Name="pgBar" Minimum="0" Maximum="100" Value="0" Background="Transparent" BorderThickness="0" Foreground="#0078D7" IsIndeterminate="True"/>
+                </Border>
+
+                <Canvas Grid.Row="2" VerticalAlignment="Center">
+                    <TextBlock Name="ScanIcon" Text="🔍" FontSize="26" Canvas.Top="5"/>
+                </Canvas>
+
+                <TextBlock Name="txtDetail" Grid.Row="3" Text="Đang chuẩn bị nội soi..." Foreground="#A0A0A0" FontSize="13" 
+                           FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+
+                <Button Name="btnHuy" Grid.Row="4" Content="⛔ HỦY BỎ QUÉT" Width="160" Height="40" Background="#D32F2F" Foreground="White" FontWeight="Bold" Margin="0,15,0,10">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
+                </Button>
+
+                <TextBlock Grid.Row="5" Text="Tiến trình dự kiến 3-10 phút. Vui lòng không tắt máy." Foreground="#666666" FontSize="11" HorizontalAlignment="Center"/>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
+"@
+
+    $DocChuoi = New-Object System.IO.StringReader($MaGiaoDien)
+    $DocXml = [System.Xml.XmlReader]::Create($DocChuoi)
+    $window = [Windows.Markup.XamlReader]::Load($DocXml)
+
+    $TitleBar = $window.FindName("TitleBar")
+    $btnMinimize = $window.FindName("btnMinimize")
+    $txtStatus = $window.FindName("txtStatus")
+    $txtTimer = $window.FindName("txtTimer")
+    $txtDetail = $window.FindName("txtDetail")
+    $pgBar = $window.FindName("pgBar")
+    $btnHuy = $window.FindName("btnHuy")
+    $ScanAnim = $window.Resources["ScanAnimation"]
+
+    # --- SỰ KIỆN GIAO DIỆN ---
+    $TitleBar.Add_MouseLeftButtonDown({ $window.DragMove() })
+    $btnMinimize.Add_Click({ $window.WindowState = [System.Windows.WindowState]::Minimized })
+    $btnHuy.Add_Click({ 
+        $script:UserStopped = $true
+        if ($null -ne $script:SubProcess) { try { Stop-Process -Id $script:SubProcess.Id -Force } catch {} }
+        $window.Close() 
+    })
+
+    # --- BỘ NÃO XỬ LÝ (KHÔNG GÂY ĐƠ) ---
+    $MainTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $MainTimer.Interval = [TimeSpan]::FromMilliseconds(500)
+    $MainTimer.Add_Tick({
+        # 1. Cập nhật đồng hồ
+        $txtTimer.Text = "{0:00}:{1:00}" -f $script:StopWatch.Elapsed.Minutes, $script:StopWatch.Elapsed.Seconds
+
+        # 2. Quản lý các bước quét (State Machine)
+        if ($script:UserStopped) { $MainTimer.Stop(); return }
+
+        switch ($script:CurrentStep) {
+            0 { # BẮT ĐẦU QUÉT SFC
+                $txtStatus.Text = "📊 Đang nội soi File hệ thống..."
+                $txtDetail.Text = "SFC đang kiểm tra tính toàn vẹn của tệp tin hệ thống Windows."
+                $script:SubProcess = Start-Process "cmd.exe" -ArgumentList "/c sfc /verifyonly" -WindowStyle Hidden -PassThru
+                $script:CurrentStep = 0.5 # Trạng thái đang đợi SFC
             }
-            $script:GlobalProc = $null
+            0.5 { # ĐỢI SFC XONG
+                if ($script:SubProcess.HasExited) {
+                    $script:ReportData.SFC = if ($script:SubProcess.ExitCode -eq 0) { "Tốt" } else { "Bị lỗi" }
+                    if ($script:SubProcess.ExitCode -ne 0) { $script:ReportData.Status = "FAIL" }
+                    $script:CurrentStep = 1 # Chuyển sang DISM
+                    $pgBar.Value = 50; $pgBar.IsIndeterminate = $false
+                }
+            }
+            1 { # BẮT ĐẦU QUÉT DISM
+                $txtStatus.Text = "💾 Đang quét kho ảnh Windows..."
+                $txtDetail.Text = "DISM đang kiểm tra lỗi trong Component Store (Kho ảnh nguồn)."
+                $pgBar.IsIndeterminate = $true
+                $script:SubProcess = Start-Process "cmd.exe" -ArgumentList "/c dism /online /cleanup-image /checkhealth" -WindowStyle Hidden -PassThru
+                $script:CurrentStep = 1.5 # Trạng thái đang đợi DISM
+            }
+            1.5 { # ĐỢI DISM XONG
+                if ($script:SubProcess.HasExited) {
+                    $script:ReportData.DISM = if ($script:SubProcess.ExitCode -eq 0) { "Sạch" } else { "Bị hỏng" }
+                    if ($script:SubProcess.ExitCode -ne 0) { $script:ReportData.Status = "FAIL" }
+                    $script:CurrentStep = 2 # Hoàn tất
+                }
+            }
+            2 { # TỔNG HỢP VÀ KẾT THÚC
+                $MainTimer.Stop()
+                $perf = Get-Counter -Counter "\PhysicalDisk(_Total)\Avg. Disk sec/Read" -MaxSamples 1 -ErrorAction SilentlyContinue
+                $script:ReportData.Latency = if ($perf) { [int]($perf.CounterSamples[0].CookedValue * 1000) } else { 0 }
+                $script:ReportData.Processes = (Get-Process).Count
+                $window.Close()
+                Show-Ket-Qua-Pro
+            }
         }
-    }
+    })
 
-    if ($script:CurrentTask -eq 2) {
-        $diagTimer.Stop(); $script:StopWatch.Stop()
-        $barFill.Width = $barBg.Width # Ép đầy thanh
-        $perf = Get-Counter -Counter "\PhysicalDisk(_Total)\Avg. Disk sec/Read" -MaxSamples 1
-        $script:ReportData.Latency = [int]($perf.CounterSamples[0].CookedValue * 1000)
-        $script:ReportData.Processes = (Get-Process).Count
-        $diagForm.Close()
-    }
-})
+    $window.Add_ContentRendered({
+        $ScanAnim.Begin($window) # Chạy kính lúp
+        $MainTimer.Start()       # Chạy bộ não xử lý
+    })
 
-$diagForm.Add_Shown({ $diagTimer.Start() })
-$diagForm.ShowDialog() | Out-Null
+    $window.ShowDialog() | Out-Null
+}
 
-if ($script:CurrentTask -eq 2 -and -not $script:UserStopped) { Show-Ket-Qua-Pro }
+# --- HÀM HIỆN KẾT QUẢ ---
+function Show-Ket-Qua-Pro {
+    $xamlRes = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        Title="Kết Quả Chẩn Đoán" Width="500" Height="450" WindowStartupLocation="CenterScreen" 
+        Background="#1E1E1E" FontFamily="Segoe UI" ResizeMode="NoResize">
+    <Grid Margin="30">
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Text="KẾT QUẢ CHẨN ĐOÁN PRO" FontSize="22" FontWeight="Bold" Foreground="#0078D7" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+        <Border Grid.Row="1" Background="#2D2D2D" CornerRadius="10" Padding="20">
+            <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="✅ File hệ thống: $($script:ReportData.SFC)" FontSize="16" Foreground="White" Margin="0,10"/>
+                <TextBlock Text="📦 Kho ảnh Windows: $($script:ReportData.DISM)" FontSize="16" Foreground="White" Margin="0,10"/>
+                <TextBlock Text="💾 Độ trễ ổ cứng: $($script:ReportData.Latency) ms" FontSize="16" Foreground="#A0A0A0" Margin="0,10"/>
+                <TextBlock Text="📊 Tiến trình ngầm: $($script:ReportData.Processes) cái" FontSize="16" Foreground="#A0A0A0" Margin="0,10"/>
+                <Separator Background="#3F3F3F" Margin="0,15"/>
+                <TextBlock Text="$(if ($script:ReportData.Status -eq 'OK') { 'MÁY ĐANG HOẠT ĐỘNG TỐT' } else { 'CẦN CHẠY BỘ SỬA LỖI CHUYÊN SÂU' })" 
+                           FontSize="18" FontWeight="Bold" Foreground="$(if ($script:ReportData.Status -eq 'OK') { '#388E3C' } else { '#D32F2F' })" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+        <Button Name="btnOk" Grid.Row="2" Content="ĐÃ HIỂU" Width="150" Height="45" Background="#0078D7" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,20,0,0">
+            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
+        </Button>
+    </Grid>
+</Window>
+"@
+    $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$xamlRes)
+    $resWindow = [Windows.Markup.XamlReader]::Load($reader)
+    $resWindow.FindName("btnOk").Add_Click({ $resWindow.Close() })
+    $resWindow.ShowDialog() | Out-Null
+}
+
+&$LogicChanDoanProV69_6
