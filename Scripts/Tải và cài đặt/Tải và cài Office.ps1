@@ -1,182 +1,370 @@
 ﻿# ==========================================================
-# VIETTOOLBOX - OFFICE V180 (FULL OPTION - DEDICATED STATUS LABEL)
+# VIETTOOLBOX - OFFICE V182 (BẢN TRÙM CUỐI - TỰ ĐỘNG SHORTCUT)
 # ==========================================================
 
-# 1. ÉP CHẠY QUYỀN ADMINISTRATOR
+# 1. ÉP CHẠY QUYỀN QUẢN TRỊ VIÊN
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
 # 2. THIẾT LẬP TURBO (TỐI ƯU MẠNG & UTF8)
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 [System.Net.ServicePointManager]::DefaultConnectionLimit = 100
 [System.Net.ServicePointManager]::Expect100Continue = $false
 [System.Net.ServicePointManager]::UseNagleAlgorithm = $false
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing, System.Net.Http
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Drawing, System.Windows.Forms, System.Net.Http
 
 # --- CẤU HÌNH API DRIVE ---
 $B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
 $Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
 $Global:LogPath = Join-Path $env:TEMP "VietToolbox_Office_Log.txt"
 
-function Ghi-Log ($Message) {
-    $Time = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
-    "[$Time] $Message" | Out-File -FilePath $Global:LogPath -Append -Encoding UTF8
+function Ghi-NhatKy ($NoiDung) {
+    $ThoiGian = Get-Date -Format "dd/MM/yyyy HH:mm:ss"
+    "[$ThoiGian] $NoiDung" | Out-File -FilePath $Global:LogPath -Append -Encoding UTF8
 }
 
-$LogicCaiOfficeV180 = {
-    $rawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachOffice.csv"
-    $localPath = Join-Path $env:LOCALAPPDATA "VietToolbox_Office_Local.csv"
-    $script:CancelDL = $false; $script:PauseDL = $false
+$LogicCaiOfficeV182 = {
+    $LinkDuLieuGoc = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachOffice.csv"
+    $FileDuLieuMay = Join-Path $env:LOCALAPPDATA "VietToolbox_Office_Local.csv"
+    $script:HuyTai = $false; $script:TamDung = $false
 
-    $fNut = New-Object System.Drawing.Font("Segoe UI Bold", 10)
-    $fStd = New-Object System.Drawing.Font("Segoe UI Semibold", 10)
-    $fDash = New-Object System.Drawing.Font("Consolas", 10, [System.Drawing.FontStyle]::Bold)
+    # --- 1. GIAO DIỆN XAML WPF ---
+    $MaGiaoDien = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VIETTOOLBOX - OFFICE V182 (TỰ ĐỘNG SHORTCUT DESKTOP)" Width="850" Height="820" 
+        WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-    $form = New-Object System.Windows.Forms.Form
-    $form.Text = "VIETTOOLBOX - OFFICE V180 (BẢN TRÙM CUỐI - FULL OPTION)"; $form.Size = "820,860"; $form.BackColor = "White"; $form.StartPosition = "CenterScreen"
-    $form.FormBorderStyle = "FixedDialog"; $form.MaximizeBox = $false
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="TRUNG TÂM TRIỂN KHAI MICROSOFT OFFICE" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
+            <TextBlock Text="Tự động tải file, cài đặt ngầm và đưa Shortcut ra Desktop" Foreground="#666666"/>
+        </StackPanel>
 
-    # --- [DANH SÁCH OFFICE] ---
-    $lvOffice = New-Object System.Windows.Forms.ListView; $lvOffice.Size = "760,350"; $lvOffice.Location = "20,20"; $lvOffice.View = "Details"; $lvOffice.CheckBoxes = $true; $lvOffice.FullRowSelect = $true; $lvOffice.Font = $fStd; $lvOffice.GridLines = $true
-    [void]$lvOffice.Columns.Add("PHIÊN BẢN OFFICE", 450); [void]$lvOffice.Columns.Add("TRẠNG THÁI", 280); [void]$lvOffice.Columns.Add("ID/LINK", 0)
-    
-    # --- [LABEL TRẠNG THÁI HỆ THỐNG - MỚI] ---
-    $lbl7Check = New-Object System.Windows.Forms.Label; $lbl7Check.Text = "🔍 Đang kiểm tra hệ thống..."; $lbl7Check.Location = "20,375"; $lbl7Check.Size = "760,20"; $lbl7Check.Font = $fStd; $lbl7Check.ForeColor = "Orange"
+        <ListView Name="BangOffice" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" BorderThickness="1" Margin="0,0,0,10">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="45">
+                        <GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Check}"/></DataTemplate></GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                    <GridViewColumn Header="PHIÊN BẢN OFFICE" DisplayMemberBinding="{Binding Name}" Width="450"/>
+                    <GridViewColumn Header="TRẠNG THÁI" Width="250">
+                        <GridViewColumn.CellTemplate>
+                            <DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" FontWeight="Bold"/></DataTemplate>
+                        </GridViewColumn.CellTemplate>
+                    </GridViewColumn>
+                </GridView>
+            </ListView.View>
+        </ListView>
 
-    # --- [CHỌN THƯ MỤC LƯU] ---
-    $lblPath = New-Object System.Windows.Forms.Label; $lblPath.Text = "LƯU TẠI:"; $lblPath.Location = "20,405"; $lblPath.Size = "80,25"; $lblPath.Font = $fNut
-    $txtPath = New-Object System.Windows.Forms.TextBox; $txtPath.Location = "100,403"; $txtPath.Size = "510,30"; $txtPath.ReadOnly = $true; $txtPath.Font = $fStd
-    $txtPath.Text = if (Test-Path "D:\" ) { "D:\VietToolbox_Office" } else { "C:\VietToolbox_Office" }
-    $btnBrowse = New-Object System.Windows.Forms.Button; $btnBrowse.Text = "CHỌN THƯ MỤC"; $btnBrowse.Location = "625,401"; $btnBrowse.Size = "155,35"; $btnBrowse.FlatStyle = "Flat"; $btnBrowse.Font = $fNut
-    
-    # --- [PROGRESS & TỐC ĐỘ] ---
-    $lblStatus = New-Object System.Windows.Forms.Label; $lblStatus.Text = "Sẵn sàng..."; $lblStatus.Location = "20,460"; $lblStatus.Size = "150,20"; $lblStatus.Font = $fStd; $lblStatus.ForeColor = "#1565C0"
-    $lblSpeed = New-Object System.Windows.Forms.Label; $lblSpeed.Text = "-- MB/s | -- / -- MB"; $lblSpeed.Location = "180,460"; $lblSpeed.Size = "600,20"; $lblSpeed.TextAlign = "MiddleRight"; $lblSpeed.Font = $fDash; $lblSpeed.ForeColor = "#D84315"
-    $pgBar = New-Object System.Windows.Forms.ProgressBar; $pgBar.Location = "20,490"; $pgBar.Size = "760,30"
-    
-    # --- [NÚT BẤM CHỨC NĂNG] ---
-    $btnPause = New-Object System.Windows.Forms.Button; $btnPause.Text = "TẠM DỪNG"; $btnPause.Size = "240,55"; $btnPause.Location = "20,550"; $btnPause.Enabled = $false; $btnPause.FlatStyle = "Flat"; $btnPause.Font = $fNut
-    $btnResume = New-Object System.Windows.Forms.Button; $btnResume.Text = "TIẾP TỤC"; $btnResume.Size = "240,55"; $btnResume.Location = "280,550"; $btnResume.Enabled = $false; $btnResume.FlatStyle = "Flat"; $btnResume.Font = $fNut
-    $btnCancel = New-Object System.Windows.Forms.Button; $btnCancel.Text = "HỦY LỆNH"; $btnCancel.Size = "240,55"; $btnCancel.Location = "540,550"; $btnCancel.Enabled = $false; $btnCancel.FlatStyle = "Flat"; $btnCancel.Font = $fNut
+        <TextBlock Name="Nhan7Zip" Grid.Row="2" Text="🔍 Đang kiểm tra hệ thống..." FontWeight="SemiBold" Foreground="#FF9800" Margin="0,0,0,15"/>
 
-    $btnLog = New-Object System.Windows.Forms.Button; $btnLog.Text = "NHẬT KÝ"; $btnLog.Size = "240,65"; $btnLog.Location = "20,630"; $btnLog.BackColor = "#607D8B"; $btnLog.ForeColor = "White"; $btnLog.FlatStyle = "Flat"; $btnLog.Font = $fNut
-    $btnSync = New-Object System.Windows.Forms.Button; $btnSync.Text = "LÀM MỚI LIST"; $btnSync.Size = "240,65"; $btnSync.Location = "280,630"; $btnSync.BackColor = "#455A64"; $btnSync.ForeColor = "White"; $btnSync.FlatStyle = "Flat"; $btnSync.Font = $fNut
-    $btnInstall = New-Object System.Windows.Forms.Button; $btnInstall.Text = "CÀI ĐẶT NGAY"; $btnInstall.Size = "240,65"; $btnInstall.Location = "540,630"; $btnInstall.BackColor = "#D32F2F"; $btnInstall.ForeColor = "White"; $btnInstall.FlatStyle = "Flat"; $btnInstall.Font = $fNut
+        <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#DDDDDD" BorderThickness="1">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="80"/>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="150"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Grid.Column="0" Text="LƯU TẠI:" FontWeight="Bold" VerticalAlignment="Center" Foreground="#333333"/>
+                <TextBox Name="OTimDuongDan" Grid.Column="1" Height="30" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0" Background="#F0F0F0" Padding="5,0"/>
+                <Button Name="NutChonThuMuc" Grid.Column="2" Content="CHỌN THƯ MỤC" Height="35" Background="#ECEFF1" FontWeight="Bold" Cursor="Hand">
+                    <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></Button.Resources>
+                </Button>
+            </Grid>
+        </Border>
 
-    $form.Controls.AddRange(@($lvOffice, $lbl7Check, $lblPath, $txtPath, $btnBrowse, $lblStatus, $lblSpeed, $pgBar, $btnPause, $btnResume, $btnCancel, $btnLog, $btnSync, $btnInstall))
+        <Grid Grid.Row="4" Margin="0,0,0,5">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <TextBlock Name="NhanTrangThai" Grid.Column="0" Text="Sẵn sàng..." FontWeight="SemiBold" Foreground="#1565C0" FontSize="14"/>
+            <TextBlock Name="NhanTocDo" Grid.Column="1" Text="-- MB/s | -- / -- MB" FontWeight="Bold" FontFamily="Consolas" Foreground="#D84315" TextAlignment="Right" FontSize="14"/>
+        </Grid>
 
-    # --- [LOGIC TỰ ĐỘNG KIỂM TRA 7-ZIP KHI MỞ] ---
-    $form.Add_Shown({
-        $7zPath = "$env:ProgramFiles\7-Zip\7z.exe"
-        if (-not (Test-Path $7zPath)) { $7zPath = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+        <ProgressBar Name="ThanhChay" Grid.Row="5" Height="25" Margin="0,0,0,20" Foreground="#2E7D32" Background="#E0E0E0" BorderThickness="0"/>
+
+        <Grid Grid.Row="6" Margin="0,0,0,10">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Name="NutTamDung" Grid.Column="0" Content="TẠM DỪNG" Height="45" Background="#FFF59D" FontWeight="Bold" IsEnabled="False" Cursor="Hand"/>
+            <Button Name="NutTiepTuc" Grid.Column="2" Content="TIẾP TỤC" Height="45" Background="#A5D6A7" FontWeight="Bold" IsEnabled="False" Cursor="Hand"/>
+            <Button Name="NutHuy" Grid.Column="4" Content="HỦY LỆNH" Height="45" Background="#EF9A9A" FontWeight="Bold" IsEnabled="False" Cursor="Hand"/>
+        </Grid>
+
+        <Grid Grid.Row="7">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/><ColumnDefinition Width="10"/><ColumnDefinition Width="*"/>
+            </Grid.ColumnDefinitions>
+            <Button Name="NutNhatKy" Grid.Column="0" Content="NHẬT KÝ" Height="55" Background="#607D8B" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
+            <Button Name="NutLamMoi" Grid.Column="2" Content="LÀM MỚI DANH SÁCH" Height="55" Background="#455A64" Foreground="White" FontWeight="Bold" Cursor="Hand"/>
+            <Button Name="NutCaiDat" Grid.Column="4" Content="🚀 CÀI ĐẶT NGAY" Height="55" Background="#D32F2F" Foreground="White" FontSize="16" FontWeight="Bold" Cursor="Hand"/>
+        </Grid>
+    </Grid>
+</Window>
+"@
+
+    # --- 2. KHỞI TẠO CỬA SỔ XAML ---
+    $DocChuoi = New-Object System.IO.StringReader($MaGiaoDien)
+    $DocXml = [System.Xml.XmlReader]::Create($DocChuoi)
+    $CuaSo = [Windows.Markup.XamlReader]::Load($DocXml)
+
+    # Ánh xạ biến
+    $BangOffice = $CuaSo.FindName("BangOffice"); $Nhan7Zip = $CuaSo.FindName("Nhan7Zip")
+    $OTimDuongDan = $CuaSo.FindName("OTimDuongDan"); $NutChonThuMuc = $CuaSo.FindName("NutChonThuMuc")
+    $NhanTrangThai = $CuaSo.FindName("NhanTrangThai"); $NhanTocDo = $CuaSo.FindName("NhanTocDo")
+    $ThanhChay = $CuaSo.FindName("ThanhChay")
+    $NutTamDung = $CuaSo.FindName("NutTamDung"); $NutTiepTuc = $CuaSo.FindName("NutTiepTuc"); $NutHuy = $CuaSo.FindName("NutHuy")
+    $NutNhatKy = $CuaSo.FindName("NutNhatKy"); $NutLamMoi = $CuaSo.FindName("NutLamMoi"); $NutCaiDat = $CuaSo.FindName("NutCaiDat")
+
+    $Global:DanhSachDuLieu = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
+    $BangOffice.ItemsSource = $Global:DanhSachDuLieu
+
+    $OTimDuongDan.Text = if (Test-Path "D:\") { "D:\VietToolbox_Office" } else { "C:\VietToolbox_Office" }
+
+    # --- 3. HÀM XỬ LÝ LÕI ---
+
+    # Hàm Tạo Shortcut Office ra Desktop
+    function Tao-LoiTatOffice {
+        $ThuMucOffice = @(
+            "$env:ProgramFiles\Microsoft Office\root\Office16",
+            "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16",
+            "$env:ProgramFiles\Microsoft Office\Office16",
+            "${env:ProgramFiles(x86)}\Microsoft Office\Office16"
+        )
+        $DanhSachApp = @{
+            "Word" = "WINWORD.EXE"
+            "Excel" = "EXCEL.EXE"
+            "PowerPoint" = "POWERPNT.EXE"
+            "Access" = "MSACCESS.EXE"
+            "Outlook" = "OUTLOOK.EXE"
+        }
         
-        if (-not (Test-Path $7zPath)) {
-            $lbl7Check.Text = "⚠️ Thiếu 7-Zip! Đang tự động tải và cài đặt..."; $lbl7Check.ForeColor = "Red"
-            $form.Refresh()
+        # Đẩy thẳng ra Desktop của Public (Máy khách nào log in vào cũng thấy)
+        $ManHinhChinh = [Environment]::GetFolderPath("CommonDesktopDirectory")
+        $WshShell = New-Object -ComObject WScript.Shell
+
+        foreach ($DuongDan in $ThuMucOffice) {
+            if (Test-Path $DuongDan) {
+                foreach ($TenApp in $DanhSachApp.Keys) {
+                    $FileExe = Join-Path $DuongDan $DanhSachApp[$TenApp]
+                    if (Test-Path $FileExe) {
+                        $LoiTat = Join-Path $ManHinhChinh "$TenApp.lnk"
+                        $BanSao = $WshShell.CreateShortcut($LoiTat)
+                        $BanSao.TargetPath = $FileExe
+                        $BanSao.Save()
+                    }
+                }
+                break # Tìm thấy 1 bản 64 hoặc 32 bit rồi thì dừng, đỡ mất công chạy tiếp
+            }
+        }
+    }
+
+    function Tai-DuLieuLocal {
+        if (Test-Path $FileDuLieuMay) {
+            $Global:DanhSachDuLieu.Clear()
+            $csv = Import-Csv $FileDuLieuMay -Encoding UTF8
+            foreach ($r in $csv) { 
+                if ($r.Name) { 
+                    $Global:DanhSachDuLieu.Add([PSCustomObject]@{
+                        Check = $false
+                        Name = $r.Name
+                        Status = "Sẵn sàng"
+                        StatusColor = "Black"
+                        ID = $r.ID
+                    })
+                } 
+            }
+        }
+    }
+
+    $CuaSo.Add_ContentRendered({
+        Tai-DuLieuLocal
+        
+        $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"
+        if (-not (Test-Path $DuongDan7z)) { $DuongDan7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+        
+        if (-not (Test-Path $DuongDan7z)) {
+            $Nhan7Zip.Text = "⚠️ Thiếu 7-Zip! Đang tự động tải và cài đặt..."; $Nhan7Zip.Foreground = "#D32F2F"
+            [System.Windows.Forms.Application]::DoEvents()
             
-            $url7z = "https://www.7-zip.org/a/7z2408-x64.exe"
-            $path7z = Join-Path $env:TEMP "7z_setup.exe"
+            $Link7z = "https://www.7-zip.org/a/7z2408-x64.exe"
+            $FileCai7z = Join-Path $env:TEMP "7z_setup.exe"
             try {
-                (New-Object System.Net.WebClient).DownloadFile($url7z, $path7z)
-                Start-Process $path7z -ArgumentList "/S" -Wait -PassThru | Out-Null
-                $lbl7Check.Text = "✅ Đã tự cài 7-Zip thành công!"; $lbl7Check.ForeColor = "Green"
+                (New-Object System.Net.WebClient).DownloadFile($Link7z, $FileCai7z)
+                Start-Process $FileCai7z -ArgumentList "/S" -Wait -PassThru | Out-Null
+                $Nhan7Zip.Text = "✅ Đã tự cài 7-Zip thành công!"; $Nhan7Zip.Foreground = "#2E7D32"
             } catch {
-                $lbl7Check.Text = "❌ Lỗi cài 7-Zip! Vui lòng cài thủ công."; $lbl7Check.ForeColor = "Red"
+                $Nhan7Zip.Text = "❌ Lỗi cài 7-Zip! Vui lòng cài thủ công."; $Nhan7Zip.Foreground = "#D32F2F"
             }
         } else {
-            $lbl7Check.Text = "✅ Hệ thống: 7-Zip đã sẵn sàng!"; $lbl7Check.ForeColor = "Green"
+            $Nhan7Zip.Text = "✅ Hệ thống: 7-Zip đã sẵn sàng!"; $Nhan7Zip.Foreground = "#2E7D32"
         }
     })
 
-    # --- [HÀM DOWNLOAD DRIVE CORE] ---
-    function Download-Core ($InputSource, $DestPath) {
-        $HttpClient = New-Object System.Net.Http.HttpClient
-        $driveId = if ($InputSource -match "id=([a-zA-Z0-9\-_]+)") { $matches[1] } else { $InputSource }
-        $Url = "https://www.googleapis.com/drive/v3/files/$($driveId)?alt=media&key=$($Global:DriveApiKey)"
+    function Tai-FileCốtLõi ($IdNguon, $DichDen) {
+        $MayKhachHttp = New-Object System.Net.Http.HttpClient
+        $MaDrive = if ($IdNguon -match "id=([a-zA-Z0-9\-_]+)") { $matches[1] } else { $IdNguon }
+        $LienKet = "https://www.googleapis.com/drive/v3/files/$($MaDrive)?alt=media&key=$($Global:DriveApiKey)"
         try {
-            $response = $HttpClient.GetAsync($Url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
-            if (-not $response.IsSuccessStatusCode) { return "ERROR" }
-            $totalBytes = $response.Content.Headers.ContentLength
-            $stream = $response.Content.ReadAsStreamAsync().Result
-            $fileStream = [System.IO.File]::Create($DestPath)
-            $buffer = New-Object byte[] 4194304
-            $totalRead = 0; $sw = [System.Diagnostics.Stopwatch]::StartNew()
-            while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                if ($script:CancelDL) { 
-                    $fileStream.Dispose(); $stream.Dispose(); $HttpClient.Dispose()
-                    if (Test-Path $DestPath) { Remove-Item $DestPath -Force -ErrorAction SilentlyContinue }
-                    return "CANCELLED" 
+            $PhanHoi = $MayKhachHttp.GetAsync($LienKet, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
+            if (-not $PhanHoi.IsSuccessStatusCode) { return "LỖI" }
+            
+            $TongDungLuong = $PhanHoi.Content.Headers.ContentLength
+            $DongDuLieu = $PhanHoi.Content.ReadAsStreamAsync().Result
+            $FileLuu = [System.IO.File]::Create($DichDen)
+            $BoNhoDem = New-Object byte[] 4194304
+            $DaTaiDuoc = 0; $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
+            
+            while (($SoByte = $DongDuLieu.Read($BoNhoDem, 0, $BoNhoDem.Length)) -gt 0) {
+                if ($script:HuyTai) { 
+                    $FileLuu.Dispose(); $DongDuLieu.Dispose(); $MayKhachHttp.Dispose()
+                    if (Test-Path $DichDen) { Remove-Item $DichDen -Force -ErrorAction SilentlyContinue }
+                    return "ĐÃ_HỦY" 
                 }
-                while ($script:PauseDL) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
-                $fileStream.Write($buffer, 0, $bytesRead)
-                $totalRead += $bytesRead
-                if ($sw.ElapsedMilliseconds -ge 1000) {
-                    $speedMB = [Math]::Round(($totalRead / $sw.Elapsed.TotalSeconds) / 1MB, 2)
-                    $pgBar.Value = if ($totalBytes -gt 0) { [int](($totalRead / $totalBytes) * 100) } else { 0 }
-                    $lblSpeed.Text = "$speedMB MB/s | $([Math]::Round($totalRead/1MB,1)) MB"
+                
+                while ($script:TamDung) { 
+                    [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 
+                }
+                
+                $FileLuu.Write($BoNhoDem, 0, $SoByte)
+                $DaTaiDuoc += $SoByte
+                
+                if ($DongHo.ElapsedMilliseconds -ge 1000) {
+                    $TocDoMB = [Math]::Round(($DaTaiDuoc / $DongHo.Elapsed.TotalSeconds) / 1MB, 2)
+                    $PhanTram = if ($TongDungLuong -gt 0) { [int](($DaTaiDuoc / $TongDungLuong) * 100) } else { 0 }
+                    
+                    $CuaSo.Dispatcher.Invoke([action]{
+                        $ThanhChay.Value = $PhanTram
+                        $NhanTocDo.Text = "$TocDoMB MB/s | $([Math]::Round($DaTaiDuoc/1MB,1)) MB"
+                    })
                     [System.Windows.Forms.Application]::DoEvents()
                 }
             }
-            $fileStream.Dispose(); $stream.Dispose(); return "SUCCESS"
-        } catch { return "ERROR" }
+            $FileLuu.Dispose(); $DongDuLieu.Dispose(); return "THÀNH_CÔNG"
+        } catch { return "LỖI" }
     }
 
-    $btnInstall.Add_Click({
-        $items = @($lvOffice.CheckedItems); if ($items.Count -eq 0) { return }
-        $btnInstall.Enabled = $false; $btnCancel.Enabled = $true; $btnPause.Enabled = $true
-
-        foreach ($item in $items) {
-            $script:CancelDL = $false; $script:PauseDL = $false
-            $safeName = ($item.SubItems[0].Text -replace '[\\/:*?"<>|()[\]\s]', '_') + ".iso"
-            $destFile = Join-Path $txtPath.Text $safeName
-            if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory | Out-Null }
-
-            $item.SubItems[1].Text = "⏳ Đang tải..."; [System.Windows.Forms.Application]::DoEvents()
-            $res = Download-Core $item.SubItems[2].Text $destFile
-
-            if ($res -eq "SUCCESS") {
-                $item.SubItems[1].Text = "📦 Đang bung nén..."
-                $7z = "$env:ProgramFiles\7-Zip\7z.exe"; if (-not (Test-Path $7z)) { $7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
-                
-                if (Test-Path $7z) {
-                    $extDir = $destFile + "_Ext"
-                    $psi = New-Object System.Diagnostics.ProcessStartInfo -Property @{FileName=$7z; Arguments="x `"$destFile`" -o`"$extDir`" -y"; WindowStyle="Hidden"}
-                    [System.Diagnostics.Process]::Start($psi).WaitForExit()
-
-                    $setup = Get-ChildItem -Path $extDir -Filter "*.bat" -Recurse | Select-Object -First 1
-                    if (-not $setup) { $setup = Get-ChildItem -Path $extDir -Filter "setup.exe" -Recurse | Select-Object -First 1 }
-
-                    if ($setup) {
-                        $item.SubItems[1].Text = "⚙️ Đang cài..."
-                        Start-Process $setup.FullName -WorkingDirectory $setup.DirectoryName -Wait
-                        $item.SubItems[1].Text = "✅ Hoàn tất"
-                        Remove-Item $destFile -Force; Remove-Item $extDir -Recurse -Force -ErrorAction SilentlyContinue
-                    } else { $item.SubItems[1].Text = "❌ Không thấy Setup" }
-                } else { $item.SubItems[1].Text = "❌ Thiếu 7-Zip" }
-            } elseif ($res -eq "CANCELLED") { $item.SubItems[1].Text = "🛑 Đã hủy"; break }
+    # --- 4. SỰ KIỆN NÚT BẤM ---
+    $NutNhatKy.Add_Click({ if (Test-Path $Global:LogPath) { Start-Process "notepad.exe" $Global:LogPath } })
+    
+    $NutLamMoi.Add_Click({ 
+        try {
+            Invoke-WebRequest ($LinkDuLieuGoc + "?t=" + (Get-Date).Ticks) -OutFile $FileDuLieuMay
+            Tai-DuLieuLocal
+            $NhanTrangThai.Text = "Đã cập nhật danh sách mới nhất!"; $NhanTrangThai.Foreground = "#2E7D32"
+        } catch {
+            $NhanTrangThai.Text = "Lỗi kết nối khi cập nhật danh sách!"; $NhanTrangThai.Foreground = "#D32F2F"
         }
-        $btnInstall.Enabled = $true; $btnCancel.Enabled = $false; $btnPause.Enabled = $false
+    })
+    
+    $NutChonThuMuc.Add_Click({ 
+        $HopThoai = New-Object System.Windows.Forms.FolderBrowserDialog
+        if ($HopThoai.ShowDialog() -eq "OK") { $OTimDuongDan.Text = $HopThoai.SelectedPath } 
+    })
+    
+    $NutHuy.Add_Click({ $script:HuyTai = $true; $NhanTrangThai.Text = "Đang hủy lệnh..."; $NhanTrangThai.Foreground = "#D32F2F" })
+    $NutTamDung.Add_Click({ $script:TamDung = $true; $NutTamDung.IsEnabled = $false; $NutTiepTuc.IsEnabled = $true; $NhanTrangThai.Text = "Đang tạm dừng"; $NhanTrangThai.Foreground = "#FF9800" })
+    $NutTiepTuc.Add_Click({ $script:TamDung = $false; $NutTiepTuc.IsEnabled = $false; $NutTamDung.IsEnabled = $true; $NhanTrangThai.Text = "Đang tải tiếp..."; $NhanTrangThai.Foreground = "#1565C0" })
+
+    # TRÁI TIM: CÀI ĐẶT
+    $NutCaiDat.Add_Click({
+        $DaChon = @($Global:DanhSachDuLieu | Where-Object { $_.Check -eq $true })
+        if ($DaChon.Count -eq 0) { [System.Windows.Forms.MessageBox]::Show("Tuấn chưa chọn bản Office nào!", "Nhắc nhở"); return }
+
+        $NutCaiDat.IsEnabled = $false; $NutHuy.IsEnabled = $true; $NutTamDung.IsEnabled = $true
+        $NhanTrangThai.Foreground = "#1565C0"
+
+        foreach ($UngDung in $DaChon) {
+            $script:HuyTai = $false; $script:TamDung = $false
+            $TenAnToan = ($UngDung.Name -replace '[\\/:*?"<>|()[\]\s]', '_') + ".iso"
+            $FileLuuToanBo = Join-Path $OTimDuongDan.Text $TenAnToan
+            
+            if (-not (Test-Path $OTimDuongDan.Text)) { New-Item $OTimDuongDan.Text -ItemType Directory | Out-Null }
+
+            $UngDung.Status = "⏳ Đang tải file ISO..."; $UngDung.StatusColor = "#FF9800"
+            $NhanTrangThai.Text = "Đang tải: $($UngDung.Name)"
+            $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() })
+            [System.Windows.Forms.Application]::DoEvents()
+            
+            Ghi-NhatKy "Bắt đầu tải $($UngDung.Name) vào $FileLuuToanBo"
+            $KetQua = Tai-FileCốtLõi $UngDung.ID $FileLuuToanBo
+
+            if ($KetQua -eq "THÀNH_CÔNG") {
+                $UngDung.Status = "📦 Đang bung nén ISO..."; $UngDung.StatusColor = "#1565C0"
+                $NhanTrangThai.Text = "Đang bung nén dữ liệu cài đặt..."
+                $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() })
+                [System.Windows.Forms.Application]::DoEvents()
+
+                $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"
+                if (-not (Test-Path $DuongDan7z)) { $DuongDan7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+                
+                if (Test-Path $DuongDan7z) {
+                    $ThuMucGiaiNen = $FileLuuToanBo + "_Ext"
+                    $LenhGiaiNen = New-Object System.Diagnostics.ProcessStartInfo -Property @{FileName=$DuongDan7z; Arguments="x `"$FileLuuToanBo`" -o`"$ThuMucGiaiNen`" -y"; WindowStyle="Hidden"}
+                    [System.Diagnostics.Process]::Start($LenhGiaiNen).WaitForExit()
+
+                    $FileCaiDat = Get-ChildItem -Path $ThuMucGiaiNen -Filter "*.bat" -Recurse | Select-Object -First 1
+                    if (-not $FileCaiDat) { $FileCaiDat = Get-ChildItem -Path $ThuMucGiaiNen -Filter "setup.exe" -Recurse | Select-Object -First 1 }
+
+                    if ($FileCaiDat) {
+                        $UngDung.Status = "⚙️ Đang chạy cài đặt..."; $UngDung.StatusColor = "#FF9800"
+                        $NhanTrangThai.Text = "Đang chạy bộ cài ngầm..."
+                        $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() })
+                        [System.Windows.Forms.Application]::DoEvents()
+
+                        # Chạy bộ cài
+                        Start-Process $FileCaiDat.FullName -WorkingDirectory $FileCaiDat.DirectoryName -Wait
+
+                        # ĐƯA SHORTCUT RA MÀN HÌNH SAU KHI CÀI XONG
+                        $UngDung.Status = "🔗 Đang tạo lối tắt..."; $UngDung.StatusColor = "#1565C0"
+                        $NhanTrangThai.Text = "Đang đưa biểu tượng ra Desktop..."
+                        $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
+                        
+                        Tao-LoiTatOffice
+
+                        $UngDung.Status = "✅ Hoàn tất"; $UngDung.StatusColor = "#2E7D32"
+                        Ghi-NhatKy "Hoàn tất cài đặt $($UngDung.Name). Đang dọn rác..."
+                        
+                        # Dọn rác
+                        Remove-Item $FileLuuToanBo -Force -ErrorAction SilentlyContinue
+                        Remove-Item $ThuMucGiaiNen -Recurse -Force -ErrorAction SilentlyContinue
+                    } else { 
+                        $UngDung.Status = "❌ Không tìm thấy file Setup"; $UngDung.StatusColor = "#D32F2F"
+                    }
+                } else { 
+                    $UngDung.Status = "❌ Lỗi: Máy thiếu 7-Zip"; $UngDung.StatusColor = "#D32F2F" 
+                }
+            } elseif ($KetQua -eq "ĐÃ_HỦY") { 
+                $UngDung.Status = "🛑 Đã hủy tải xuống"; $UngDung.StatusColor = "#D32F2F"
+                $NhanTrangThai.Text = "Đã hủy lệnh tải!"; $NhanTocDo.Text = "-- MB/s | -- / -- MB"
+                $ThanhChay.Value = 0
+                break 
+            } else {
+                $UngDung.Status = "❌ Lỗi kết nối máy chủ"; $UngDung.StatusColor = "#D32F2F"
+                $NhanTrangThai.Text = "Tải xuống thất bại!"
+            }
+            $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() })
+        }
+        
+        $NutCaiDat.IsEnabled = $true; $NutHuy.IsEnabled = $false; $NutTamDung.IsEnabled = $false
+        if ($script:HuyTai -eq $false) { $NhanTrangThai.Text = "Chu trình xử lý hoàn tất!" }
     })
 
-    # --- [SỰ KIỆN NÚT PHỤ] ---
-    $btnLog.Add_Click({ if (Test-Path $Global:LogPath) { Start-Process "notepad.exe" $Global:LogPath } })
-    $btnSync.Add_Click({ Invoke-WebRequest ($rawUrl + "?t=" + (Get-Date).Ticks) -OutFile $localPath; Load-Local-Data; $lblStatus.Text = "Đã cập nhật!" })
-    $btnBrowse.Add_Click({ $fb = New-Object System.Windows.Forms.FolderBrowserDialog; if ($fb.ShowDialog() -eq "OK") { $txtPath.Text = $fb.SelectedPath } })
-    $btnCancel.Add_Click({ $script:CancelDL = $true; $lblStatus.Text = "Hủy lệnh..." })
-    $btnPause.Add_Click({ $script:PauseDL = $true; $btnPause.Enabled = $false; $btnResume.Enabled = $true; $lblStatus.Text = "Tạm dừng" })
-    $btnResume.Add_Click({ $script:PauseDL = $false; $btnResume.Enabled = $false; $btnPause.Enabled = $true; $lblStatus.Text = "Đang tải tiếp..." })
-
-    function Load-Local-Data {
-        if (Test-Path $localPath) {
-            $lvOffice.Items.Clear(); $csv = Import-Csv $localPath -Encoding UTF8
-            foreach ($r in $csv) { if ($r.Name) { $li = New-Object System.Windows.Forms.ListViewItem($r.Name); [void]$li.SubItems.Add("Sẵn sàng"); [void]$li.SubItems.Add($r.ID); $lvOffice.Items.Add($li) } }
-        }
-    }
-    Load-Local-Data; $form.ShowDialog() | Out-Null
+    $CuaSo.ShowDialog() | Out-Null
 }
 
-&$LogicCaiOfficeV180
+&$LogicCaiOfficeV182
