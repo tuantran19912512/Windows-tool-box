@@ -1,141 +1,186 @@
-﻿# ==============================================================================
-# VIETTOOLBOX BÁC SĨ WINDOWS (V62.4 - FIX LỖI CHỚP TẮT ĐỘT NGỘT)
-# Tính năng: Thử Offline -> Thử Online -> Tắt ngay lập tức khi bấm Dừng.
-# LƯU Ý: Nhớ Save As -> Encoding: UTF-8 with BOM nhé!
-# ==============================================================================
+﻿# ==========================================================
+# VIETTOOLBOX: BÁC SĨ WINDOWS (WPF - V63.7 FULL MIN/CLOSE)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# ==========================================================
 
-# --- BƯỚC 1: ÉP QUYỀN ADMIN TRƯỚC TIÊN ---
-if (-NOT ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell.exe -Verb runAs -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`""
-    break
+# 1. ÉP QUYỀN ADMINISTRATOR
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
+    exit
 }
 
-# --- BƯỚC 2: XÁC NHẬN (Đã chuyển xuống đây để không bị hỏi 2 lần) ---
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
-[System.Windows.Forms.Application]::EnableVisualStyles()
-$Confirm = [System.Windows.Forms.MessageBox]::Show("Tiến trình sửa lỗi chuyên sâu (30-60p) sắp bắt đầu.`n`nÔng có muốn tiếp tục không?", "VietToolbox: Xác nhận", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Warning)
-if ($Confirm -eq "No") { exit }
+# 2. NẠP THƯ VIỆN WPF
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-# --- KHỞI TẠO BIẾN ---
-$script:StopWatch = [System.Diagnostics.Stopwatch]::StartNew()
-$script:IsStopping = $false
+$LogicBacSiWindows_V63_7 = {
+    $script:StopWatch = [System.Diagnostics.Stopwatch]::New()
+    $script:IsRunning = $false
+    $script:CurrentStep = 0 
+    $script:SubProc = $null
+    $script:LogContent = @("==========================================================","VIETTOOLBOX - BÁO CÁO SỬA LỖI WINDOWS","Ngày: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')","==========================================================")
 
-function Get-Time { $ts = $script:StopWatch.Elapsed; return "{0:00}:{1:00}" -f $ts.Minutes, $ts.Seconds }
+    $Icon_Medic = [char]::ConvertFromUtf32(0x1FA7A); $Icon_Rocket = [char]::ConvertFromUtf32(0x1F680)
+    $Icon_Finish = [char]::ConvertFromUtf32(0x1F3C1); $Icon_Stop = [char]::ConvertFromUtf32(0x1F6D1)
 
-function VietLog($msg, $percent = $null) {
-    if ($null -ne $script:progLabel) { $script:progLabel.Text = $msg }
-    if ($null -ne $percent -and $null -ne $script:progressBar) { $script:progressBar.Value = $percent }
-    [System.Windows.Forms.Application]::DoEvents()
-}
-
-# --- GIAO DIỆN ---
-$script:progForm = New-Object System.Windows.Forms.Form
-$script:progForm.Text = "🩺 VietToolbox: Bác Sĩ Windows"; $script:progForm.Size = "520,300"
-$script:progForm.StartPosition = "CenterScreen"
-$script:progForm.FormBorderStyle = "FixedSingle" 
-$script:progForm.MinimizeBox = $true             
-$script:progForm.MaximizeBox = $false
-$script:progForm.TopMost = $true; $script:progForm.BackColor = "White"
-
-$script:progLabel = New-Object System.Windows.Forms.Label
-$script:progLabel.Text = "Đang khởi tạo..."; $script:progLabel.Location = "20,20"; $script:progLabel.Size = "350,25"; $script:progLabel.Font = New-Object System.Drawing.Font("Segoe UI", 10, [System.Drawing.FontStyle]::Bold)
-
-$script:timeLabel = New-Object System.Windows.Forms.Label
-$script:timeLabel.Text = "Time: 00:00"; $script:timeLabel.Location = "380,22"; $script:timeLabel.Size = "100,20"; $script:timeLabel.TextAlign = [System.Drawing.ContentAlignment]::MiddleRight; $script:timeLabel.ForeColor = "Gray"
-
-$script:progressBar = New-Object System.Windows.Forms.ProgressBar
-$script:progressBar.Location = "20,60"; $script:progressBar.Size = "460,30"
-
-$groupAction = New-Object System.Windows.Forms.GroupBox
-$groupAction.Text = "Sau khi xong sẽ:"; $groupAction.Location = "20,100"; $groupAction.Size = "460,70"
-$rbNone = New-Object System.Windows.Forms.RadioButton
-$rbNone.Text = "Để nguyên"; $rbNone.Location = "20,30"; $rbNone.Checked = $true; $rbNone.AutoSize = $true
-$rbRestart = New-Object System.Windows.Forms.RadioButton
-$rbRestart.Text = "Khởi động lại"; $rbRestart.Location = "160,30"; $rbRestart.AutoSize = $true
-$rbShutdown = New-Object System.Windows.Forms.RadioButton
-$rbShutdown.Text = "Tắt máy"; $rbShutdown.Location = "310,30"; $rbShutdown.AutoSize = $true
-$groupAction.Controls.AddRange(@($rbNone, $rbRestart, $rbShutdown))
-
-$btnStop = New-Object System.Windows.Forms.Button
-$btnStop.Text = "🛑 DỪNG LẠI"; $btnStop.Location = "180,190"; $btnStop.Size = "150,45"; $btnStop.BackColor = "#D32F2F"; $btnStop.ForeColor = "White"; $btnStop.FlatStyle = "Flat"; $btnStop.Cursor = [System.Windows.Forms.Cursors]::Hand
-$btnStop.Add_Click({ 
-    $script:IsStopping = $true
-    $btnStop.Text = "Đang ngắt..."
-    $btnStop.Enabled = $false
-    # Giết sạch tiến trình ngầm
-    Start-Process cmd.exe -ArgumentList "/c taskkill /F /IM dism.exe /T 2>nul & taskkill /F /IM sfc.exe /T 2>nul" -WindowStyle Hidden
-})
-
-$script:progForm.Controls.AddRange(@($script:progLabel, $script:timeLabel, $script:progressBar, $groupAction, $btnStop))
-$script:progForm.Show()
-
-# --- HÀM CHẠY TIẾN TRÌNH (ĐÃ FIX LỖI TỪ KHÓA CẤM) ---
-function Run-Task($TaskCmd, $TaskArgs, $startVal, $endVal) {
-    if ($script:IsStopping) { throw "USER_STOPPED" }
+    # --- 3. GIAO DIỆN XAML (THANH TIÊU ĐỀ + MIN + CLOSE) ---
+    $MaGiaoDien = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VietToolbox Pro" Width="550" Height="450"
+        WindowStartupLocation="CenterScreen" Background="Transparent" FontFamily="Segoe UI" 
+        AllowsTransparency="True" WindowStyle="None" ResizeMode="CanMinimize">
     
-    # Dùng đúng tên biến, không dùng chữ cấm $args
-    $proc = Start-Process -FilePath $TaskCmd -ArgumentList $TaskArgs -WindowStyle Hidden -PassThru
+    <Window.Resources>
+        <Storyboard x:Key="RepairAnimation" RepeatBehavior="Forever">
+            <DoubleAnimation Storyboard.TargetName="rotateRepair" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:3"/>
+        </Storyboard>
+
+        <Style x:Key="MinButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#0078D7"/>
+            <Setter Property="Width" Value="40"/><Setter Property="Height" Value="35"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#33FFFFFF"/></Trigger></Style.Triggers>
+        </Style>
+
+        <Style x:Key="CloseButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="Width" Value="45"/><Setter Property="Height" Value="35"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E81123"/></Trigger></Style.Triggers>
+        </Style>
+
+        <Style TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="White"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="8"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </Window.Resources>
+
+    <Border Background="#2D2D2D" CornerRadius="12" BorderBrush="#3F3F3F" BorderThickness="1">
+        <Grid>
+            <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+
+            <Grid Name="TitleBar" Grid.Row="0" Background="#252526">
+                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                <TextBlock Text="🩺 VietToolbox: Bác Sĩ Windows" Foreground="Gray" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="11"/>
+                <Button Name="btnMinimize" Grid.Column="1" Content="—" Style="{StaticResource MinButtonStyle}"/>
+                <Button Name="btnClose" Grid.Column="2" Content="✕" Style="{StaticResource CloseButtonStyle}" FontSize="14"/>
+            </Grid>
+
+            <Grid Grid.Row="1" Margin="25,10,25,25">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+
+                <DockPanel Grid.Row="0" Margin="0,0,0,20">
+                    <TextBlock Name="txtStatusIcon" FontSize="20" Foreground="#00D4FF" VerticalAlignment="Center" Margin="0,0,8,0" FontFamily="Segoe UI Emoji">$Icon_Medic</TextBlock>
+                    <TextBlock Name="iconRepair" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" Visibility="Collapsed" DockPanel.Dock="Left">
+                        <TextBlock.RenderTransform><RotateTransform x:Name="rotateRepair" Angle="0"/></TextBlock.RenderTransform>
+                        <Run FontFamily="Segoe UI Emoji" Text="&#x1F6E0;"/>
+                    </TextBlock>
+                    <TextBlock Name="txtStatus" Text="Sẵn sàng đại tu Windows..." FontSize="18" FontWeight="Bold" Foreground="#00D4FF" VerticalAlignment="Center" DockPanel.Dock="Left"/>
+                    <TextBlock Name="txtTimer" Text="00:00" FontSize="16" Foreground="Gray" HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Consolas"/>
+                </DockPanel>
+
+                <StackPanel Grid.Row="1" Margin="0,0,0,20">
+                    <ProgressBar Name="pgBar" Height="25" Background="#333333" Foreground="#00D4FF" BorderThickness="0"/>
+                    <TextBlock Name="txtDetail" Text="Bấm Bắt đầu để sửa lỗi và xuất báo cáo Desktop" Foreground="Gray" FontSize="12" FontStyle="Italic" Margin="0,8,0,0" HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
+                </StackPanel>
+
+                <GroupBox Grid.Row="2" Header="Sau khi hoàn tất sẽ:" Foreground="Gray" BorderBrush="#333333" Padding="10" Margin="0,0,0,20">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                        <RadioButton Name="rbNone" Content="Để nguyên" Foreground="#A0A0A0" Margin="10,0" IsChecked="True"/>
+                        <RadioButton Name="rbRestart" Content="Khởi động lại" Foreground="#A0A0A0" Margin="10,0"/>
+                        <RadioButton Name="rbShutdown" Content="Tắt máy" Foreground="#A0A0A0" Margin="10,0"/>
+                    </StackPanel>
+                </GroupBox>
+
+                <Grid Grid.Row="3">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                    <Button Name="btnStart" Grid.Column="0" Content="$Icon_Rocket BẮT ĐẦU SỬA LỖI" Height="50" Background="#27AE60"/>
+                    <Button Name="btnStop" Grid.Column="2" Content="$Icon_Stop DỪNG LẠI" Height="50" Background="#D32F2F" IsEnabled="False"/>
+                </Grid>
+            </Grid>
+        </Grid>
+    </Border>
+</Window>
+"@
+
+    $DocChuoi = New-Object System.IO.StringReader($MaGiaoDien)
+    $DocXml = [System.Xml.XmlReader]::Create($DocChuoi)
+    $window = [Windows.Markup.XamlReader]::Load($DocXml)
+
+    # Ánh xạ
+    $TitleBar = $window.FindName("TitleBar"); $btnMinimize = $window.FindName("btnMinimize"); $btnClose = $window.FindName("btnClose")
+    $txtStatusIcon = $window.FindName("txtStatusIcon"); $iconRepair = $window.FindName("iconRepair")
+    $txtStatus = $window.FindName("txtStatus"); $txtTimer = $window.FindName("txtTimer")
+    $txtDetail = $window.FindName("txtDetail"); $pgBar = $window.FindName("pgBar")
+    $btnStart = $window.FindName("btnStart"); $btnStop = $window.FindName("btnStop")
+    $rbRestart = $window.FindName("rbRestart"); $rbShutdown = $window.FindName("rbShutdown")
+    $RepairAnim = $window.Resources["RepairAnimation"]
+
+    # --- SỰ KIỆN THANH TIÊU ĐỀ ---
+    $TitleBar.Add_MouseLeftButtonDown({ $window.DragMove() })
+    $btnMinimize.Add_Click({ $window.WindowState = [System.Windows.WindowState]::Minimized })
     
-    if ($null -ne $proc) {
-        try { $proc.PriorityClass = [System.Diagnostics.ProcessPriorityClass]::High } catch {}
-        $val = $startVal
-        while (-not $proc.HasExited) {
-            if ($script:IsStopping) { throw "USER_STOPPED" } 
-            if ($val -lt $endVal) { $val += 0.05; $script:progressBar.Value = [int]$val }
-            $script:timeLabel.Text = "Time: $(Get-Time)"
-            [System.Windows.Forms.Application]::DoEvents()
-            Start-Sleep -Milliseconds 150
+    # Nút X đóng cửa sổ (Có dọn dẹp tiến trình ngầm)
+    $btnClose.Add_Click({
+        if ($script:IsRunning) {
+            $Hoi = [System.Windows.MessageBox]::Show("Tiến trình đang chạy, ông có chắc muốn thoát không? (Lệnh sửa lỗi sẽ bị ngắt)", "Xác nhận thoát", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
+            if ($Hoi -eq "No") { return }
+            Start-Process cmd.exe -ArgumentList "/c taskkill /F /IM dism.exe /T 2>nul & taskkill /F /IM sfc.exe /T 2>nul" -WindowStyle Hidden
         }
-        return $proc.ExitCode
-    }
-    return -1
-}
+        $window.Close()
+    })
 
-# --- THỰC THI CHÍNH ---
-try {
-    VietLog "🧹 Đang tối ưu nhanh..." 10
-    Run-Task "dism.exe" "/Online /Cleanup-Image /StartComponentCleanup" 10 25 | Out-Null
-
-    # TẦNG 1: THỬ OFFLINE
-    VietLog "🚀 Đang sửa lỗi hệ thống (Tầng 1: Offline)..." 25
-    $code = Run-Task "dism.exe" "/Online /Cleanup-Image /RestoreHealth /LimitAccess" 25 35
+    # --- BỘ NÃO TIMER ---
+    $MainTimer = New-Object System.Windows.Threading.DispatcherTimer
+    $MainTimer.Interval = [TimeSpan]::FromMilliseconds(500)
     
-    $FinalFail = $false
-    if ($code -ne 0) {
-        # TẦNG 2: THỬ ONLINE
-        VietLog "⚠️ Tầng 1 thất bại. Đang thử Tầng 2 (Online)..." 35
-        Run-Task "dism.exe" "/Online /Cleanup-Image /RestoreHealth" 35 70 | Out-Null
-        
-        # Kiểm tra lại lần cuối
-        VietLog "⚠️ Đang kiểm tra lại tình trạng..." 70
-        $checkAgain = Run-Task "dism.exe" "/Online /Cleanup-Image /CheckHealth" 70 75
-        if ($checkAgain -ne 0) { $FinalFail = $true }
-    } else {
-        VietLog "✅ Đã sửa xong bằng file nội bộ!" 75
-        $script:progressBar.Value = 75
-    }
+    $MainTimer.Add_Tick({
+        $txtTimer.Text = "{0:00}:{1:00}" -f [math]::Floor($script:StopWatch.Elapsed.TotalMinutes), $script:StopWatch.Elapsed.Seconds
+        if ($script:IsRunning -and $null -ne $script:SubProc) {
+            if ($script:SubProc.HasExited) {
+                $ExitCode = $script:SubProc.ExitCode
+                switch ($script:CurrentStep) {
+                    1 { $script:CurrentStep = 2; $pgBar.Value = 25 }
+                    2 { if ($ExitCode -ne 0) { $script:CurrentStep = 3 } else { $script:CurrentStep = 4 }; $pgBar.Value = 50 }
+                    3 { $script:CurrentStep = 4; $pgBar.Value = 75 }
+                    4 { $script:CurrentStep = 5; $pgBar.Value = 100 }
+                }
+                $script:SubProc = $null
+            } elseif ($pgBar.Value -lt 99) { $pgBar.Value += 0.05 }
+        }
 
-    # TẦNG 3: PHÁN QUYẾT
-    if ($FinalFail) {
-        VietLog "❌ LỖI NẶNG: Không thể sửa lỗi!" 100
-        [System.Windows.Forms.MessageBox]::Show("CẢNH BÁO: Hệ điều hành Windows bị hỏng quá nặng!`n`nCác công cụ sửa chữa tự động không thể phục hồi. Khuyên ông nên SAO LƯU DỮ LIỆU và CÀI LẠI WINDOWS mới để đảm bảo ổn định.", "VietToolbox: Phán Quyết", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-    } else {
-        VietLog "🔍 Đang chốt hạ file hệ thống (SFC)..." 75
-        Run-Task "sfc.exe" "/scannow" 75 99 | Out-Null
-        VietLog "🏁 HOÀN TẤT TRONG $(Get-Time)!" 100
-        
-        Start-Sleep -Seconds 3
-        if ($rbRestart.Checked) { Restart-Computer -Force }
-        elseif ($rbShutdown.Checked) { Stop-Computer -Force }
-    }
-} catch {
-    if ($_.Exception.Message -match "USER_STOPPED") {
-        VietLog "⛔ ĐÃ HỦY THEO YÊU CẦU!"
-        Start-Sleep -Seconds 1
-    } else {
-        # Nếu có lỗi lạ khác, nó sẽ hiện lên bảng báo chứ không tự sát im lặng nữa!
-        [System.Windows.Forms.MessageBox]::Show("Có lỗi xảy ra: " + $_.Exception.Message, "VietToolbox Lỗi", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-    }
-} finally {
-    if ($null -ne $script:progForm) { $script:progForm.Close() }
+        if ($script:IsRunning -and $null -eq $script:SubProc) {
+            switch ($script:CurrentStep) {
+                1 { $script:CurrentStep = 2 } # Bỏ qua bước dọn dẹp Component (Rất lâu) để tăng tốc
+                2 { $txtStatusIcon.Visibility = "Collapsed"; $iconRepair.Visibility = "Visible"; $txtStatus.Text = "🚀 Đang sửa lỗi (Tầng Offline)..."; $script:SubProc = Start-Process "dism.exe" -ArgumentList "/Online /Cleanup-Image /RestoreHealth /LimitAccess" -WindowStyle Hidden -PassThru }
+                3 { $txtStatus.Text = "⚠️ Đang sửa lỗi (Tầng Online)..."; $script:SubProc = Start-Process "dism.exe" -ArgumentList "/Online /Cleanup-Image /RestoreHealth" -WindowStyle Hidden -PassThru }
+                4 { $txtStatus.Text = "🔍 Đang chốt hạ file (SFC)..."; $script:SubProc = Start-Process "sfc.exe" -ArgumentList "/scannow" -WindowStyle Hidden -PassThru }
+                5 {
+                    $script:IsRunning = $false; $script:StopWatch.Stop(); $MainTimer.Stop(); $RepairAnim.Stop($window)
+                    $DesktopPath = [System.Environment]::GetFolderPath('Desktop'); $FilePath = Join-Path $DesktopPath "Bao_Cao_Sua_Loi_Windows.txt"
+                    $script:LogContent += "=========================================================="; $script:LogContent += "TỔNG KẾT: Xong trong $($txtTimer.Text)."; $script:LogContent | Out-File -FilePath $FilePath -Encoding UTF8
+                    $txtStatusIcon.Visibility = "Visible"; $iconRepair.Visibility = "Collapsed"; $txtStatusIcon.Text = $Icon_Finish; $txtStatus.Text = "🏁 HOÀN TẤT!"; $txtStatus.Foreground = "#27AE60"
+                    [System.Windows.MessageBox]::Show("Xong! Báo cáo ở Desktop.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
+                    if ($rbRestart.IsChecked) { Restart-Computer -Force } elseif ($rbShutdown.IsChecked) { Stop-Computer -Force }
+                }
+            }
+        }
+    })
+
+    $btnStart.Add_Click({
+        if ([System.Windows.MessageBox]::Show("Chạy sửa lỗi chuyên sâu (30-60p)?", "Xác nhận", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Warning) -eq "Yes") {
+            $script:IsRunning = $true; $script:CurrentStep = 2; $script:StopWatch.Start(); $MainTimer.Start()
+            $btnStart.IsEnabled = $false; $btnStop.IsEnabled = $true; $RepairAnim.Begin($window)
+        }
+    })
+
+    $btnStop.Add_Click({
+        $script:IsRunning = $false; $MainTimer.Stop(); $RepairAnim.Stop($window)
+        $txtStatusIcon.Visibility = "Visible"; $iconRepair.Visibility = "Collapsed"
+        Start-Process cmd.exe -ArgumentList "/c taskkill /F /IM dism.exe /T 2>nul & taskkill /F /IM sfc.exe /T 2>nul" -WindowStyle Hidden
+        $txtStatus.Text = "⛔ ĐÃ HỦY!"; $pgBar.Value = 0; $btnStart.IsEnabled = $true; $btnStop.IsEnabled = $false
+    })
+
+    $window.ShowDialog() | Out-Null
 }
+
+&$LogicBacSiWindows_V63_7

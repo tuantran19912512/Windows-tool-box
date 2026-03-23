@@ -187,23 +187,31 @@ $LogicChanDoanProV69_6 = {
 function Show-Ket-Qua-Pro {
     $xamlRes = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Kết Quả Chẩn Đoán" Width="500" Height="450" WindowStartupLocation="CenterScreen" 
+        Title="Kết Quả Chẩn Đoán" Width="500" Height="500" WindowStartupLocation="CenterScreen" 
         Background="#1E1E1E" FontFamily="Segoe UI" ResizeMode="NoResize">
     <Grid Margin="30">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/> <RowDefinition Height="*"/>    <RowDefinition Height="Auto"/> </Grid.RowDefinitions>
+
         <TextBlock Text="KẾT QUẢ CHẨN ĐOÁN PRO" FontSize="22" FontWeight="Bold" Foreground="#0078D7" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-        <Border Grid.Row="1" Background="#2D2D2D" CornerRadius="10" Padding="20">
+
+        <Border Grid.Row="1" Background="#2D2D2D" CornerRadius="10" Padding="25" VerticalAlignment="Stretch">
             <StackPanel VerticalAlignment="Center">
-                <TextBlock Text="✅ File hệ thống: $($script:ReportData.SFC)" FontSize="16" Foreground="White" Margin="0,10"/>
-                <TextBlock Text="📦 Kho ảnh Windows: $($script:ReportData.DISM)" FontSize="16" Foreground="White" Margin="0,10"/>
-                <TextBlock Text="💾 Độ trễ ổ cứng: $($script:ReportData.Latency) ms" FontSize="16" Foreground="#A0A0A0" Margin="0,10"/>
-                <TextBlock Text="📊 Tiến trình ngầm: $($script:ReportData.Processes) cái" FontSize="16" Foreground="#A0A0A0" Margin="0,10"/>
-                <Separator Background="#3F3F3F" Margin="0,15"/>
+                <TextBlock Text="✅ File hệ thống: $($script:ReportData.SFC)" FontSize="16" Foreground="White" Margin="0,8"/>
+                <TextBlock Text="📦 Kho ảnh Windows: $($script:ReportData.DISM)" FontSize="16" Foreground="White" Margin="0,8"/>
+                <TextBlock Text="💾 Độ trễ ổ cứng: $($script:ReportData.Latency) ms" FontSize="16" Foreground="#A0A0A0" Margin="0,8"/>
+                <TextBlock Text="📊 Tiến trình ngầm: $($script:ReportData.Processes) cái" FontSize="16" Foreground="#A0A0A0" Margin="0,8"/>
+                
+                <Separator Background="#3F3F3F" Margin="0,20"/>
+                
                 <TextBlock Text="$(if ($script:ReportData.Status -eq 'OK') { 'MÁY ĐANG HOẠT ĐỘNG TỐT' } else { 'CẦN CHẠY BỘ SỬA LỖI CHUYÊN SÂU' })" 
-                           FontSize="18" FontWeight="Bold" Foreground="$(if ($script:ReportData.Status -eq 'OK') { '#388E3C' } else { '#D32F2F' })" HorizontalAlignment="Center"/>
+                           FontSize="18" FontWeight="Bold" 
+                           Foreground="$(if ($script:ReportData.Status -eq 'OK') { '#388E3C' } else { '#D32F2F' })" 
+                           HorizontalAlignment="Center" TextAlignment="Center" TextWrapping="Wrap"/>
             </StackPanel>
         </Border>
-        <Button Name="btnOk" Grid.Row="2" Content="ĐÃ HIỂU" Width="150" Height="45" Background="#0078D7" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,20,0,0">
+
+        <Button Name="btnOk" Grid.Row="2" Content="ĐÃ HIỂU" Width="150" Height="45" Background="#0078D7" Foreground="White" FontWeight="Bold" HorizontalAlignment="Center" Margin="0,25,0,0">
             <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
         </Button>
     </Grid>
@@ -211,7 +219,11 @@ function Show-Ket-Qua-Pro {
 "@
     $reader = [System.Xml.XmlReader]::Create([System.IO.StringReader]$xamlRes)
     $resWindow = [Windows.Markup.XamlReader]::Load($reader)
-    $resWindow.FindName("btnOk").Add_Click({ $resWindow.Close() })
+    
+    # Tìm và gán sự kiện cho nút OK
+    $btnOk = $resWindow.FindName("btnOk")
+    $btnOk.Add_Click({ $resWindow.Close() })
+    
     $resWindow.ShowDialog() | Out-Null
 }
 
