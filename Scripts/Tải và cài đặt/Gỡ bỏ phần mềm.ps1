@@ -1,5 +1,6 @@
 ﻿# ==========================================================
-# TOOL GỠ PHẦN MỀM TẬN GỐC - GIAO DIỆN WPF (BẢN VÉT CẠN - FIX LỖI ĐƯỜNG DẪN RỖNG)
+# TOOL GỠ PHẦN MỀM TẬN GỐC - GIAO DIỆN WPF (SẠCH BÓNG WINFORMS 100%)
+# Tác giả: Tuấn Kỹ Thuật Máy Tính
 # ==========================================================
 
 # 1. ÉP CHẠY QUYỀN QUẢN TRỊ VIÊN
@@ -8,7 +9,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# 2. KHỞI TẠO MÔI TRƯỜNG WPF & ĐỒ HỌA
+# 2. KHỞI TẠO MÔI TRƯỜNG WPF & ĐỒ HỌA (CHỈ GỌI CÁC THƯ VIỆN LÕI)
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Drawing
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
@@ -18,6 +19,26 @@ $MaGiaoDien = @"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="VIETTOOLBOX - GỠ PHẦN MỀM TẬN GỐC (BẢN CHUẨN CONTROL PANEL)" Width="880" Height="650"
         WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
+    <Window.Resources>
+        <Style TargetType="Button">
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+            <Style.Triggers>
+                <Trigger Property="IsMouseOver" Value="True">
+                    <Setter Property="Opacity" Value="0.9"/>
+                </Trigger>
+            </Style.Triggers>
+        </Style>
+    </Window.Resources>
+
     <Grid Margin="20">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
@@ -60,8 +81,8 @@ $MaGiaoDien = @"
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
-            <Button Name="NutLamMoi" Grid.Column="0" Content="🔄 LÀM MỚI DANH SÁCH" Width="200" Height="45" Background="#ECEFF1" FontWeight="Bold" Cursor="Hand"/>
-            <Button Name="NutGoBo" Grid.Column="2" Content="🗑️ GỠ BỎ TẬN GỐC" Width="250" Height="45" Background="#C62828" Foreground="White" FontSize="14" FontWeight="Bold" Cursor="Hand"/>
+            <Button Name="NutLamMoi" Grid.Column="0" Content="🔄 LÀM MỚI DANH SÁCH" Width="200" Height="45" Background="#ECEFF1" Foreground="Black" FontWeight="Bold"/>
+            <Button Name="NutGoBo" Grid.Column="2" Content="🗑️ GỠ BỎ TẬN GỐC" Width="250" Height="45" Background="#C62828" Foreground="White" FontSize="14" FontWeight="Bold"/>
         </Grid>
     </Grid>
 </Window>
@@ -79,7 +100,13 @@ $NutGoBo = $CuaSo.FindName("NutGoBo")
 $Global:DanhSachDuLieu = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
 $BangPhanMem.ItemsSource = $Global:DanhSachDuLieu
 
-# --- HÀM CHUYỂN ĐỔI ICON SANG WPF (CÓ BẢO VỆ CHUỖI RỖNG) ---
+# --- HÀM DOEVENTS CHUẨN WPF CHỐNG ĐƠ GIAO DIỆN ---
+$CapNhatGiaoDien = {
+    $Dispatcher = [System.Windows.Threading.Dispatcher]::CurrentDispatcher
+    $Dispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+}
+
+# --- HÀM CHUYỂN ĐỔI ICON SANG WPF ---
 function Lay-BieuTuongWPF ($DuongDan) {
     try {
         if ([string]::IsNullOrWhiteSpace($DuongDan)) { return $null }
@@ -103,12 +130,12 @@ function Lay-BieuTuongWPF ($DuongDan) {
 
 $Global:IconMacDinh = Lay-BieuTuongWPF "$env:windir\explorer.exe"
 
-# 4. HÀM QUÉT PHẦN MỀM (CƠ CHẾ PIPELINE VÉT CẠN HỆ THỐNG ĐƯỢC BỌC KHIÊN)
+# 4. HÀM QUÉT PHẦN MỀM (VÉT CẠN HỆ THỐNG)
 function Tai-DanhSachPhanMem {
     $Global:DanhSachDuLieu.Clear()
     $NhanTrangThai.Text = "Đang vét cạn toàn bộ dữ liệu Registry của tất cả User..."
     $NhanTrangThai.Foreground = "#FF9800"
-    [System.Windows.Forms.Application]::DoEvents()
+    &$CapNhatGiaoDien
 
     $DanhSachTam = @()
     $DaThem = @{}
@@ -166,7 +193,6 @@ function Tai-DanhSachPhanMem {
                 $SizeStr = if ($SizeMB -ge 1024) { "$([math]::Round($SizeMB / 1024, 2)) GB" } else { "$SizeMB MB" }
             }
 
-            # XỬ LÝ LẤY ICON AN TOÀN TRÁNH LỖI CHUỖI RỖNG
             $TargetPath = ""
             if ($App.DisplayIcon) {
                 $TargetPath = $App.DisplayIcon.ToString().Trim() -replace '"', '' -replace ',\s*-?\d+$', ''
@@ -208,7 +234,8 @@ function Tai-DanhSachPhanMem {
     }
 
     $NhanTrangThai.Text = "Đang đồng bộ các ứng dụng từ Microsoft Store..."
-    [System.Windows.Forms.Application]::DoEvents()
+    &$CapNhatGiaoDien
+    
     $uwpApps = Get-AppxPackage -AllUsers -ErrorAction SilentlyContinue | Where-Object { $_.IsFramework -eq $false -and $_.NonRemovable -eq $false }
     foreach ($app in $uwpApps) {
         try {
@@ -250,8 +277,9 @@ $NutGoBo.Add_Click({
     $HoiDap = [System.Windows.MessageBox]::Show("Khởi động trình gỡ cài đặt cho '$appName'?", "Xác nhận gỡ", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Question)
     if ($HoiDap -eq "No") { return }
 
-    $NhanTrangThai.Text = "Đang chờ trình gỡ cài đặt hoàn tất..."; $NhanTrangThai.Foreground = "#FF9800"
-    [System.Windows.Forms.Application]::DoEvents()
+    $NhanTrangThai.Text = "Đang chờ trình gỡ cài đặt hoàn tất..."
+    $NhanTrangThai.Foreground = "#FF9800"
+    &$CapNhatGiaoDien
     
     if ($app.IsUWP) {
         try { Remove-AppxPackage -Package $app.UninstallString -AllUsers -ErrorAction Stop } catch {}
@@ -266,8 +294,8 @@ $NutGoBo.Add_Click({
     $cleanup = [System.Windows.MessageBox]::Show($msg, "Dọn dẹp tàn dư (Revo Cleaner)", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Warning)
 
     if ($cleanup -eq "Yes") {
-        $NhanTrangThai.Text = "Đang quét và tiêu diệt tàn dư..."; 
-        [System.Windows.Forms.Application]::DoEvents()
+        $NhanTrangThai.Text = "Đang quét và tiêu diệt tàn dư..."
+        &$CapNhatGiaoDien
         
         $trashPaths = @("$env:ProgramFiles\$appName", "${env:ProgramFiles(x86)}\$appName", "$env:AppData\$appName", "$env:LocalAppData\$appName")
         foreach ($p in $trashPaths) { if (Test-Path $p) { Remove-Item -Path $p -Recurse -Force -ErrorAction SilentlyContinue } }
