@@ -60,9 +60,18 @@ $LogicInstallerV66 = {
 
     # --- GIAO DIỆN XAML (ĐÃ ĐƯA KHUNG KIỂM TRA MÔI TRƯỜNG TRỞ LẠI) ---
     $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox Pro" Width="1100" Height="880" WindowStartupLocation="CenterScreen" 
-        Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="CanResizeWithGrip" FontFamily="Segoe UI">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:shell="clr-namespace:Microsoft.Windows.Shell;assembly=PresentationFramework"
+        Title="VietToolbox Pro" Width="1100" Height="880" 
+        WindowStartupLocation="CenterScreen" 
+        Background="Transparent" AllowsTransparency="True" 
+        WindowStyle="None" ResizeMode="CanResize">
+
+    <WindowChrome.WindowChrome>
+        <WindowChrome GlassFrameThickness="0" CornerRadius="15" CaptionHeight="35" ResizeBorderThickness="7" />
+    </WindowChrome.WindowChrome>
+
     <Border Background="#F4F7F9" CornerRadius="15" BorderBrush="#007ACC" BorderThickness="1">
         <Grid Margin="20">
             <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="150"/><RowDefinition Height="70"/></Grid.RowDefinitions>
