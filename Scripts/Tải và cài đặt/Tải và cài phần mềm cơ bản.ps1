@@ -62,7 +62,7 @@ $LogicInstallerV66 = {
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="VietToolbox Pro" Width="1100" Height="880" WindowStartupLocation="CenterScreen" 
-        Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="CanMinimize" FontFamily="Segoe UI">
+        Background="Transparent" AllowsTransparency="True" WindowStyle="None" ResizeMode="CanResizeWithGrip" FontFamily="Segoe UI">
     <Border Background="#F4F7F9" CornerRadius="15" BorderBrush="#007ACC" BorderThickness="1">
         <Grid Margin="20">
             <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="150"/><RowDefinition Height="70"/></Grid.RowDefinitions>
