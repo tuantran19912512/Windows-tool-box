@@ -1,27 +1,27 @@
 ﻿# ==============================================================================
-# Tên công cụ: TÙY CHỈNH HỆ THỐNG & MẠNG DNS (V11.1 - SIÊU CHUẨN)
+# Tên công cụ: VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG (V12 - SMART APP CONTROL)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Đặc trị: Lỗi cú pháp 'The term if', Giao diện gạt ON/OFF Modern
+# Chức năng: Desktop Icons, DNS, Update, Time, Smart App Control (Win 11)
+# Đặc trị: Fix dứt điểm lỗi cú pháp, Tự động quét trạng thái hệ thống
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
 # --- KIỂM TRA ADMIN ---
-$currentPrincipal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
-if (-not $currentPrincipal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 
+$principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
+if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { 
     [System.Windows.MessageBox]::Show("Vui lòng chạy Tool với quyền Administrator!", "Thông báo")
     exit 
 }
 
 $IsWin11 = [Environment]::OSVersion.Version.Build -ge 22000
-$BrushConv = New-Object System.Windows.Media.BrushConverter
 
 # --- GIAO DIỆN XAML WPF ---
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox" Width="1050" Height="780" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
+        Title="VietToolbox" Width="1050" Height="820" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
     <Window.Resources>
         <Style x:Key="ToggleSwitch" TargetType="CheckBox">
             <Setter Property="Template">
@@ -55,7 +55,7 @@ $inputXML = @"
         <Grid>
             <Grid Height="50" VerticalAlignment="Top" Background="#1E293B">
                 <Grid.Clip><RectangleGeometry Rect="0,0,1050,50" RadiusX="15" RadiusY="15"/></Grid.Clip>
-                <TextBlock Name="TxtTitle" Text="⚙️ VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG &amp; MẠNG V11.1" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                <TextBlock Name="TxtTitle" Text="⚙️ VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG &amp; BẢO MẬT V12" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
                 <Button Name="BtnClose" Content="✕" Width="50" HorizontalAlignment="Right" Background="Transparent" Foreground="#EF4444" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
             </Grid>
             
@@ -76,8 +76,8 @@ $inputXML = @"
                     <TextBlock Text="CÀI ĐẶT MẠNG (DNS)" Foreground="#38BDF8" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
                     <Border Background="#1E293B" CornerRadius="10" Padding="15" Margin="0,0,0,20">
                         <StackPanel>
-                            <CheckBox Name="ChkDNSGoogle" Content="DNS Google (8.8.8.8)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12" Cursor="Hand"/>
-                            <CheckBox Name="ChkDNSCloud" Content="DNS Cloudflare (1.1.1.1)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5" Cursor="Hand"/>
+                            <CheckBox Name="ChkDNSGoogle" Content="DNS Google (8.8.8.8)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
+                            <CheckBox Name="ChkDNSCloud" Content="DNS Cloudflare (1.1.1.1)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5"/>
                             <TextBlock Text="* Tắt cả hai để dùng DNS Tự động" Foreground="#64748B" FontSize="11" Margin="55,0,0,0"/>
                         </StackPanel>
                     </Border>
@@ -88,7 +88,7 @@ $inputXML = @"
                             <CheckBox Name="ChkClassicMenu" Content="Menu chuột phải Win 10" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
                             <CheckBox Name="ChkThisPC" Content="Mở Explorer vào This PC" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
                             <CheckBox Name="ChkTaskbarCenter" Content="Căn giữa Taskbar (W11)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
-                            <CheckBox Name="ChkShowAllIcons" Content="Hiện tất cả icon Tray" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12" Foreground="#38BDF8"/>
+                            <CheckBox Name="ChkShowAllIcons" Content="Hiện tất cả icon Tray" Style="{StaticResource ToggleSwitch}" Foreground="#38BDF8"/>
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -102,12 +102,10 @@ $inputXML = @"
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <StackPanel Grid.Column="0" Margin="0,0,5,0">
-                                    <TextBlock Text="Ngày (dd/MM/yyyy)" Foreground="#64748B" FontSize="11" Margin="2,0,0,2"/>
-                                    <TextBox Name="TxtDate" Height="28" Background="#0F172A" Foreground="White" BorderBrush="#334155" Padding="5,2" VerticalContentAlignment="Center"/>
+                                    <TextBlock Text="Ngày (dd/MM/yyyy)" Foreground="#64748B" FontSize="11" Margin="2,0,0,2"/><TextBox Name="TxtDate" Height="28" Background="#0F172A" Foreground="White" BorderBrush="#334155" Padding="5,2" VerticalContentAlignment="Center"/>
                                 </StackPanel>
                                 <StackPanel Grid.Column="1" Margin="5,0,0,0">
-                                    <TextBlock Text="Giờ (HH:mm:ss)" Foreground="#64748B" FontSize="11" Margin="2,0,0,2"/>
-                                    <TextBox Name="TxtTime" Height="28" Background="#0F172A" Foreground="White" BorderBrush="#334155" Padding="5,2" VerticalContentAlignment="Center"/>
+                                    <TextBlock Text="Giờ (HH:mm:ss)" Foreground="#64748B" FontSize="11" Margin="2,0,0,2"/><TextBox Name="TxtTime" Height="28" Background="#0F172A" Foreground="White" BorderBrush="#334155" Padding="5,2" VerticalContentAlignment="Center"/>
                                 </StackPanel>
                             </Grid>
                             <UniformGrid Columns="2">
@@ -117,15 +115,16 @@ $inputXML = @"
                         </StackPanel>
                     </Border>
 
-                    <TextBlock Text="WINDOWS UPDATE &amp; BẢO MẬT" Foreground="#F59E0B" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
+                    <TextBlock Text="BẢO MẬT &amp; WINDOWS UPDATE" Foreground="#F59E0B" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
                     <Border Background="#1E293B" CornerRadius="10" Padding="15">
                         <StackPanel>
-                            <CheckBox Name="ChkWinUpdate" Content="Kích hoạt Windows Update" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,10"/>
+                            <CheckBox Name="ChkWinUpdate" Content="Kích hoạt Windows Update" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
+                            <CheckBox Name="ChkSAC" Content="Smart App Control (Khuyên: Tắt)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12"/>
                             <CheckBox Name="ChkBitlocker" Content="Bật BitLocker (Mã hóa C:)" Style="{StaticResource ToggleSwitch}"/>
                         </StackPanel>
                     </Border>
 
-                    <Button Name="BtnApply" Content="🚀 LƯU VÀ ÁP DỤNG" Height="60" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="18" BorderThickness="0" Cursor="Hand" Margin="0,25,0,0">
+                    <Button Name="BtnApply" Content="🚀 LƯU VÀ ÁP DỤNG" Height="60" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="18" BorderThickness="0" Cursor="Hand" Margin="0,20,0,0">
                         <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="12"/></Style></Button.Resources>
                     </Button>
                     <TextBlock Name="LblTrangThai" Text="Sẵn sàng." Foreground="#10B981" FontSize="13" HorizontalAlignment="Center" Margin="0,10,0,0" Visibility="Hidden"/>
@@ -140,7 +139,7 @@ try { $FormTuyChinh = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::
 
 # Kết nối UI
 $btnClose = $FormTuyChinh.FindName("BtnClose"); $btnApply = $FormTuyChinh.FindName("BtnApply"); $lblTrangThai = $FormTuyChinh.FindName("LblTrangThai")
-$chkWinUpdate = $FormTuyChinh.FindName("ChkWinUpdate"); $btnSyncTime = $FormTuyChinh.FindName("BtnSyncTime"); $btnSetManual = $FormTuyChinh.FindName("BtnSetManual")
+$chkWinUpdate = $FormTuyChinh.FindName("ChkWinUpdate"); $chkSAC = $FormTuyChinh.FindName("ChkSAC"); $btnSyncTime = $FormTuyChinh.FindName("BtnSyncTime"); $btnSetManual = $FormTuyChinh.FindName("BtnSetManual")
 $txtDate = $FormTuyChinh.FindName("TxtDate"); $txtTime = $FormTuyChinh.FindName("TxtTime")
 $chkShowThisPC = $FormTuyChinh.FindName("ChkShowThisPC"); $chkShowNetwork = $FormTuyChinh.FindName("ChkShowNetwork"); $chkShowControl = $FormTuyChinh.FindName("ChkShowControl"); $chkShowUser = $FormTuyChinh.FindName("ChkShowUser")
 $chkBitlocker = $FormTuyChinh.FindName("ChkBitlocker"); $chkThisPC = $FormTuyChinh.FindName("ChkThisPC")
@@ -149,9 +148,12 @@ $chkSetVNTZ = $FormTuyChinh.FindName("ChkSetVNTZ"); $chkTime24h = $FormTuyChinh.
 $chkDNSGoogle = $FormTuyChinh.FindName("ChkDNSGoogle"); $chkDNSCloud = $FormTuyChinh.FindName("ChkDNSCloud")
 $txtTitle = $FormTuyChinh.FindName("TxtTitle")
 
-if (-not $IsWin11) { $txtTitle.Text = "⚙️ VIETTOOLBOX WIN 10"; $chkClassicMenu.IsEnabled = $false; $chkTaskbarCenter.IsEnabled = $false }
+if (-not $IsWin11) { 
+    $txtTitle.Text = "⚙️ VIETTOOLBOX WIN 10"
+    $chkClassicMenu.IsEnabled = $false; $chkTaskbarCenter.IsEnabled = $false; $chkSAC.IsEnabled = $false; $chkSAC.Content = "Smart App Control (Chỉ Win 11)"
+}
 
-# LOGIC RADIO DNS
+# RADIO DNS
 $chkDNSGoogle.Add_Checked({ $chkDNSCloud.IsChecked = $false })
 $chkDNSCloud.Add_Checked({ $chkDNSGoogle.IsChecked = $false })
 
@@ -161,6 +163,7 @@ $btnClose.Add_Click({ $FormTuyChinh.Close() })
 $txtDate.Text = (Get-Date).ToString("dd/MM/yyyy")
 $txtTime.Text = (Get-Date).ToString("HH:mm:ss")
 
+# --- HÀM ĐỌC TRẠNG THÁI ---
 function Doc-TrangThai {
     $kD = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel"
     $kA = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
@@ -176,6 +179,10 @@ function Doc-TrangThai {
         if ($IsWin11) {
             $chkTaskbarCenter.IsChecked = ((Get-ItemProperty $kA -Name "TaskbarAl" -ErrorAction SilentlyContinue).TaskbarAl -eq 1)
             $chkClassicMenu.IsChecked = Test-Path "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
+            
+            # Đọc Smart App Control (SAC)
+            $sacVal = (Get-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -Name "VerifiedAndReputablePolicyState" -ErrorAction SilentlyContinue).VerifiedAndReputablePolicyState
+            if ($sacVal -eq 1 -or $sacVal -eq 2) { $chkSAC.IsChecked = $true } else { $chkSAC.IsChecked = $false }
         }
 
         $svcUpdate = Get-Service wuauserv -ErrorAction SilentlyContinue
@@ -213,55 +220,50 @@ $btnApply.Add_Click({
             else { Set-DnsClientServerAddress -InterfaceIndex $adp.InterfaceIndex -ResetServerAddresses }
         }
 
-        # Update
+        # Windows Update
         if ($chkWinUpdate.IsChecked) { 
             Set-Service wuauserv -StartupType Automatic
             reg delete "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU" /v NoAutoUpdate /f 2>$null 
         } else { 
-            Stop-Service wuauserv -Force -ErrorAction SilentlyContinue
-            Set-Service wuauserv -StartupType Disabled
-            $regP = "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
-            if (-not (Test-Path $regP)) { New-Item $regP -Force | Out-Null }
-            Set-ItemProperty $regP -Name "NoAutoUpdate" -Value 1 
+            Stop-Service wuauserv -Force -ErrorAction SilentlyContinue; Set-Service wuauserv -StartupType Disabled
+            $regP = "HKLM\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"; if (-not (Test-Path $regP)) { New-Item $regP -Force | Out-Null }; Set-ItemProperty $regP -Name "NoAutoUpdate" -Value 1 
+        }
+
+        # Smart App Control (Chỉ Win 11)
+        if ($IsWin11) {
+            if ($chkSAC.IsChecked) { Set-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -Name "VerifiedAndReputablePolicyState" -Value 1 }
+            else { Set-ItemProperty "HKLM:\SYSTEM\CurrentControlSet\Control\CI\Policy" -Name "VerifiedAndReputablePolicyState" -Value 0 }
         }
 
         # Icons Desktop
         $regD = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel"
         if (-not (Test-Path $regD)) { New-Item $regD -Force | Out-Null }
-        $vThisPC = 1; if ($chkShowThisPC.IsChecked) { $vThisPC = 0 }
-        Set-ItemProperty $regD -Name "{20D04FE0-3AEA-1069-A2D8-08002B30309D}" -Value $vThisPC
-        $vNet = 1; if ($chkShowNetwork.IsChecked) { $vNet = 0 }
-        Set-ItemProperty $regD -Name "{F02C1034-056E-447a-859F-370A18395C10}" -Value $vNet
-        $vCtrl = 1; if ($chkShowControl.IsChecked) { $vCtrl = 0 }
-        Set-ItemProperty $regD -Name "{5399E694-6CD5-4b5c-B231-819A47DC248A}" -Value $vCtrl
-        $vUser = 1; if ($chkShowUser.IsChecked) { $vUser = 0 }
-        Set-ItemProperty $regD -Name "{59031a47-3f72-44a7-89c5-5595fe6b30ee}" -Value $vUser
+        Set-ItemProperty $regD -Name "{20D04FE0-3AEA-1069-A2D8-08002B30309D}" -Value (if ($chkShowThisPC.IsChecked) {0} else {1})
+        Set-ItemProperty $regD -Name "{F02C1034-056E-447a-859F-370A18395C10}" -Value (if ($chkShowNetwork.IsChecked) {0} else {1})
+        Set-ItemProperty $regD -Name "{5399E694-6CD5-4b5c-B231-819A47DC248A}" -Value (if ($chkShowControl.IsChecked) {0} else {1})
+        Set-ItemProperty $regD -Name "{59031a47-3f72-44a7-89c5-5595fe6b30ee}" -Value (if ($chkShowUser.IsChecked) {0} else {1})
 
-        # Time
+        # Time & Region
         if ($chkSetVNTZ.IsChecked) { Set-TimeZone -Id "SE Asia Standard Time" }
-        $vTimeF = "h:mm tt"; if ($chkTime24h.IsChecked) { $vTimeF = "H:mm" }
-        Set-ItemProperty "HKCU:\Control Panel\International" -Name "sShortTime" -Value $vTimeF
+        Set-ItemProperty "HKCU:\Control Panel\International" -Name "sShortTime" -Value (if ($chkTime24h.IsChecked) {"H:mm"} else {"h:mm tt"})
 
-        # Explorer
+        # Explorer & Taskbar
         $regAdv = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
-        $vTrayIcon = 1; if ($chkShowAllIcons.IsChecked) { $vTrayIcon = 0 }
-        Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer" -Name "EnableAutoTray" -Value $vTrayIcon
-        $vLaunchTo = 2; if ($chkThisPC.IsChecked) { $vLaunchTo = 1 }
-        Set-ItemProperty $regAdv -Name "LaunchTo" -Value $vLaunchTo
+        Set-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer" -Name "EnableAutoTray" -Value (if ($chkShowAllIcons.IsChecked) {0} else {1})
+        Set-ItemProperty $regAdv -Name "LaunchTo" -Value (if ($chkThisPC.IsChecked) {1} else {2})
 
         if ($IsWin11) {
             $regM = "HKCU:\Software\Classes\CLSID\{86ca1aa0-34aa-4e8b-a509-50c905bae2a2}"
             if ($chkClassicMenu.IsChecked) { if (-not (Test-Path "$regM\InprocServer32")) { New-Item "$regM\InprocServer32" -Force | Out-Null; Set-ItemProperty "$regM\InprocServer32" -Name "(Default)" -Value "" } } 
             else { if (Test-Path $regM) { Remove-Item $regM -Recurse -Force } }
-            $vAlTask = 0; if ($chkTaskbarCenter.IsChecked) { $vAlTask = 1 }
-            Set-ItemProperty $regAdv -Name "TaskbarAl" -Value $vAlTask
+            Set-ItemProperty $regAdv -Name "TaskbarAl" -Value (if ($chkTaskbarCenter.IsChecked) {1} else {0})
         }
 
         if ($chkBitlocker.IsChecked) { if (-not ((manage-bde -status C:) -match "Protection On|Fully Encrypted")) { Start-Process "control.exe" "/name Microsoft.BitLockerDriveEncryption" } } 
         else { manage-bde -off C: | Out-Null }
 
         Stop-Process -Name explorer -Force
-        $lblTrangThai.Text = "✅ Đã xong!"; [System.Windows.MessageBox]::Show("Hoàn tất thiết lập!")
+        $lblTrangThai.Text = "✅ Đã xong!"; [System.Windows.MessageBox]::Show("Đã hoàn tất mọi thiết lập!")
     } catch { [System.Windows.MessageBox]::Show("Lỗi: $($_.Exception.Message)") }
     $btnApply.IsEnabled = $true
 })
