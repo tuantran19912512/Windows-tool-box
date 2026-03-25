@@ -1,13 +1,23 @@
-﻿Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+﻿# ==============================================================================
+# VIETTOOLBOX V67 - MODULE CLIENT (NÂNG CẤP WINDOWS)
+# Tác giả: Tuấn
+# ==============================================================================
+
+# 1. Ép hệ thống dùng chuẩn UTF-8 (Bản chuẩn cho PowerShell 5.1)
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
 $LogicVietToolboxClientV67 = {
-    # 1. Khai báo Link Cloud của Tuấn
+    # 2. Cấu hình Link Cloud
     $UrlCSV = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhMucSKU.csv"
     $BaseZipUrl = "https://raw.githubusercontent.com/tuantran19912512/skuwin/main/"
 
-    # 2. Giao diện WPF
+    # 3. Giao diện WPF
     $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox - Windows Upgrade" Width="550" Height="500" WindowStartupLocation="CenterScreen" Background="#F0F2F5">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+        Title="VietToolbox - Nâng Cấp Windows" Width="550" Height="500" 
+        WindowStartupLocation="CenterScreen" Background="#F0F2F5" FontFamily="Segoe UI">
     <Grid Margin="25">
         <StackPanel>
             <TextBlock Text="NÂNG CẤP WINDOWS CLOUD" FontWeight="Bold" FontSize="20" Foreground="#1A237E" Margin="0,0,0,5"/>
@@ -29,30 +39,36 @@ $LogicVietToolboxClientV67 = {
                 <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="12"/></Style></Button.Resources>
             </Button>
 
-            <TextBlock Name="TxtLog" Text="Hệ thống sẵn sàng." FontSize="11" Foreground="#666" Margin="0,15,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+            <TextBlock Name="TxtLog" Text="Hệ thống sẵn sàng." FontSize="12" Foreground="#666" Margin="0,15,0,0" HorizontalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center" FontWeight="SemiBold"/>
             <ProgressBar Name="ProgBar" Height="10" Margin="0,10,0,0" IsIndeterminate="True" Visibility="Collapsed"/>
         </StackPanel>
     </Grid>
 </Window>
 "@
 
+    # Tải giao diện
     $window = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::Create([System.IO.StringReader]$MaGiaoDien))
-    $cb = $window.FindName("CbEditions"); $btn = $window.FindName("BtnStart")
-    $log = $window.FindName("TxtLog"); $txtCurrent = $window.FindName("TxtCurrentVer")
+    $cb = $window.FindName("CbEditions")
+    $btn = $window.FindName("BtnStart")
+    $log = $window.FindName("TxtLog")
+    $txtCurrent = $window.FindName("TxtCurrentVer")
     $pb = $window.FindName("ProgBar")
 
-    # --- BƯỚC 1: NHẬN DẠNG WINDOWS HIỆN TẠI ---
+    # 4. NHẬN DẠNG WINDOWS HIỆN TẠI
     $currentEdition = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").EditionID
     $txtCurrent.Text = $currentEdition
 
-    # --- BƯỚC 2: TẢI DANH MỤC VÀ LỌC TRÙNG ---
+    # 5. TẢI VÀ LỌC DANH MỤC TỪ GITHUB
     try {
         $log.Text = "⏳ Đang đồng bộ danh mục từ Cloud..."
-        $data = (New-Object System.Net.WebClient).DownloadString($UrlCSV) | ConvertFrom-Csv
+        $wc = New-Object System.Net.WebClient
+        $wc.Encoding = [System.Text.Encoding]::UTF8 # Ép UTF-8 khi tải file CSV
+        $csvText = $wc.DownloadString($UrlCSV)
+        $data = $csvText | ConvertFrom-Csv
         
         $cb.Items.Clear()
         foreach ($item in $data) {
-            # Kiểm tra: Nếu FileName chứa tên bản hiện tại (ví dụ 'Professional') thì bỏ qua
+            # Loại bỏ bản trùng với bản hiện tại
             if ($item.FileName -notmatch $currentEdition) {
                 [void]$cb.Items.Add($item)
             }
@@ -61,62 +77,63 @@ $LogicVietToolboxClientV67 = {
         $cb.DisplayMemberPath = "Name"
         if ($cb.Items.Count -gt 0) {
             $cb.SelectedIndex = 0
-            $log.Text = "✅ Đã lọc bỏ bản $currentEdition khỏi danh sách nâng cấp."
+            $log.Text = "✅ Đã tải xong danh sách. Hệ thống đã ẩn bản $currentEdition."
         } else {
             $log.Text = "ℹ️ Bạn đang ở phiên bản cao nhất hoặc danh sách trống."
             $btn.IsEnabled = $false
         }
     } catch {
-        $log.Text = "❌ Lỗi: Không thể kết nối GitHub để lấy danh sách SKU!"
+        $log.Text = "❌ Lỗi: Không thể kết nối Cloud để lấy danh sách SKU!"
     }
 
-    # --- XỬ LÝ NÂNG CẤP (Bản Fix lỗi Start-ThreadJob) ---
+    # 6. XỬ LÝ NÂNG CẤP KHI BẤM NÚT (Dùng Start-Job chuẩn)
     $btn.Add_Click({
         $selected = $cb.SelectedItem
         if (-not $selected) { return }
 
-        $msg = [System.Windows.MessageBox]::Show("Hệ thống sẽ tải SKU và nâng cấp lên $($selected.Name). Bạn có chắc chắn không?", "VietToolbox Xác Nhận", "YesNo", "Information")
+        $msg = [System.Windows.MessageBox]::Show("Hệ thống sẽ tải SKU và nâng cấp lên $($selected.Name). Bạn có chắc chắn không?", "Xác nhận nâng cấp", "YesNo", "Information")
         if ($msg -ne "Yes") { return }
 
         $btn.IsEnabled = $false
         $pb.Visibility = "Visible"
-        $log.Text = "⏳ Đang khởi tạo quá trình nâng cấp..."
+        $log.Text = "⏳ Đang khởi tạo quá trình tải dữ liệu..."
 
-        # Dùng ScriptBlock để chạy ngầm bằng Start-Job (Có sẵn trên mọi máy)
+        # ScriptBlock chạy ngầm bằng Start-Job
         $JobCode = {
             param($url, $key, $name)
             try {
-                $tempZip = "$env:TEMP\upgrade.zip"
-                $tempDir = "$env:TEMP\SKU_Work"
+                $tempZip = "$env:TEMP\upgrade_sku.zip"
+                $tempDir = "$env:TEMP\SKU_Extract"
                 
-                # 1. Tải file
-                $wc = New-Object System.Net.WebClient
-                $wc.DownloadFile($url, $tempZip)
+                # A. Tải file
+                $web = New-Object System.Net.WebClient
+                $web.DownloadFile($url, $tempZip)
                 
-                # 2. Giải nén
+                # B. Giải nén
                 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
-                Expand-Archive $tempZip -DestinationPath $tempDir -Force
+                Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
                 
-                # 3. Nạp chứng chỉ .xrm-ms
+                # C. Nạp chứng chỉ
                 $files = Get-ChildItem -Path $tempDir -Filter "*.xrm-ms" -Recurse
                 foreach ($f in $files) {
                     $null = cscript //nologo C:\Windows\System32\slmgr.vbs /ilc "$($f.FullName)"
                 }
                 
-                # 4. Kích hoạt chuyển bản (Dùng Start-Process để không treo Job)
+                # D. Kích hoạt
                 Start-Process "changepk.exe" -ArgumentList "/ProductKey $key" -Wait
-                return "✅ Thành công: Đã nâng cấp lên $name!"
+                return "✅ THÀNH CÔNG: Đã gửi lệnh nâng cấp lên $name!"
             } catch {
-                return "❌ Lỗi: $($_.Exception.Message)"
+                return "❌ LỖI: $($_.Exception.Message)"
             }
         }
 
-        # Chạy Job ngầm
-        $currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList ($BaseZipUrl + $selected.FileName), $selected.GenericKey, $selected.Name
+        # Khởi chạy Job
+        $DownloadUrl = $BaseZipUrl + $selected.FileName
+        $currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList $DownloadUrl, $selected.GenericKey, $selected.Name
         
-        $log.Text = "🚀 Đang tải dữ liệu và nạp SKU... Vui lòng không tắt Tool!"
+        $log.Text = "🚀 Đang tải và nạp cấu hình... Vui lòng không tắt Tool!"
 
-        # Kiểm tra trạng thái Job (Không làm treo giao diện)
+        # Bộ đếm thời gian kiểm tra Job
         $timer = New-Object System.Windows.Threading.DispatcherTimer
         $timer.Interval = [TimeSpan]::FromSeconds(2)
         $timer.Add_Tick({
@@ -128,12 +145,18 @@ $LogicVietToolboxClientV67 = {
                 $btn.IsEnabled = $true
                 $timer.Stop()
                 
-                # Dọn dẹp rác
+                # Dọn dẹp Job
                 Remove-Job -Id $currentJob.Id
+                
+                if ($result -match "THÀNH CÔNG") {
+                    [System.Windows.MessageBox]::Show("Quá trình cài đặt SKU đã xong. Hệ thống có thể sẽ khởi động lại để hoàn tất nâng cấp!", "Thông báo", "OK", "Information")
+                }
             }
         })
         $timer.Start()
-    }
+    })
+
+    $window.ShowDialog() | Out-Null
 }
 
 &$LogicVietToolboxClientV67
