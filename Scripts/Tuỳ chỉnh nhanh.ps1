@@ -106,7 +106,7 @@ $inputXML = @"
                                 </StackPanel>
                             </Grid>
                             <UniformGrid Columns="2">
-                                <Button Name="BtnSetManual" Content="✍️ ĐẶT TAY" Height="28" Background="#475569" Foreground="White" BorderThickness="0" Margin="0,0,5,0"/>
+                                <Button Name="BtnSetManual" Content="✍️ Đặt ngày giờ thủ công" Height="28" Background="#475569" Foreground="White" BorderThickness="0" Margin="0,0,5,0"/>
                                 <Button Name="BtnSyncTime" Content="🔄 ĐỒNG BỘ" Height="28" Background="#10B981" Foreground="White" BorderThickness="0" Margin="5,0,0,0"/>
                             </UniformGrid>
                         </StackPanel>
