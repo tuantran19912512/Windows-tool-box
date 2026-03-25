@@ -133,6 +133,7 @@ $LogicVietToolboxClientV67 = {
             }
         })
         $timer.Start()
-    })
+    }
+}
 
 &$LogicVietToolboxClientV67
