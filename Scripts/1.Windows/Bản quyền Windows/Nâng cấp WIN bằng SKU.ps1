@@ -127,9 +127,9 @@ $LogicVietToolboxClientV67 = {
             }
         }
 
-        # Khởi chạy Job
+        # Khởi chạy Job (Dùng $script: để Timer có thể đọc được biến này)
         $DownloadUrl = $BaseZipUrl + $selected.FileName
-        $currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList $DownloadUrl, $selected.GenericKey, $selected.Name
+        $script:currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList $DownloadUrl, $selected.GenericKey, $selected.Name
         
         $log.Text = "🚀 Đang tải và nạp cấu hình... Vui lòng không tắt Tool!"
 
@@ -137,7 +137,9 @@ $LogicVietToolboxClientV67 = {
         $timer = New-Object System.Windows.Threading.DispatcherTimer
         $timer.Interval = [TimeSpan]::FromSeconds(2)
         $timer.Add_Tick({
-            $jobStatus = Get-Job -Id $currentJob.Id
+            # Lấy đúng ID từ biến $script:currentJob
+            $jobStatus = Get-Job -Id $script:currentJob.Id
+            
             if ($jobStatus.State -ne "Running") {
                 $result = Receive-Job -Job $jobStatus
                 $log.Text = $result
@@ -145,8 +147,8 @@ $LogicVietToolboxClientV67 = {
                 $btn.IsEnabled = $true
                 $timer.Stop()
                 
-                # Dọn dẹp Job
-                Remove-Job -Id $currentJob.Id
+                # Dọn dẹp Job sau khi xong
+                Remove-Job -Id $script:currentJob.Id
                 
                 if ($result -match "THÀNH CÔNG") {
                     [System.Windows.MessageBox]::Show("Quá trình cài đặt SKU đã xong. Hệ thống có thể sẽ khởi động lại để hoàn tất nâng cấp!", "Thông báo", "OK", "Information")
