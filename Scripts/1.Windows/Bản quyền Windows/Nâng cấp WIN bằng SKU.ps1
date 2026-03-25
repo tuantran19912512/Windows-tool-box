@@ -58,18 +58,43 @@ $LogicVietToolboxClientV67 = {
     $currentEdition = (Get-ItemProperty "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion").EditionID
     $txtCurrent.Text = $currentEdition
 
-    # 5. TẢI VÀ LỌC DANH MỤC TỪ GITHUB
+    # 5. TẢI VÀ LỌC DANH MỤC TỪ GITHUB (Bản nâng cấp có Phân Cấp Rank)
     try {
         $log.Text = "⏳ Đang đồng bộ danh mục từ Cloud..."
         $wc = New-Object System.Net.WebClient
-        $wc.Encoding = [System.Text.Encoding]::UTF8 # Ép UTF-8 khi tải file CSV
+        $wc.Encoding = [System.Text.Encoding]::UTF8
         $csvText = $wc.DownloadString($UrlCSV)
         $data = $csvText | ConvertFrom-Csv
         
+        # --- HỆ THỐNG PHÂN CẤP BẢN WIN (RANKING) ---
+        # Bậc càng cao thì càng xịn. Thêm các bản khác vào đây nếu Tuấn có.
+        $WinRank = @{
+            "Core" = 1               # Home
+            "CoreSingleLanguage" = 1 # Home SL
+            "Professional" = 2       # Pro
+            "Education" = 3          # Edu
+            "Enterprise" = 4         # Enterprise
+            "ServerRdsh" = 5         # Enterprise Multi-Session (nếu có)
+        }
+
+        # Tìm bậc (Rank) của máy hiện tại. Nếu không có trong danh sách thì mặc định là bậc 0
+        $currentRank = 0
+        if ($WinRank.ContainsKey($currentEdition)) {
+            $currentRank = $WinRank[$currentEdition]
+        }
+        
         $cb.Items.Clear()
         foreach ($item in $data) {
-            # Loại bỏ bản trùng với bản hiện tại
-            if ($item.FileName -notmatch $currentEdition) {
+            # Suy đoán bậc của bản Win trong file CSV dựa vào Tên File Zip
+            $itemRank = 0
+            if ($item.FileName -match "Core|Home") { $itemRank = 1 }
+            elseif ($item.FileName -match "Pro") { $itemRank = 2 }
+            elseif ($item.FileName -match "Edu") { $itemRank = 3 }
+            elseif ($item.FileName -match "Enterprise") { $itemRank = 4 }
+            else { $itemRank = 99 } # Nếu file lạ không phân loại được thì cứ cho hiện ra
+
+            # LOGIC QUAN TRỌNG: Chỉ thêm vào danh sách nếu bậc của nó CAO HƠN bản hiện tại
+            if ($itemRank -gt $currentRank) {
                 [void]$cb.Items.Add($item)
             }
         }
@@ -77,9 +102,9 @@ $LogicVietToolboxClientV67 = {
         $cb.DisplayMemberPath = "Name"
         if ($cb.Items.Count -gt 0) {
             $cb.SelectedIndex = 0
-            $log.Text = "✅ Đã tải xong danh sách. Hệ thống đã ẩn bản $currentEdition."
+            $log.Text = "✅ Đã tải danh sách. Chỉ hiển thị các bản cao hơn $currentEdition."
         } else {
-            $log.Text = "ℹ️ Bạn đang ở phiên bản cao nhất hoặc danh sách trống."
+            $log.Text = "ℹ️ Bạn đang ở phiên bản cao nhất, không thể nâng cấp thêm."
             $btn.IsEnabled = $false
         }
     } catch {
