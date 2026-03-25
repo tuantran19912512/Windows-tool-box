@@ -70,42 +70,69 @@ $LogicVietToolboxClientV67 = {
         $log.Text = "❌ Lỗi: Không thể kết nối GitHub để lấy danh sách SKU!"
     }
 
-    # --- BƯỚC 3: XỬ LÝ NÂNG CẤP ---
+    # --- XỬ LÝ NÂNG CẤP (Bản Fix lỗi Start-ThreadJob) ---
     $btn.Add_Click({
         $selected = $cb.SelectedItem
         if (-not $selected) { return }
 
-        $msg = [System.Windows.MessageBox]::Show("Hệ thống sẽ tải SKU và chạy ChangePK để nâng cấp lên $($selected.Name). Bạn có chắc chắn không?", "Xác nhận", "YesNo", "Question")
+        $msg = [System.Windows.MessageBox]::Show("Hệ thống sẽ tải SKU và nâng cấp lên $($selected.Name). Bạn có chắc chắn không?", "VietToolbox Xác Nhận", "YesNo", "Information")
         if ($msg -ne "Yes") { return }
 
-        $btn.IsEnabled = $false; $pb.Visibility = "Visible"
-        $log.Text = "🚀 Đang tải gói bổ trợ cho $($selected.Name)..."
+        $btn.IsEnabled = $false
+        $pb.Visibility = "Visible"
+        $log.Text = "⏳ Đang khởi tạo quá trình nâng cấp..."
 
-        # Logic tải và nạp SKU (chạy ngầm)
-        Start-ThreadJob -ScriptBlock {
+        # Dùng ScriptBlock để chạy ngầm bằng Start-Job (Có sẵn trên mọi máy)
+        $JobCode = {
             param($url, $key, $name)
             try {
-                $tempZip = "$env:TEMP\upgrade.zip"; $tempDir = "$env:TEMP\SKU_Work"
-                (New-Object System.Net.WebClient).DownloadFile($url, $tempZip)
+                $tempZip = "$env:TEMP\upgrade.zip"
+                $tempDir = "$env:TEMP\SKU_Work"
                 
+                # 1. Tải file
+                $wc = New-Object System.Net.WebClient
+                $wc.DownloadFile($url, $tempZip)
+                
+                # 2. Giải nén
                 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
                 Expand-Archive $tempZip -DestinationPath $tempDir -Force
                 
-                # Nạp chứng chỉ .xrm-ms
-                Get-ChildItem -Path $tempDir -Filter "*.xrm-ms" -Recurse | ForEach-Object {
-                    cscript //nologo C:\Windows\System32\slmgr.vbs /ilc "$($_.FullName)"
+                # 3. Nạp chứng chỉ .xrm-ms
+                $files = Get-ChildItem -Path $tempDir -Filter "*.xrm-ms" -Recurse
+                foreach ($f in $files) {
+                    $null = cscript //nologo C:\Windows\System32\slmgr.vbs /ilc "$($f.FullName)"
                 }
                 
-                # Gọi lệnh chuyển bản
+                # 4. Kích hoạt chuyển bản (Dùng Start-Process để không treo Job)
                 Start-Process "changepk.exe" -ArgumentList "/ProductKey $key" -Wait
-                return "✅ Quá trình nâng cấp lên $name đã bắt đầu. Vui lòng kiểm tra thông báo Windows!"
+                return "✅ Thành công: Đã nâng cấp lên $name!"
             } catch {
-                return "❌ Lỗi xử lý: $($_.Exception.Message)"
+                return "❌ Lỗi: $($_.Exception.Message)"
             }
-        } -ArgumentList ($BaseZipUrl + $selected.FileName), $selected.GenericKey, $selected.Name
-    })
+        }
 
-    $window.ShowDialog() | Out-Null
-}
+        # Chạy Job ngầm
+        $currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList ($BaseZipUrl + $selected.FileName), $selected.GenericKey, $selected.Name
+        
+        $log.Text = "🚀 Đang tải dữ liệu và nạp SKU... Vui lòng không tắt Tool!"
+
+        # Kiểm tra trạng thái Job (Không làm treo giao diện)
+        $timer = New-Object System.Windows.Threading.DispatcherTimer
+        $timer.Interval = [TimeSpan]::FromSeconds(2)
+        $timer.Add_Tick({
+            $jobStatus = Get-Job -Id $currentJob.Id
+            if ($jobStatus.State -ne "Running") {
+                $result = Receive-Job -Job $jobStatus
+                $log.Text = $result
+                $pb.Visibility = "Collapsed"
+                $btn.IsEnabled = $true
+                $timer.Stop()
+                
+                # Dọn dẹp rác
+                Remove-Job -Id $currentJob.Id
+            }
+        })
+        $timer.Start()
+    })
 
 &$LogicVietToolboxClientV67
