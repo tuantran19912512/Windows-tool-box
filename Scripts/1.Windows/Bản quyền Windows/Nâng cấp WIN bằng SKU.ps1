@@ -127,31 +127,44 @@ $LogicVietToolboxClientV67 = {
             }
         }
 
-        # Khởi chạy Job (Dùng $script: để Timer có thể đọc được biến này)
+        # Khởi chạy Job
         $DownloadUrl = $BaseZipUrl + $selected.FileName
         $script:currentJob = Start-Job -ScriptBlock $JobCode -ArgumentList $DownloadUrl, $selected.GenericKey, $selected.Name
         
         $log.Text = "🚀 Đang tải và nạp cấu hình... Vui lòng không tắt Tool!"
 
-        # Bộ đếm thời gian kiểm tra Job
+        # Bộ đếm thời gian kiểm tra Job (Đã bọc bảo hiểm chống lỗi vặt)
         $timer = New-Object System.Windows.Threading.DispatcherTimer
         $timer.Interval = [TimeSpan]::FromSeconds(2)
         $timer.Add_Tick({
-            # Lấy đúng ID từ biến $script:currentJob
-            $jobStatus = Get-Job -Id $script:currentJob.Id
+            # 1. Nếu biến rỗng (Job đã bị xoá) thì dừng Timer ngay lập tức
+            if (-not $script:currentJob) {
+                $timer.Stop()
+                return
+            }
+
+            # 2. Lấy trạng thái Job (Thêm SilentlyContinue để giấu lỗi đỏ nếu có)
+            $jobStatus = Get-Job -Id $script:currentJob.Id -ErrorAction SilentlyContinue
             
-            if ($jobStatus.State -ne "Running") {
-                $result = Receive-Job -Job $jobStatus
-                $log.Text = $result
+            # Nếu Job tồn tại và đã chạy xong (Completed, Failed...)
+            if ($jobStatus -and $jobStatus.State -ne "Running") {
+                $timer.Stop() # Dừng đồng hồ trước tiên
+                
+                # Rút kết quả từ Job
+                $result = Receive-Job -Job $jobStatus -ErrorAction SilentlyContinue
+                
+                # Cập nhật giao diện
+                $log.Text = if ($result) { $result } else { "✅ Đã gửi lệnh nâng cấp!" }
                 $pb.Visibility = "Collapsed"
                 $btn.IsEnabled = $true
-                $timer.Stop()
                 
-                # Dọn dẹp Job sau khi xong
-                Remove-Job -Id $script:currentJob.Id
+                # Dọn dẹp rác hệ thống an toàn
+                Remove-Job -Id $script:currentJob.Id -Force -ErrorAction SilentlyContinue
+                $script:currentJob = $null # Cắt đứt hoàn toàn
                 
+                # Báo cáo
                 if ($result -match "THÀNH CÔNG") {
-                    [System.Windows.MessageBox]::Show("Quá trình cài đặt SKU đã xong. Hệ thống có thể sẽ khởi động lại để hoàn tất nâng cấp!", "Thông báo", "OK", "Information")
+                    [System.Windows.MessageBox]::Show("Quá trình nạp SKU đã xong! Hệ thống đang xử lý chuyển bản Windows, vui lòng đợi trong giây lát.", "Thành Công", "OK", "Information")
                 }
             }
         })
