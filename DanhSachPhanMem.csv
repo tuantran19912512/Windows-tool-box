@@ -1,25 +1,25 @@
-Check,Name,WingetID,ChocoID,GDriveID,SilentArgs
-False,Google Chrome,Google.Chrome,googlechrome,,
-False,Zalo,VNGCorp.Zalo,,,
-False,Unikey,UniKey.UniKey,Unikey,,
-False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,
-False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,
-False,EVKey,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,
-False,WPS Office,Kingsoft.WPSOffice,wps-office-free,,
-False,Sogou,Sogou.SogouInput,,,
-False,Notepad++ ,Notepad++.Notepad++,notepadplusplus,,
-False,7-Zip,7zip.7zip,7zip,,
-False,WPS Office CN	,Kingsoft.WPSOffice.CN,,,
-False,K-Lite,CodecGuide.K-LiteCodecPack.Mega,k-litecodecpackbasic,,
-False,VLC media player,VideoLAN.VLC.Nightly,vlc,,
-False,Mozilla Firefox,Mozilla.Firefox.vi,firefox,,
-False,Cốc cốc,CocCoc.CocCoc,,,
-False,Java,Oracle.JavaRuntimeEnvironment,javaruntime,,
-False,Microsoft Visual C++ V14 Redistributable (x64),Microsoft.VCRedist.2015+.x64,,,
-False,Microsoft Visual C++ V14 Redistributable (x86),Microsoft.VCRedist.2015+.x86,,,
-False,DirectX End-User Runtime Installer,Microsoft.DirectX,directx,,
-False,Wechat,Tencent.WeChat,,,
-False,HP Smart,9WZDNCRFHWLH,,,
-False,PDF X edit,9P3CP9G025RM,,,
-False,Zoom,XP99J3KP4XZ4VV,,,
-False,Microsoft Visual C++,Microsoft.VCLibs.14,,,
+Check,Name,WingetID,ChocoID,GDriveID,SilentArgs,IconURL
+False,Google Chrome,Google.Chrome,googlechrome,,,https://icon.horse/icon/google.com
+False,Zalo,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me
+False,Unikey,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn
+False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net
+False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,,https://icon.horse/icon/foxit.com
+False,EVKey,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com
+False,WPS Office,Kingsoft.WPSOffice,wps-office-free,,,https://icon.horse/icon/vi.wps.com
+False,Sogou,Sogou.SogouInput,,,,https://icon.horse/icon/shurufa.sogou.com
+False,Notepad++ ,Notepad++.Notepad++,notepadplusplus,,,https://icon.horse/icon/notepad-plus-plus.org
+False,7-Zip,7zip.7zip,7zip,,,https://icon.horse/icon/7-zip.org
+False,WPS Office CN	,Kingsoft.WPSOffice.CN,,,,https://icon.horse/icon/wps.cn
+False,K-Lite,CodecGuide.K-LiteCodecPack.Mega,k-litecodecpackbasic,,,https://icon.horse/icon/codecguide.com
+False,VLC media player,VideoLAN.VLC.Nightly,vlc,,,https://icon.horse/icon/videolan.org
+False,Mozilla Firefox,Mozilla.Firefox.vi,firefox,,,https://icon.horse/icon/firefox.com
+False,Cốc cốc,CocCoc.CocCoc,,,,https://icon.horse/icon/coccoc.com
+False,Java,Oracle.JavaRuntimeEnvironment,javaruntime,,,https://icon.horse/icon/java.com
+False,Microsoft Visual C++ V14 Redistributable (x64),Microsoft.VCRedist.2015+.x64,,,,https://icon.horse/icon/microsoft.com
+False,Microsoft Visual C++ V14 Redistributable (x86),Microsoft.VCRedist.2015+.x86,,,,https://icon.horse/icon/microsoft.com
+False,DirectX End-User Runtime Installer,Microsoft.DirectX,directx,,,https://icon.horse/icon/microsoft.com
+False,Wechat,Tencent.WeChat,,,,https://icon.horse/icon/wechat.com
+False,HP Smart,9WZDNCRFHWLH,,,,https://icon.horse/icon/hpsmart.com
+False,PDF X edit,9P3CP9G025RM,,,,https://icon.horse/icon/pdfxapp.com
+False,Zoom,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us
+False,Microsoft Visual C++,Microsoft.VCLibs.14,,,,https://icon.horse/icon/microsoft.com
