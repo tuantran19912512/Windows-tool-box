@@ -86,7 +86,7 @@ $LogicVietToolboxClientV67 = {
         $log.Text = "❌ Lỗi: Không thể kết nối Cloud để lấy danh sách SKU!"
     }
 
-    # 6. XỬ LÝ NÂNG CẤP KHI BẤM NÚT (Dùng Start-Job chuẩn)
+    # 6. XỬ LÝ NÂNG CẤP KHI BẤM NÚT (Fix lỗi Null-Valued Expression)
     $btn.Add_Click({
         $selected = $cb.SelectedItem
         if (-not $selected) { return }
@@ -98,28 +98,24 @@ $LogicVietToolboxClientV67 = {
         $pb.Visibility = "Visible"
         $log.Text = "⏳ Đang khởi tạo quá trình tải dữ liệu..."
 
-        # ScriptBlock chạy ngầm bằng Start-Job
+        # ScriptBlock chạy ngầm
         $JobCode = {
             param($url, $key, $name)
             try {
                 $tempZip = "$env:TEMP\upgrade_sku.zip"
                 $tempDir = "$env:TEMP\SKU_Extract"
                 
-                # A. Tải file
                 $web = New-Object System.Net.WebClient
                 $web.DownloadFile($url, $tempZip)
                 
-                # B. Giải nén
                 if (Test-Path $tempDir) { Remove-Item $tempDir -Recurse -Force }
                 Expand-Archive -Path $tempZip -DestinationPath $tempDir -Force
                 
-                # C. Nạp chứng chỉ
                 $files = Get-ChildItem -Path $tempDir -Filter "*.xrm-ms" -Recurse
                 foreach ($f in $files) {
                     $null = cscript //nologo C:\Windows\System32\slmgr.vbs /ilc "$($f.FullName)"
                 }
                 
-                # D. Kích hoạt
                 Start-Process "changepk.exe" -ArgumentList "/ProductKey $key" -Wait
                 return "✅ THÀNH CÔNG: Đã gửi lệnh nâng cấp lên $name!"
             } catch {
@@ -133,38 +129,37 @@ $LogicVietToolboxClientV67 = {
         
         $log.Text = "🚀 Đang tải và nạp cấu hình... Vui lòng không tắt Tool!"
 
-        # Bộ đếm thời gian kiểm tra Job (Đã bọc bảo hiểm chống lỗi vặt)
+        # Bộ đếm thời gian (Đã bọc bảo hiểm an toàn tuyệt đối)
         $timer = New-Object System.Windows.Threading.DispatcherTimer
         $timer.Interval = [TimeSpan]::FromSeconds(2)
         $timer.Add_Tick({
-            # 1. Nếu biến rỗng (Job đã bị xoá) thì dừng Timer ngay lập tức
+            param($sender, $e) # <- CHÌA KHÓA GIẢI QUYẾT LỖI NẰM Ở ĐÂY
+
+            # Nếu Job bị mất, dừng đồng hồ ngay
             if (-not $script:currentJob) {
-                $timer.Stop()
+                $sender.Stop()
                 return
             }
 
-            # 2. Lấy trạng thái Job (Thêm SilentlyContinue để giấu lỗi đỏ nếu có)
+            # Lấy trạng thái Job (nuốt lỗi đỏ nếu có)
             $jobStatus = Get-Job -Id $script:currentJob.Id -ErrorAction SilentlyContinue
             
-            # Nếu Job tồn tại và đã chạy xong (Completed, Failed...)
+            # Nếu Job đã xong (Completed/Failed)
             if ($jobStatus -and $jobStatus.State -ne "Running") {
-                $timer.Stop() # Dừng đồng hồ trước tiên
+                $sender.Stop() # Dừng đồng hồ bằng chính object của nó
                 
-                # Rút kết quả từ Job
                 $result = Receive-Job -Job $jobStatus -ErrorAction SilentlyContinue
+                if ($result) { $log.Text = $result } else { $log.Text = "✅ Đã xử lý xong tác vụ!" }
                 
-                # Cập nhật giao diện
-                $log.Text = if ($result) { $result } else { "✅ Đã gửi lệnh nâng cấp!" }
                 $pb.Visibility = "Collapsed"
                 $btn.IsEnabled = $true
                 
-                # Dọn dẹp rác hệ thống an toàn
+                # Dọn rác
                 Remove-Job -Id $script:currentJob.Id -Force -ErrorAction SilentlyContinue
-                $script:currentJob = $null # Cắt đứt hoàn toàn
+                $script:currentJob = $null
                 
-                # Báo cáo
                 if ($result -match "THÀNH CÔNG") {
-                    [System.Windows.MessageBox]::Show("Quá trình nạp SKU đã xong! Hệ thống đang xử lý chuyển bản Windows, vui lòng đợi trong giây lát.", "Thành Công", "OK", "Information")
+                    [System.Windows.MessageBox]::Show("Quá trình cài đặt SKU đã hoàn tất! Hệ thống đang tiến hành chuyển bản Windows, bạn có thể kiểm tra trong Settings.", "Thành Công", "OK", "Information")
                 }
             }
         })
