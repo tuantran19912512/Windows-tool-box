@@ -1,15 +1,16 @@
-﻿# ==========================================================
-# VIETTOOLBOX PRO INSTALLER (V66.0 - TRUE FULL OPTION)
+﻿# ==============================================================================
+# VIETTOOLBOX PRO INSTALLER (V66.1 - TRUE FULL OPTION)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Đặc trị: Full Môi Trường + Multi-Progress + Fix Font + TLS 1.3
-# ==========================================================
+# Đặc trị: Full Môi Trường + Fix Chứng Chỉ MSStore + Fix Icon + Đồng Bộ Giờ
+# ==============================================================================
 
-# 1. BẢO HIỂM KẾT NỐI (TLS 1.2 + 1.3)
+# 1. BẢO HIỂM KẾT NỐI VÀ FONT CHỮ (TLS 1.2 + 1.3 & UTF-8)
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-# 2. ÉP QUYỀN ADMIN
+# 2. ÉP QUYỀN ADMIN TỰ ĐỘNG
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
@@ -33,17 +34,74 @@ $LogicInstallerV66 = {
         Do-Events
     }
 
-    # --- HÀM CHẠY LỆNH LIVE LOG & BẮT % TIẾN TRÌNH ---
+    # --- HÀM TỰ ĐỘNG CÀI ĐẶT MÔI TRƯỜNG & FIX LỖI CHỨNG CHỈ ---
+    function Check-MoiTruong {
+        $txtTLS.Text = "🛡️ TLS 1.3: Active"; $txtTLS.Foreground = "Blue"
+        Ghi-Log "[*] Đang kiểm tra môi trường hệ thống..."
+
+        # ÉP ĐỒNG BỘ GIỜ VIỆT NAM (Sửa lỗi chứng chỉ 0x8a15005e)
+        Ghi-Log "[*] Đang đồng bộ thời gian hệ thống để tránh lỗi chứng chỉ..."
+        try {
+            Start-Process w32tm -ArgumentList "/resync /force" -WindowStyle Hidden -Wait -ErrorAction SilentlyContinue
+            Ghi-Log "✅ Đã đồng bộ thời gian chuẩn."
+        } catch {
+            Ghi-Log "⚠️ Không thể tự động đồng bộ thời gian."
+        }
+
+        # KIỂM TRA & CÀI ĐẶT WINGET
+        if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
+            $txtWinget.Text = "⏳ Đang cài Winget..."; $txtWinget.Foreground = "Orange"
+            Ghi-Log "[!] Không tìm thấy Winget. Đang tự động cài đặt từ máy chủ Microsoft..."
+            try {
+                $urlWinget = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
+                $pathWinget = "$env:TEMP\WingetInstaller.msixbundle"
+                (New-Object System.Net.WebClient).DownloadFile($urlWinget, $pathWinget)
+                Add-AppxPackage -Path $pathWinget
+                $txtWinget.Text = "$Icon_Check Winget: OK"; $txtWinget.Foreground = "Green"
+                Ghi-Log "✅ Cài đặt Winget thành công."
+            } catch {
+                Ghi-Log "❌ Lỗi cài Winget: $($_.Exception.Message)"
+                $txtWinget.Text = "❌ Winget Lỗi"; $txtWinget.Foreground = "Red"
+            }
+        } else {
+            $txtWinget.Text = "$Icon_Check Winget: OK"; $txtWinget.Foreground = "Green"
+        }
+
+        # KIỂM TRA & CÀI ĐẶT CHOCOLATEY
+        if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
+            $txtChoco.Text = "⏳ Đang cài Choco..."; $txtChoco.Foreground = "Orange"
+            Ghi-Log "[!] Đang cài đặt Chocolatey (Môi trường bổ trợ)..."
+            try {
+                Set-ExecutionPolicy Bypass -Scope Process -Force
+                [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
+                iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
+                $txtChoco.Text = "$Icon_Check Choco: OK"; $txtChoco.Foreground = "Green"
+                Ghi-Log "✅ Cài đặt Chocolatey thành công."
+            } catch {
+                Ghi-Log "❌ Lỗi cài Choco: $($_.Exception.Message)"
+                $txtChoco.Text = "❌ Choco Lỗi"; $txtChoco.Foreground = "Red"
+            }
+        } else {
+            $txtChoco.Text = "$Icon_Check Choco: OK"; $txtChoco.Foreground = "Green"
+        }
+        Do-Events
+    }
+
+    # --- HÀM CHẠY LỆNH CÀI ĐẶT & THÔNG MINH NÉ LỖI MSSTORE ---
     function Run-InstallWithProgress($App, $FullCommand) {
         $pInfo = New-Object System.Diagnostics.ProcessStartInfo
         $pInfo.FileName = "cmd.exe"; $pInfo.Arguments = "/c `"$FullCommand`""; $pInfo.RedirectStandardOutput = $true; $pInfo.RedirectStandardError = $true
         $pInfo.UseShellExecute = $false; $pInfo.CreateNoWindow = $true
         $script:CurrentProc = New-Object System.Diagnostics.Process
         $script:CurrentProc.StartInfo = $pInfo
+        
+        $errorOutput = "" # Bộ nhớ tạm để phân tích lỗi
+
         try {
             [void]$script:CurrentProc.Start()
             while (!$script:CurrentProc.HasExited) {
                 if ($script:HuyCaiDat) { Start-Process taskkill -ArgumentList "/F /T /PID $($script:CurrentProc.Id)" -WindowStyle Hidden -ErrorAction SilentlyContinue; return -1 }
+                
                 $line = $script:CurrentProc.StandardOutput.ReadLine()
                 if ($line) { 
                     Ghi-Log "   > $($line.Trim())" 
@@ -51,14 +109,37 @@ $LogicInstallerV66 = {
                         $percent = $matches[1]
                         $window.Dispatcher.Invoke([action]{ $App.Progress = [int]$percent; $App.ProgressVisibility = "Visible" })
                     }
+                    # Bắt lỗi chứng chỉ msstore
+                    if ($line -match "0x8a15005e|certificate did not match|msstore") { $errorOutput += $line }
                 }
                 Do-Events
             }
-            return [int]$script:CurrentProc.ExitCode
+            
+            $exitCode = [int]$script:CurrentProc.ExitCode
+
+            # CƠ CHẾ DỰ PHÒNG: Nếu lỗi do msstore, ép chạy qua nguồn winget chung
+            if ($exitCode -ne 0 -and $errorOutput -match "certificate did not match|msstore") {
+                Ghi-Log "⚠️ Phát hiện lỗi chứng chỉ msstore. Đang tự động thử lại qua nguồn thay thế..."
+                $fallbackCommand = $FullCommand -replace "winget install", "winget install --source winget"
+                
+                $pInfo.Arguments = "/c `"$fallbackCommand`""
+                $script:CurrentProc = New-Object System.Diagnostics.Process
+                $script:CurrentProc.StartInfo = $pInfo
+                [void]$script:CurrentProc.Start()
+                
+                while (!$script:CurrentProc.HasExited) {
+                    $line = $script:CurrentProc.StandardOutput.ReadLine()
+                    if ($line) { Ghi-Log "   [Retry] > $($line.Trim())" }
+                    Do-Events
+                }
+                $exitCode = [int]$script:CurrentProc.ExitCode
+            }
+
+            return $exitCode
         } catch { return -99 } finally { $script:CurrentProc = $null }
     }
 
-    # --- GIAO DIỆN XAML (ĐÃ ĐƯA KHUNG KIỂM TRA MÔI TRƯỜNG TRỞ LẠI) ---
+    # --- GIAO DIỆN XAML ---
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -66,7 +147,7 @@ $LogicInstallerV66 = {
         Title="VietToolbox Pro" Width="1100" Height="880" 
         WindowStartupLocation="CenterScreen" 
         Background="Transparent" AllowsTransparency="True" 
-        WindowStyle="None" ResizeMode="CanResize">
+        WindowStyle="None" ResizeMode="CanResize" FontFamily="Segoe UI">
 
     <WindowChrome.WindowChrome>
         <WindowChrome GlassFrameThickness="0" CornerRadius="15" CaptionHeight="35" ResizeBorderThickness="7" />
@@ -78,11 +159,14 @@ $LogicInstallerV66 = {
             
             <Grid Name="TitleBar" Grid.Row="0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="VietToolbox Pro Installer V66.0 - Full Option" Foreground="#666" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="Bold"/>
+                <TextBlock Text="VietToolbox Pro Installer V66.1 - Full Option" Foreground="#666" VerticalAlignment="Center" Margin="15,0,0,0" FontWeight="Bold"/>
                 <Button Name="btnMinimize" Grid.Column="1" Content="—" Width="45" Background="Transparent" BorderThickness="0"/><Button Name="btnClose" Grid.Column="2" Content="✕" Width="45" Background="Transparent" BorderThickness="0"/>
             </Grid>
 
-            <StackPanel Grid.Row="1" Margin="0,5,0,10"><TextBlock Text="HỆ THỐNG CÀI ĐẶT THÔNG MINH" FontSize="26" FontWeight="Bold" Foreground="#1A237E"/><TextBlock Text="Đầy đủ: Kiểm tra môi trường + Live Progress + Fix Font Cốc Cốc" Foreground="#666"/></StackPanel>
+            <StackPanel Grid.Row="1" Margin="0,5,0,10">
+                <TextBlock Text="HỆ THỐNG CÀI ĐẶT THÔNG MINH" FontSize="26" FontWeight="Bold" Foreground="#1A237E"/>
+                <TextBlock Text="Đầy đủ: Kiểm tra môi trường + Live Progress + Fix Lỗi Chứng Chỉ" Foreground="#666"/>
+            </StackPanel>
             
             <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#DDD" BorderThickness="1">
                 <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -118,57 +202,13 @@ $LogicInstallerV66 = {
     $txtLog = $window.FindName("TxtLog"); $lstApps = $window.FindName("LstApps"); $pbTotal = $window.FindName("PbTotal")
     $txtWinget = $window.FindName("TxtWinget"); $txtChoco = $window.FindName("TxtChoco"); $txtTLS = $window.FindName("TxtTLS")
     
-    # --- HÀM TỰ ĐỘNG CÀI ĐẶT MÔI TRƯỜNG (WINGET + CHOCO) ---
-function Check-MoiTruong {
-    $txtTLS.Text = "🛡️ TLS 1.3: Active"; $txtTLS.Foreground = "Blue"
-    Ghi-Log "[*] Đang kiểm tra môi trường hệ thống..."
-
-    # 1. KIỂM TRA & CÀI ĐẶT WINGET (Dành cho Win 10/11)
-    if (!(Get-Command winget -ErrorAction SilentlyContinue)) {
-        $txtWinget.Text = "⏳ Đang cài Winget..."; $txtWinget.Foreground = "Orange"
-        Ghi-Log "[!] Không tìm thấy Winget. Đang tự động cài đặt từ Microsoft Store..."
-        try {
-            # Tải gói cài đặt App Installer trực tiếp từ MS Server
-            $urlWinget = "https://github.com/microsoft/winget-cli/releases/latest/download/Microsoft.DesktopAppInstaller_8wekyb3d8bbwe.msixbundle"
-            $pathWinget = "$env:TEMP\WingetInstaller.msixbundle"
-            (New-Object System.Net.WebClient).DownloadFile($urlWinget, $pathWinget)
-            Add-AppxPackage -Path $pathWinget
-            $txtWinget.Text = "$Icon_Check Winget: OK"; $txtWinget.Foreground = "Green"
-            Ghi-Log "✅ Cài đặt Winget thành công."
-        } catch {
-            Ghi-Log "❌ Lỗi cài Winget: $($_.Exception.Message)"
-            $txtWinget.Text = "❌ Winget Lỗi"; $txtWinget.Foreground = "Red"
-        }
-    } else {
-        $txtWinget.Text = "$Icon_Check Winget: OK"; $txtWinget.Foreground = "Green"
-    }
-
-    # 2. KIỂM TRA & CÀI ĐẶT CHOCOLATEY (Dùng để bổ trợ khi Winget thiếu app)
-    if (!(Get-Command choco -ErrorAction SilentlyContinue)) {
-        $txtChoco.Text = "⏳ Đang cài Choco..."; $txtChoco.Foreground = "Orange"
-        Ghi-Log "[!] Đang cài đặt Chocolatey (Môi trường bổ trợ)..."
-        try {
-            Set-ExecutionPolicy Bypass -Scope Process -Force
-            [System.Net.ServicePointManager]::SecurityProtocol = [System.Net.ServicePointManager]::SecurityProtocol -bor 3072
-            iex ((New-Object System.Net.WebClient).DownloadString('https://community.chocolatey.org/install.ps1'))
-            $txtChoco.Text = "$Icon_Check Choco: OK"; $txtChoco.Foreground = "Green"
-            Ghi-Log "✅ Cài đặt Chocolatey thành công."
-        } catch {
-            Ghi-Log "❌ Lỗi cài Choco: $($_.Exception.Message)"
-            $txtChoco.Text = "❌ Choco Lỗi"; $txtChoco.Foreground = "Red"
-        }
-    } else {
-        $txtChoco.Text = "$Icon_Check Choco: OK"; $txtChoco.Foreground = "Green"
-    }
-    
-    Do-Events
-}
-
-    # --- KẾT NỐI NÚT BẤM (HÀN CHẾT) ---
+    # --- KẾT NỐI NÚT BẤM ---
     $window.FindName("TitleBar").Add_MouseLeftButtonDown({ $window.DragMove() })
     $window.FindName("btnMinimize").Add_Click({ $window.WindowState = "Minimized" })
     $window.FindName("btnClose").Add_Click({ $window.Close() })
+    
     $window.FindName("BtnReload").Add_Click({ Tai-DanhSach })
+    
     $window.FindName("BtnQuet").Add_Click({
         Ghi-Log "[*] Đang quét máy..."
         $reg = (Get-ItemProperty HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\*, HKLM:\SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\*, HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\* -ErrorAction SilentlyContinue).DisplayName
@@ -178,40 +218,62 @@ function Check-MoiTruong {
         }
         $lstApps.Items.Refresh()
     })
+    
     $window.FindName("BtnSelect").Add_Click({
         $script:SelectAllState = !$script:SelectAllState
         foreach ($app in $script:AppCollection) { if ($app.StatusColor -ne "Gray") { $app.Check = $script:SelectAllState } }
         $window.FindName("BtnSelect").Content = if ($script:SelectAllState) { "BỎ CHỌN" } else { "CHỌN TẤT CẢ" }
         $lstApps.Items.Refresh()
     })
+    
     $window.FindName("BtnStop").Add_Click({ $script:HuyCaiDat = $true; Ghi-Log "🛑 ĐÃ DỪNG LỆNH!" })
 
     $window.FindName("BtnInstall").Add_Click({
         $target = @($script:AppCollection | Where-Object { $_.Check -eq $true })
         if ($target.Count -eq 0) { return }
         $window.FindName("BtnInstall").IsEnabled = $false; $script:HuyCaiDat = $false; $done = 0
+        
         foreach ($app in $target) {
             if ($script:HuyCaiDat) { $app.Status="Đã hủy"; $app.StatusColor="Red"; continue }
             $app.Status = "Đang tải..."; $app.StatusColor = "#E65100"; $app.ProgressVisibility = "Visible"; $lstApps.Items.Refresh()
+            
             $exit = Run-InstallWithProgress $app "winget install --id `"$($app.WID)`" --silent --accept-package-agreements --accept-source-agreements --force"
+            
             if ($exit -eq 0 -or $exit -eq 3010) { $app.Status="Xong!"; $app.StatusColor="Green"; $app.Progress=100 }
             else { $app.Status="Lỗi!"; $app.StatusColor="Red"; $app.Progress=0 }
+            
             $done++; $pbTotal.Value = ($done / $target.Count) * 100; $lstApps.Items.Refresh()
         }
-        $window.FindName("BtnInstall").IsEnabled = $true; Ghi-Log "🏁 HOÀN TẤT."
+        $window.FindName("BtnInstall").IsEnabled = $true; Ghi-Log "🏁 HOÀN TẤT CÀI ĐẶT."
     })
 
     function Tai-DanhSach {
         try {
             $wc = New-Object System.Net.WebClient; $wc.Encoding = [System.Text.Encoding]::UTF8
-            $data = $wc.DownloadString("https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhSachPhanMem.csv?t=" + (Get-Date).Ticks) | ConvertFrom-Csv
+            $csvText = $wc.DownloadString("https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/DanhSachPhanMem.csv?t=" + (Get-Date).Ticks)
+            $data = $csvText | ConvertFrom-Csv
+            
             $script:AppCollection.Clear()
             foreach ($item in $data) {
-                $icon = if($item.IconURL -match "http"){$item.IconURL} else {"https://cdn-icons-png.flaticon.com/512/1243/1243968.png"}
-                $script:AppCollection.Add([PSCustomObject]@{ Check=$true; IconURL=$icon; Name=$item.Name; Status="Sẵn sàng"; StatusColor="Black"; WID=$item.WingetID; Progress=0; ProgressVisibility="Hidden" })
+                # FIX ICON TRIỆT ĐỂ: Dùng nguồn ảnh từ Icons8 siêu ổn định cho WPF
+                $icon = "https://img.icons8.com/color/48/000000/application-window.png"
+                if ($item.PSObject.Properties.Match('IconURL').Count -gt 0 -and $item.IconURL -match "^http") {
+                    $icon = $item.IconURL
+                }
+                
+                $script:AppCollection.Add([PSCustomObject]@{ 
+                    Check=$true; 
+                    IconURL=$icon; 
+                    Name=$item.Name; 
+                    Status="Sẵn sàng"; 
+                    StatusColor="Black"; 
+                    WID=$item.WingetID; 
+                    Progress=0; 
+                    ProgressVisibility="Hidden" 
+                })
             }
             $lstApps.ItemsSource = $script:AppCollection; Ghi-Log "✓ Đã nạp danh sách App Cloud."
-        } catch { Ghi-Log "❌ Lỗi nạp dữ liệu!" }
+        } catch { Ghi-Log "❌ Lỗi nạp dữ liệu từ GitHub!" }
     }
 
     $window.Add_ContentRendered({ Tai-DanhSach; Check-MoiTruong })
