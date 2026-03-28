@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
 # Tên công cụ: VIETTOOLBOX - TRUNG TÂM SAO LƯU & PHỤC HỒI DRIVER
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Nâng cấp: Sửa lỗi PowerShell không hiểu tên file chứa ngoặc vuông [ ] (Wildcard)
+# Nâng cấp: Sửa lỗi mất 3 nút khi Fullscreen, thêm góc kéo để tự do co giãn
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -31,7 +31,7 @@ $global:yeuCauDung = $false
 $maXAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox - Quản Lý Driver" Width="1050" Height="750" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Opacity="0">
+        Title="VietToolbox - Quản Lý Driver" Width="1050" Height="750" MinWidth="900" MinHeight="600" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Opacity="0">
     
     <Window.Triggers>
         <EventTrigger RoutedEvent="Window.Loaded">
@@ -72,16 +72,17 @@ $maXAML = @"
 
     <Border Name="KhungVien" CornerRadius="15" BorderBrush="#334155" BorderThickness="1" Background="#0F172A">
         <Grid>
-            <Grid Height="50" VerticalAlignment="Top" Background="#1E293B" Panel.ZIndex="2">
-                <Grid.Clip><RectangleGeometry Rect="0,0,1050,50" RadiusX="15" RadiusY="15" x:Name="BoGocTieuDe"/></Grid.Clip>
-                <TextBlock Text="🛡️ VIETTOOLBOX - TRUNG TÂM SAO LƯU &amp; PHỤC HỒI DRIVER V19.21" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
-                
-                <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0">
-                    <Button Name="NutThuNho" Content="—" Width="40" Background="Transparent" Foreground="#94A3B8" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
-                    <Button Name="NutPhongTo" Content="◻" Width="40" Background="Transparent" Foreground="#94A3B8" BorderThickness="0" FontSize="18" Cursor="Hand" FontWeight="Bold"/>
-                    <Button Name="NutDongCuaSo" Content="✕" Width="40" Background="Transparent" Foreground="#EF4444" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
-                </StackPanel>
-            </Grid>
+            <Border Name="BoGocTieuDe" Height="50" VerticalAlignment="Top" Background="#1E293B" CornerRadius="15,15,0,0" Panel.ZIndex="2">
+                <Grid>
+                    <TextBlock Text="🛡️ VIETTOOLBOX - TRUNG TÂM SAO LƯU &amp; PHỤC HỒI DRIVER V19.22" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                    
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,0,10,0">
+                        <Button Name="NutThuNho" Content="—" Width="40" Background="Transparent" Foreground="#94A3B8" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
+                        <Button Name="NutPhongTo" Content="◻" Width="40" Background="Transparent" Foreground="#94A3B8" BorderThickness="0" FontSize="18" Cursor="Hand" FontWeight="Bold"/>
+                        <Button Name="NutDongCuaSo" Content="✕" Width="40" Background="Transparent" Foreground="#EF4444" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
+                    </StackPanel>
+                </Grid>
+            </Border>
             
             <Grid Margin="0,50,0,0" VerticalAlignment="Top" Height="35" Panel.ZIndex="3">
                 <ProgressBar Name="ThanhTienTrinh" Height="3" VerticalAlignment="Top" IsIndeterminate="True" Visibility="Hidden" Background="Transparent" Foreground="#F59E0B" BorderThickness="0"/>
@@ -163,6 +164,14 @@ $maXAML = @"
                     <Button Name="NutPhucHoi" Grid.Column="1" Content="♻️ PHỤC HỒI DRIVER TỪ THƯ MỤC KHÁC" Height="50" Background="#F43F5E" Foreground="White" FontWeight="Bold" FontSize="14" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0" Style="{StaticResource NutChuyenDong}"/>
                 </Grid>
             </Grid>
+
+            <Thumb Name="GocKeo" Width="15" Height="15" HorizontalAlignment="Right" VerticalAlignment="Bottom" Cursor="SizeNWSE" Background="Transparent" Panel.ZIndex="10" ToolTip="Giữ chuột và kéo để thay đổi kích thước">
+                <Thumb.Template>
+                    <ControlTemplate>
+                        <Path Data="M15,15 L0,15 L15,0 Z" Fill="#475569" Opacity="0.8" Margin="0,0,4,4" HorizontalAlignment="Right" VerticalAlignment="Bottom"/>
+                    </ControlTemplate>
+                </Thumb.Template>
+            </Thumb>
         </Grid>
     </Border>
 </Window>
@@ -174,17 +183,38 @@ $nutDongCuaSo = $CuaSo.FindName("NutDongCuaSo"); $nutThuNho = $CuaSo.FindName("N
 $nutQuetDriver = $CuaSo.FindName("NutQuetDriver"); $nutChonTatCa = $CuaSo.FindName("NutChonTatCa"); $nutBoChon = $CuaSo.FindName("NutBoChon"); $nutChonThietYeu = $CuaSo.FindName("NutChonThietYeu")
 $nutSaoLuu = $CuaSo.FindName("NutSaoLuu"); $nutPhucHoi = $CuaSo.FindName("NutPhucHoi"); $bangDanhSach = $CuaSo.FindName("BangDanhSach")
 $nhanTrangThai = $CuaSo.FindName("NhanTrangThai"); $thanhTienTrinh = $CuaSo.FindName("ThanhTienTrinh"); $nutDung = $CuaSo.FindName("NutDung")
-$khungVien = $CuaSo.FindName("KhungVien"); $boGocTieuDe = $CuaSo.FindName("BoGocTieuDe")
+$khungVien = $CuaSo.FindName("KhungVien"); $boGocTieuDe = $CuaSo.FindName("BoGocTieuDe"); $gocKeo = $CuaSo.FindName("GocKeo")
 
+# --- ĐIỀU KHIỂN CỬA SỔ & CO GIÃN TỰ DO ---
 $CuaSo.Add_MouseLeftButtonDown({ $CuaSo.DragMove() })
 $nutDongCuaSo.Add_Click({ $CuaSo.Close() })
 $nutThuNho.Add_Click({ $CuaSo.WindowState = [System.Windows.WindowState]::Minimized })
+
+# Ngăn cửa sổ che Taskbar khi Fullscreen
+$CuaSo.MaxHeight = [System.Windows.SystemParameters]::WorkArea.Height
+$CuaSo.MaxWidth = [System.Windows.SystemParameters]::WorkArea.Width
+
 $nutPhongTo.Add_Click({ 
     if ($CuaSo.WindowState -eq [System.Windows.WindowState]::Maximized) { 
-        $CuaSo.WindowState = [System.Windows.WindowState]::Normal; $khungVien.CornerRadius = "15"; $boGocTieuDe.RadiusX = 15; $boGocTieuDe.RadiusY = 15
+        $CuaSo.WindowState = [System.Windows.WindowState]::Normal
+        $khungVien.CornerRadius = "15"
+        $boGocTieuDe.CornerRadius = "15,15,0,0"
     } else { 
-        $CuaSo.WindowState = [System.Windows.WindowState]::Maximized; $khungVien.CornerRadius = "0"; $boGocTieuDe.RadiusX = 0; $boGocTieuDe.RadiusY = 0
+        $CuaSo.WindowState = [System.Windows.WindowState]::Maximized
+        $khungVien.CornerRadius = "0"
+        $boGocTieuDe.CornerRadius = "0"
     } 
+})
+
+# Code xử lý kéo thả góc (Resize Grip)
+$gocKeo.Add_DragDelta({
+    param($sender, $e)
+    if ($CuaSo.WindowState -ne [System.Windows.WindowState]::Maximized) {
+        $xMoi = $CuaSo.Width + $e.HorizontalChange
+        $yMoi = $CuaSo.Height + $e.VerticalChange
+        if ($xMoi -gt $CuaSo.MinWidth) { $CuaSo.Width = $xMoi }
+        if ($yMoi -gt $CuaSo.MinHeight) { $CuaSo.Height = $yMoi }
+    }
 })
 
 $duLieuHienThi = New-Object System.Collections.ObjectModel.ObservableCollection[DuLieuDriver]
@@ -257,7 +287,6 @@ function Xuat-MatKhauWifi($ThuMucLuu) {
         foreach ($dong in $hoSoWlan) { if ($dong -match ":\s+(.+)$") { $ten = $matches[1].Trim(); if ($ten -ne "") { $danhSachTenWifi += $ten } } }
         
         if ($danhSachTenWifi.Count -gt 0) {
-            # Fix tên file txt cho chắc ăn
             $fileMatKhau = "$ThuMucLuu\MatKhau_WIFI_DaLuu.txt"
             "==========================================" | Out-File -LiteralPath $fileMatKhau -Encoding UTF8
             "    DANH SACH MAT KHAU WIFI TREN MAY      " | Out-File -LiteralPath $fileMatKhau -Append -Encoding UTF8
@@ -277,7 +306,7 @@ function Xuat-MatKhauWifi($ThuMucLuu) {
     } catch { return $false }
 }
 
-# 3. SAO LƯU (SỬ DỤNG LITERALPATH ĐỂ CHỐNG LỖI WILDCARD)
+# 3. SAO LƯU (CÓ CƠ CHẾ TIMEOUT 25s VÀ TASKKILL)
 $nutSaoLuu.Add_Click({
     $cacMucDaChon = $duLieuHienThi | Where-Object { $_.DuocChon -eq $true }
     if ($cacMucDaChon.Count -eq 0) { [System.Windows.MessageBox]::Show($CuaSo, "Tuấn chưa tích chọn Driver nào để sao lưu kìa!", "Thông báo", 0, 48); return }
@@ -345,7 +374,6 @@ $nutSaoLuu.Add_Click({
             $chuoiBoQua = ""
             if ($soBoQua -gt 0) { $chuoiBoQua = "`n- Bỏ qua $soBoQua Driver bị hỏng/treo hệ thống." }
 
-            # --- TẠO FILE BAT BẰNG LITERALPATH ĐỂ CHỐNG LỖI WILDCARD ---
             $noiDungBat = @"
 @echo off
 >nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
@@ -381,7 +409,6 @@ echo   HOAN TAT! XIN VUI LONG KHOI DONG LAI MAY TINH!
 echo ============================================================
 pause
 "@
-            # FIX Ở ĐÂY: Dùng -LiteralPath thay vì để mặc định
             $noiDungBat | Out-File -LiteralPath "$thuMucBackup\[CHAY_DE_PHUC_HOI_DRIVER].bat" -Encoding OEM
 
             $nhanTrangThai.Text = "✅ Sao lưu hoàn tất!"
