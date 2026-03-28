@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG (V19.11 - DEFENDER FIX)
+# Tên công cụ: VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG (V19.12 - DARK MODE EDITION)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Nâng cấp: Xử lý lỗi Defender "ngậm miệng" phớt lờ lệnh khi có Tamper Protection
+# Nâng cấp: Thêm chức năng chuyển đổi nhanh Giao diện Sáng (Light) / Tối (Dark)
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -19,7 +19,7 @@ $IsWin11 = [Environment]::OSVersion.Version.Build -ge 22000
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox" Width="1150" Height="920" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Language="vi-VN">
+        Title="VietToolbox" Width="1150" Height="950" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI" Language="vi-VN">
     <Window.Resources>
         <Style x:Key="ToggleSwitch" TargetType="CheckBox">
             <Setter Property="Template">
@@ -61,7 +61,7 @@ $inputXML = @"
         <Grid>
             <Grid Height="50" VerticalAlignment="Top" Background="#1E293B">
                 <Grid.Clip><RectangleGeometry Rect="0,0,1150,50" RadiusX="15" RadiusY="15"/></Grid.Clip>
-                <TextBlock Name="TxtTitle" Text="⚙️ VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG V19.11" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
+                <TextBlock Name="TxtTitle" Text="⚙️ VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG V19.12" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
                 <Button Name="BtnClose" Content="✕" Width="50" HorizontalAlignment="Right" Background="Transparent" Foreground="#EF4444" BorderThickness="0" FontSize="16" Cursor="Hand" FontWeight="Bold"/>
             </Grid>
             
@@ -90,6 +90,7 @@ $inputXML = @"
                     <TextBlock Text="GIAO DIỆN &amp; TASKBAR" Foreground="#94A3B8" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
                     <Border Background="#1E293B" CornerRadius="10" Padding="15">
                         <StackPanel>
+                            <CheckBox Name="ChkDarkMode" Tag="Giao diện Sáng (Light)" Content="Giao diện Tối (Dark Mode)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12" Foreground="#F59E0B" FontWeight="Bold"/>
                             <CheckBox Name="ChkWidgets" Tag="Ẩn Widgets (Thời tiết)" Content="Hiện Widgets trên Taskbar" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkSearchIcon" Tag="Tắt ô Search Taskbar" Content="Hiện biểu tượng Search (Icon nhỏ)" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkClassicMenu" Tag="Menu Win 11" Content="Trở về Menu Win 10 (Cần Restart Explorer)" Style="{StaticResource ToggleSwitch}"/>
@@ -163,7 +164,7 @@ $btnSyncTime = $Form.FindName("BtnSyncTime"); $btnSetManual = $Form.FindName("Bt
 $dpDate = $Form.FindName("DpDate"); $txtTime = $Form.FindName("TxtTime")
 $chkShowThisPC = $Form.FindName("ChkShowThisPC"); $chkShowNetwork = $Form.FindName("ChkShowNetwork"); $chkShowControl = $Form.FindName("ChkShowControl"); $chkShowUser = $Form.FindName("ChkShowUser")
 $chkBitlocker = $Form.FindName("ChkBitlocker"); $chkThisPC = $Form.FindName("ChkThisPC")
-$chkWidgets = $Form.FindName("ChkWidgets"); $chkSearchIcon = $Form.FindName("ChkSearchIcon")
+$chkWidgets = $Form.FindName("ChkWidgets"); $chkSearchIcon = $Form.FindName("ChkSearchIcon"); $chkDarkMode = $Form.FindName("ChkDarkMode")
 $chkClassicMenu = $Form.FindName("ChkClassicMenu"); $chkTaskbarCenter = $Form.FindName("ChkTaskbarCenter"); $chkShowAllIcons = $Form.FindName("ChkShowAllIcons")
 $chkSetVNTZ = $Form.FindName("ChkSetVNTZ"); $chkTime24h = $Form.FindName("ChkTime24h"); $chkDateDDMM = $Form.FindName("ChkDateDDMM")
 $chkDNSGoogle = $Form.FindName("ChkDNSGoogle"); $chkDNSCloud = $Form.FindName("ChkDNSCloud")
@@ -192,6 +193,7 @@ function Ghi-TrangThai($ThongBao, $MauSac = "#10B981") {
 function Doc-TrangThai {
     $kD = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\HideDesktopIcons\NewStartPanel"
     $kA = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced"
+    $kTheme = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
     try {
         $chkShowThisPC.IsChecked = ((Get-ItemProperty $kD -Name "{20D04FE0-3AEA-1069-A2D8-08002B30309D}" -ErrorAction SilentlyContinue)."{20D04FE0-3AEA-1069-A2D8-08002B30309D}" -eq 0)
         $chkShowNetwork.IsChecked = ((Get-ItemProperty $kD -Name "{F02C1034-056E-447a-859F-370A18395C10}" -ErrorAction SilentlyContinue)."{F02C1034-056E-447a-859F-370A18395C10}" -eq 0)
@@ -200,6 +202,9 @@ function Doc-TrangThai {
         $chkThisPC.IsChecked = ((Get-ItemProperty $kA -Name "LaunchTo" -ErrorAction SilentlyContinue).LaunchTo -eq 1)
         $chkShowAllIcons.IsChecked = ((Get-ItemProperty "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer" -Name "EnableAutoTray" -ErrorAction SilentlyContinue).EnableAutoTray -eq 0)
         
+        $isLight = (Get-ItemProperty $kTheme -Name "AppsUseLightTheme" -ErrorAction SilentlyContinue).AppsUseLightTheme
+        $chkDarkMode.IsChecked = ($isLight -eq 0)
+
         $def = Get-MpPreference -ErrorAction SilentlyContinue
         if ($def) { $chkDefender.IsChecked = ($def.DisableRealtimeMonitoring -eq $true) }
 
@@ -237,23 +242,13 @@ Doc-TrangThai
 # --- ĐẶC TRỊ DEFENDER BỊ TAMPER PROTECTION ---
 $chkDefender.Add_Click({
     $mongMuon = if ($chkDefender.IsChecked) {$true} else {$false}
-    
-    # 1. Ép lệnh tắt/bật
     Set-MpPreference -DisableRealtimeMonitoring $mongMuon -ErrorAction SilentlyContinue
-    
-    # 2. Đọc lại xem có thực sự "ăn lệnh" chưa
     $docLai = Get-MpPreference -ErrorAction SilentlyContinue
     
     if ($docLai -and $docLai.DisableRealtimeMonitoring -ne $mongMuon) {
-        # Nếu không ăn lệnh => Bị Tamper Protection cản trở ngầm
         [System.Windows.MessageBox]::Show("Windows đã chặn thao tác này! Bạn phải tắt tính năng 'Tamper Protection' (Bảo vệ chống giả mạo) trong Windows Security trước khi dùng công cụ này để tắt Defender.", "Bị từ chối quyền", 0, 48)
-        
-        # Mở thẳng trang bảo mật cho khách tự gạt
         Start-Process "windowsdefender://threatsettings"
-        
-        # Ép giao diện công tắc trở về trạng thái gốc
         $chkDefender.IsChecked = $docLai.DisableRealtimeMonitoring
-        
         Ghi-TrangThai "❌ Lỗi: Thao tác bị Tamper Protection vô hiệu hóa." "#EF4444"
     } else {
         Ghi-TrangThai "✅ Đã thay đổi trạng thái Windows Defender thành công."
@@ -292,6 +287,15 @@ $chkDNSCloud.Add_Click({
 })
 
 # --- NHÓM GIAO DIỆN & TASKBAR ---
+$chkDarkMode.Add_Click({
+    $kTheme = "HKCU:\Software\Microsoft\Windows\CurrentVersion\Themes\Personalize"
+    if (!(Test-Path $kTheme)) { New-Item $kTheme -Force | Out-Null }
+    $val = if ($this.IsChecked) {0} else {1}
+    New-ItemProperty -Path $kTheme -Name "AppsUseLightTheme" -Value $val -PropertyType DWord -Force | Out-Null
+    New-ItemProperty -Path $kTheme -Name "SystemUsesLightTheme" -Value $val -PropertyType DWord -Force | Out-Null
+    Ghi-TrangThai "✅ Đã chuyển đổi Giao diện Sáng/Tối."
+})
+
 $chkWidgets.Add_Click({
     $val = if ($this.IsChecked) {1} else {0}
     New-ItemProperty -Path "HKCU:\Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced" -Name "TaskbarDa" -Value $val -PropertyType DWord -Force | Out-Null
