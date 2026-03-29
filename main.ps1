@@ -228,76 +228,42 @@ function Global:Ghi-Log($msg) {
 }
 
 # 8. CẬP NHẬT DANH SÁCH SCRIPTS
-# 8. CẬP NHẬT DANH SÁCH SCRIPTS (CÓ NHÃN NEW/UPDATE)
 function Update-UI {
     $null = $groupContainer.Children.Clear(); $Global:DanhSachScript = @()
     if (!(Test-Path $scriptFolder)) { return }
-
     function Get-ScriptsRecursive ($Path, $ParentStack, $Level) {
-        $Items = Get-ChildItem -Path $Path | Sort-Object @{Expression={!$_.PSIsContainer}}, Name
-        
-        foreach ($item in $Items) {
-            # Bỏ qua các folder Admin nếu sếp muốn
-            if ($item.PSIsContainer -and $item.Name -match "Admin") {
-                Get-ChildItem -Path $item.FullName -Recurse -Filter "*.ps1" | foreach { $Global:DanhSachScript += $_.FullName }
-                continue 
+        Get-ChildItem -Path $Path | Sort-Object @{Expression={!$_.PSIsContainer}}, Name | foreach {
+            
+            if ($_.PSIsContainer -and $_.Name -match "Admin") {
+                Get-ChildItem -Path $_.FullName -Recurse -Filter "*.ps1" | foreach { $Global:DanhSachScript += $_.FullName }
+                return 
             }
 
-            if ($item.PSIsContainer) {
-                # --- PHẦN HIỂN THỊ THƯ MỤC (EXPANDER) ---
+            if ($_.PSIsContainer) {
                 $subExp = New-Object System.Windows.Controls.Expander
-                $subExp.Header = "📁 " + $item.Name
+                $subExp.Header = "📁 " + $_.Name
                 $subExp.Foreground = if ($Level -eq 0) { "#F8FAFC" } else { "#94A3B8" } 
                 $subExp.FontWeight = "Bold"; $subExp.FontSize = 14; $subExp.Margin = "0,5,0,5"
                 $subStack = New-Object System.Windows.Controls.StackPanel; $subStack.Margin = "25,5,0,5"
-                
-                Get-ScriptsRecursive $item.FullName $subStack ($Level + 1)
-                
+                Get-ScriptsRecursive $_.FullName $subStack ($Level + 1)
                 $subExp.Content = $subStack
                 $null = $ParentStack.Children.Add($subExp)
             } else {
-                # --- PHẦN HIỂN THỊ FILE SCRIPT ---
-                if ($item.Extension -eq ".ps1") {
-                    if ($Global:DanhSachScript -notcontains $item.FullName) { $Global:DanhSachScript += $item.FullName }
+                if ($_.Extension -eq ".ps1") {
+                    if ($Global:DanhSachScript -notcontains $_.FullName) { $Global:DanhSachScript += $_.FullName }
                     
-                    # --- LOGIC KIỂM TRA NHÃN (NEW/UPDATE) - BẢN FIX V24.20 ---
-					$Now = Get-Date
-					$Badge = ""
-					$BadgeColor = "#CBD5E1" # Màu mặc định (Xám bạc)
-
-					# Lấy ngày sửa đổi làm mốc (Vì ngày tạo hay bị sai khi tải từ GitHub/Copy)
-					$FileAge = $item.LastWriteTime
-
-					if ($FileAge -gt $Now.AddDays(-7)) {
-						# Nếu file được sửa đổi/cập nhật trong 7 ngày qua -> Coi như hàng MỚI
-						$Badge = " [NEW]"
-						$BadgeColor = "#10B981" # Xanh lá rực rỡ
-					} elseif ($FileAge -gt $Now.AddDays(-2)) {
-						# Nếu sếp vừa chỉnh sửa code trong 2 ngày qua -> Coi như hàng CẬP NHẬT
-						# (Nhưng do 2 ngày cũng nằm trong 7 ngày nên ưu tiên hiện NEW ở trên rồi)
-						# Sếp có thể chỉnh lại thành -14 ngày cho NEW và -3 ngày cho UPD nếu muốn tách biệt.
-						$Badge = " [UPD]"
-						$BadgeColor = "#3B82F6" # Xanh dương chuyên nghiệp
-					}
-
                     $btn = New-Object System.Windows.Controls.Button
-                    # Hiển thị tên file kèm theo Nhãn
-                    $btn.Content = "⚡ " + $item.BaseName + $Badge
-                    $btn.Height = 35; $btn.FontSize = 13; $btn.Background = "#0F172A"
-                    $btn.Foreground = $BadgeColor # Đổi màu chữ theo trạng thái
-                    $btn.BorderThickness = 0
-                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Margin = "0,2,0,2"; $btn.Tag = $item.FullName
+                    $btn.Content = "⚡ " + $_.BaseName 
+                    $btn.Height = 35; $btn.FontSize = 13; $btn.Background = "#0F172A"; $btn.Foreground = "#CBD5E1"; $btn.BorderThickness = 0
+                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Margin = "0,2,0,2"; $btn.Tag = $_.FullName
                     $btn.Cursor = [System.Windows.Input.Cursors]::Hand
-                    
-                    # Tooltip hiện ngày tháng để sếp kiểm tra
-                    $btn.ToolTip = "Ngày tạo: $($item.CreationTime.ToString('dd/MM/yyyy'))`nNgày sửa: $($item.LastWriteTime.ToString('dd/MM/yyyy'))"
                     
                     $btn.Add_Click({ 
                         param($sender, $e) 
                         $window.Dispatcher.Invoke([action]{ 
                             $mainTabControl.SelectedIndex = 0 
                             $txtLog.Clear() 
-                            Ghi-Log "▶ ĐANG KHỞI CHẠY: $($sender.Content -replace '⚡ ', '' -replace ' \[NEW\]', '' -replace ' \[UPD\]', '')"
+                            Ghi-Log "▶ ĐANG KHỞI CHẠY: $($sender.Content -replace '⚡ ', '')"
                         })
                         &$CapNhatGiaoDien
                         try { . $sender.Tag } catch { Ghi-Log "❌ LỖI KHỞI CHẠY: $($_.Exception.Message)" } 
