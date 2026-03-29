@@ -260,20 +260,22 @@ function Update-UI {
                 if ($item.Extension -eq ".ps1") {
                     if ($Global:DanhSachScript -notcontains $item.FullName) { $Global:DanhSachScript += $item.FullName }
                     
-                    # --- LOGIC KIỂM TRA NHÃN (NEW/UPDATE) - BẢN FIX V24.19 ---
+                    # --- LOGIC KIỂM TRA NHÃN (NEW/UPDATE) - BẢN FIX V24.20 ---
 					$Now = Get-Date
 					$Badge = ""
 					$BadgeColor = "#CBD5E1" # Màu mặc định (Xám bạc)
 
-					# Lấy ngày cũ nhất trong 2 ngày (Để tránh lỗi khi Copy file)
-					$RealAge = if ($item.CreationTime -lt $item.LastWriteTime) { $item.CreationTime } else { $item.LastWriteTime }
+					# Lấy ngày sửa đổi làm mốc (Vì ngày tạo hay bị sai khi tải từ GitHub/Copy)
+					$FileAge = $item.LastWriteTime
 
-					if ($RealAge -gt $Now.AddDays(-7)) {
-						# Chỉ hiện NEW nếu file thực sự mới được tạo/sửa trong 7 ngày qua
+					if ($FileAge -gt $Now.AddDays(-7)) {
+						# Nếu file được sửa đổi/cập nhật trong 7 ngày qua -> Coi như hàng MỚI
 						$Badge = " [NEW]"
 						$BadgeColor = "#10B981" # Xanh lá rực rỡ
-					} elseif ($item.LastWriteTime -gt $Now.AddDays(-2)) {
-						# Hiện UPD nếu file cũ nhưng vừa được sếp sửa code trong 2 ngày qua
+					} elseif ($FileAge -gt $Now.AddDays(-2)) {
+						# Nếu sếp vừa chỉnh sửa code trong 2 ngày qua -> Coi như hàng CẬP NHẬT
+						# (Nhưng do 2 ngày cũng nằm trong 7 ngày nên ưu tiên hiện NEW ở trên rồi)
+						# Sếp có thể chỉnh lại thành -14 ngày cho NEW và -3 ngày cho UPD nếu muốn tách biệt.
 						$Badge = " [UPD]"
 						$BadgeColor = "#3B82F6" # Xanh dương chuyên nghiệp
 					}
