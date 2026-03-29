@@ -1,12 +1,12 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX MASTER (V30.0) - PHIÊN BẢN FULL GIÁP CHO ANH EM THỢ
-# Đặc trị: Hiện Map phân vùng, Tích chọn nạp Drivers/Apps, Ép Boot RAMDISK 100%
+# VIETTOOLBOX MASTER (V32.0) - PHIÊN BẢN CƯỠNG CHẾ BOOT TUYỆT ĐỐI
+# Đặc trị: Restart vào thẳng Tool, Hỗ trợ màn hình nhỏ, Hút Driver
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-# --- 1. TỰ ĐỘNG DI CƯ SANG Ổ D/E ---
+# --- 1. DI CƯ TỰ ĐỘNG (FIX QUYỀN TRUY CẬP) ---
 if ($PSScriptRoot.StartsWith("C:", "CurrentCultureIgnoreCase")) {
     $Target = Get-Volume | Where-Object {$_.DriveLetter -ne "C" -and $_.DriveType -eq "Fixed" -and $_.SizeRemaining -gt 25GB} | Select-Object -First 1
     if ($Target) {
@@ -17,67 +17,53 @@ if ($PSScriptRoot.StartsWith("C:", "CurrentCultureIgnoreCase")) {
     }
 }
 
-# --- 2. GIAO DIỆN XAML FULL OPTION ---
+# --- 2. GIAO DIỆN RESPONSIVE (MÀN HÌNH NHỎ) ---
 $maXAML = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox Master V30.0" Width="800" Height="880" Background="#F3F4F6" WindowStartupLocation="CenterScreen">
-    <StackPanel Margin="25">
-        <TextBlock Text="VIETTOOLBOX - REINSTALLER CHUYÊN NGHIỆP" FontSize="20" FontWeight="Bold" Foreground="#1E40AF" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-        
-        <TextBlock Text="1. BẢN ĐỒ PHÂN VÙNG HIỆN TẠI:" FontWeight="Bold" Margin="0,0,0,5"/>
-        <ListView Name="ListPart" Height="200" Background="White" BorderBrush="#9CA3AF" Margin="0,0,0,15">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Ổ" DisplayMemberBinding="{Binding Drive}" Width="40"/>
-                    <GridViewColumn Header="Phân Loại" DisplayMemberBinding="{Binding Type}" Width="100"/>
-                    <GridViewColumn Header="Dung Lượng" DisplayMemberBinding="{Binding Size}" Width="100"/>
-                    <GridViewColumn Header="Hành Động" DisplayMemberBinding="{Binding Action}" Width="150"/>
-                    <GridViewColumn Header="Ghi Chú" DisplayMemberBinding="{Binding Note}" Width="330"/>
-                </GridView>
-            </ListView.View>
-        </ListView>
-
-        <TextBlock Text="2. CHỌN BỘ CÀI (.WIM/.ISO):" FontWeight="Bold" Margin="0,5,0,5"/>
-        <Grid Margin="0,0,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-            <TextBox Name="TxtFile" Height="30" VerticalContentAlignment="Center" IsReadOnly="True" Padding="5,0"/>
-            <Button Name="BtnFile" Grid.Column="1" Content="📁 Duyệt" Width="80" Margin="5,0,0,0" FontWeight="Bold"/></Grid>
-
-        <TextBlock Text="3. TÙY CHỌN NẠP THÊM:" FontWeight="Bold" Margin="0,0,0,5"/>
-        <UniformGrid Columns="2" Margin="0,0,0,15">
-            <CheckBox Name="OptDriver" Content="Nạp Driver (Thư mục Drivers)" IsChecked="True" FontWeight="Bold" Foreground="#0369A1"/>
-            <CheckBox Name="OptApps" Content="Cài Apps (Thư mục Apps)" IsChecked="True" FontWeight="Bold" Foreground="#0369A1"/>
-        </UniformGrid>
-
-        <TextBlock Text="4. TIẾN TRÌNH THỰC HIỆN:" FontWeight="Bold" Margin="0,0,0,5"/>
-        <ProgressBar Name="ProgBar" Minimum="0" Maximum="100" Height="25" Foreground="#10B981" Background="#E5E7EB"/>
-        <TextBlock Name="TxtStep" Text="Đang chờ lệnh sếp..." HorizontalAlignment="Center" FontWeight="SemiBold" Margin="0,5,0,15"/>
-
-        <Border BorderBrush="#F87171" BorderThickness="1" Background="#FEF2F2" Padding="10" Margin="0,0,0,15">
-            <TextBlock Text="LƯU Ý: HỆ THỐNG SẼ FORMAT Ổ C ĐỂ CÀI WIN MỚI. DỮ LIỆU CÁC Ổ KHÁC SẼ GIỮ NGUYÊN." Foreground="#B91C1C" FontWeight="Bold" TextAlignment="Center" TextWrapping="Wrap"/>
-        </Border>
-
-        <Button Name="BtnRun" Content="🚀 BẮT ĐẦU (REINSTALL &amp; REBOOT)" Height="65" Background="#1E40AF" Foreground="White" FontWeight="Bold" FontSize="18"/>
-    </StackPanel>
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox V32.0" Width="750" Height="600" MinHeight="500" Background="#F3F4F6" WindowStartupLocation="CenterScreen">
+    <Grid>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        <TextBlock Grid.Row="0" Text="VIETTOOLBOX - NUCLEAR REINSTALLER" FontSize="20" FontWeight="Bold" Foreground="#1E40AF" HorizontalAlignment="Center" Margin="10"/>
+        <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Margin="10,5">
+            <StackPanel>
+                <TextBlock Text="1. BẢN ĐỒ PHÂN VÙNG:" FontWeight="Bold"/><ListView Name="ListPart" Height="150" Background="White" Margin="0,5,0,15"><ListView.View><GridView>
+                    <GridViewColumn Header="Ổ" DisplayMemberBinding="{Binding Drive}" Width="40"/><GridViewColumn Header="Loại" DisplayMemberBinding="{Binding Type}" Width="100"/>
+                    <GridViewColumn Header="Dung Lượng" DisplayMemberBinding="{Binding Size}" Width="100"/><GridViewColumn Header="Hành Động" DisplayMemberBinding="{Binding Action}" Width="150"/>
+                    <GridViewColumn Header="Ghi Chú" DisplayMemberBinding="{Binding Note}" Width="250"/></GridView></ListView.View></ListView>
+                <TextBlock Text="2. BỘ CÀI (.WIM/.ISO):" FontWeight="Bold"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBox Name="TxtFile" Height="30" IsReadOnly="True" VerticalContentAlignment="Center"/><Button Name="BtnFile" Grid.Column="1" Content="📁 Duyệt" Width="80" Margin="5,0,0,0" FontWeight="Bold"/></Grid>
+                <TextBlock Text="3. PHIÊN BẢN:" FontWeight="Bold" Margin="0,10,0,5"/><ComboBox Name="ComboEdition" Height="30" Margin="0,0,0,15"/>
+                <TextBlock Text="4. TÙY CHỌN NÂNG CAO:" FontWeight="Bold" Margin="0,5,0,5"/><UniformGrid Columns="2" Margin="0,0,0,10">
+                    <CheckBox Name="OptDriver" Content="Nạp Driver" IsChecked="True" FontWeight="Bold"/><CheckBox Name="OptApps" Content="Cài Apps Silent" IsChecked="True" FontWeight="Bold"/>
+                </UniformGrid>
+                <Button Name="BtnBackup" Content="🔍 HÚT DRIVER TỪ MÁY HIỆN TẠI" Height="35" Background="#0369A1" Foreground="White" FontWeight="Bold" Margin="0,5,0,20"/>
+            </StackPanel>
+        </ScrollViewer>
+        <StackPanel Grid.Row="2" Margin="10" Background="#F3F4F6">
+            <ProgressBar Name="ProgBar" Minimum="0" Maximum="100" Height="20" Foreground="#10B981"/><TextBlock Name="TxtStep" Text="Chờ lệnh sếp..." HorizontalAlignment="Center" FontWeight="SemiBold" Margin="0,5"/>
+            <Button Name="BtnRun" Content="🚀 BẮT ĐẦU REINSTALL (ÉP BOOT 100%)" Height="55" Background="#1E40AF" Foreground="White" FontWeight="Bold" FontSize="16"/>
+        </StackPanel>
+    </Grid>
 </Window>
 "@
 $window = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::Create((New-Object System.IO.StringReader($maXAML))))
 
-# --- 3. QUÉT Ổ ĐĨA & LOGIC ---
+# --- 3. ÁNH XẠ BIẾN & LOGIC ---
 $listPart = $window.FindName("ListPart"); $txtFile = $window.FindName("TxtFile"); $btnFile = $window.FindName("BtnFile")
-$btnRun = $window.FindName("BtnRun"); $progBar = $window.FindName("ProgBar"); $txtStep = $window.FindName("TxtStep")
+$btnRun = $window.FindName("BtnRun"); $btnBackup = $window.FindName("BtnBackup"); $progBar = $window.FindName("ProgBar")
+$txtStep = $window.FindName("TxtStep"); $comboEdition = $window.FindName("ComboEdition")
 $optDriver = $window.FindName("OptDriver"); $optApps = $window.FindName("OptApps")
 
-function Update-Step ($val, $txt) { $progBar.Value = $val; $txtStep.Text = $txt; [System.Windows.Forms.Application]::DoEvents() }
+function Update-UI ($val, $txt) { $progBar.Value = $val; $txtStep.Text = $txt; [System.Windows.Forms.Application]::DoEvents() }
 
+# Quét phân vùng
 function Scan-Disk {
     $listPart.Items.Clear()
     $efi = Get-Partition | Where-Object { $_.GptType -eq "{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}" -or $_.IsActive }
     Get-Volume | Where-Object {$_.DriveType -eq "Fixed"} | ForEach-Object {
-        $d = $_.DriveLetter; $type = "DỮ LIỆU"; $act = "GIỮ NGUYÊN"; $note = "Ổ chứa dữ liệu khách hàng."
-        if ($d -eq "C") { $type = "WIN CŨ"; $act = "FORMAT (XÓA)"; $note = "Sẽ cài đè Windows mới vào đây." }
-        
+        $d = $_.DriveLetter; $type = "DỮ LIỆU"; $act = "GIỮ NGUYÊN"; $note = "Dữ liệu sếp."
+        if ($d -eq "C") { $type = "WIN CŨ"; $act = "FORMAT"; $note = "Sẽ cài đè Win mới." }
         $isEFI = $false; foreach($e in $efi){ if($e.DriveLetter -eq $d){$isEFI=$true} }
-        if ($isEFI -or $_.FileSystemLabel -like "*System*") { $type = "BOOT (EFI)"; $act = "GIỮ LẠI"; $note = "Phân vùng mồi Boot hệ thống." }
-
+        if ($isEFI -or $_.FileSystemLabel -like "*System*") { $type = "BOOT (EFI)"; $act = "MƯỢN DANH"; $note = "Cổng vào bộ cài." }
         $listPart.Items.Add([PSCustomObject]@{ Drive = if($d){$d+":"}else{"*"}; Type = $type; Size = "$([math]::Round($_.Size/1GB,1)) GB"; Action = $act; Note = $note })
     }
 }
@@ -85,70 +71,80 @@ Scan-Disk
 
 $btnFile.Add_Click({
     $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "Windows Image|*.iso;*.wim;*.esd"
-    if ($fd.ShowDialog() -eq "OK") { $txtFile.Text = $fd.FileName }
+    if ($fd.ShowDialog() -eq "OK") {
+        $txtFile.Text = $fd.FileName; Update-UI 0 "Đang quét danh sách bản Win..."
+        $images = Get-WindowsImage -ImagePath $txtFile.Text -ErrorAction SilentlyContinue
+        if (!$images) { $m = Mount-DiskImage $txtFile.Text -PassThru; $d = ($m|Get-Volume).DriveLetter; $w = "$($d):\sources\install.wim"; if(!(Test-Path $w)){$w="$($d):\sources\install.esd"}; $images = Get-WindowsImage -ImagePath $w; Dismount-DiskImage $txtFile.Text | Out-Null }
+        $comboEdition.Items.Clear(); $images | ForEach-Object {[void]$comboEdition.Items.Add("Index $($_.ImageIndex): $($_.ImageName)")}; $comboEdition.SelectedIndex=0; Update-UI 0 "Sẵn sàng."
+    }
 })
 
-# --- 4. THỰC THI (FIX CẢ LỖI BOOT & COPY) ---
+$btnBackup.Add_Click({
+    $drPath = Join-Path (Split-Path $PSCommandPath) "Drivers"
+    if (!(Test-Path $drPath)) { New-Item $drPath -ItemType Directory | Out-Null }
+    Update-UI 50 "Đang hút Driver... Đợi tí sếp nhé!"
+    Export-WindowsDriver -Online -Destination $drPath | Out-Null
+    Update-UI 100 "Đã hút xong!"
+    [System.Windows.MessageBox]::Show("Đã hút Driver từ máy hiện tại vào folder Drivers!", "VietToolbox")
+})
+
+# --- 4. THỰC THI (CHIÊU NUCLEAR BOOT) ---
 $btnRun.Add_Click({
     if (!$txtFile.Text) { return }
     $btnRun.IsEnabled = $false
-    $path = $txtFile.Text; $folderGoc = Split-Path $path
+    $path = $txtFile.Text; $folderGoc = Split-Path $path; $idx = [int]([regex]::Match($comboEdition.Text, "Index (\d+)").Groups[1].Value)
     $safe = Get-Volume | Where-Object {$_.DriveLetter -ne "C" -and $_.DriveType -eq "Fixed" -and $_.SizeRemaining -gt 15GB} | Select-Object -First 1
     $tmp = "$($safe.DriveLetter):\VietToolbox_Setup"; if (!(Test-Path $tmp)) { New-Item $tmp -ItemType Directory -Force }
 
-    # BƯỚC 1: COPY
-    Update-Step 20 "Bước 1/4: Đang chuẩn bị bộ cài Windows..."
+    # BƯỚC 1: CHUẨN BỊ
+    Update-UI 30 "Bước 1/4: Đang chuẩn bị bộ cài và file Boot..."
     if ($path.EndsWith(".iso")) {
         Mount-DiskImage $path -PassThru | Out-Null
         $drv = (Get-DiskImage $path | Get-Volume).DriveLetter
-        Copy-Item -Path "$($drv):\sources\install.wim" -Destination "$tmp\install.wim" -Force; Dismount-DiskImage $path | Out-Null
-    } else { Copy-Item -Path $path -Destination "$tmp\install.wim" -Force }
+        Copy-Item "$($drv):\sources\install.wim" "$tmp\install.wim" -Force; Dismount-DiskImage $path | Out-Null
+    } else { Copy-Item $path "$tmp\install.wim" -Force }
 
-    # BƯỚC 2: CHUẨN BỊ BOOT.WIM (Môi trường trung gian)
-    Update-Step 45 "Bước 2/4: Đang nạp môi trường cài đặt..."
     reagentc /disable | Out-Null
-    if (Test-Path "C:\Windows\System32\Recovery\Winre.wim") { Copy-Item -Path "C:\Windows\System32\Recovery\Winre.wim" -Destination "$tmp\boot.wim" -Force }
-    elseif (Test-Path "$folderGoc\boot.wim") { Copy-Item -Path "$folderGoc\boot.wim" -Destination "$tmp\boot.wim" -Force }
-    else { [System.Windows.MessageBox]::Show("Sếp ơi thiếu file boot.wim rồi!"); return }
+    if (Test-Path "C:\Windows\System32\Recovery\Winre.wim") { Copy-Item "C:\Windows\System32\Recovery\Winre.wim" "$tmp\boot.wim" -Force }
+    elseif (Test-Path "$folderGoc\boot.wim") { Copy-Item "$folderGoc\boot.wim" "$tmp\boot.wim" -Force }
+    else { [System.Windows.MessageBox]::Show("Mất WinRE rồi sếp! Vứt file boot.wim vào cạnh bộ cài đi."); return }
 
-    # BƯỚC 3: NẠP DRIVERS & APPS (CÔNG ĐOẠN SẾP CẦN)
-    Update-Step 70 "Bước 3/4: Đang bơm Drivers & Apps sếp chọn..."
+    # BƯỚC 2: CẤU HÌNH WINPE
+    Update-UI 60 "Bước 2/4: Đang cấu hình kịch bản tự động..."
     $mDir = "$tmp\Mount"; if(!(Test-Path $mDir)){New-Item $mDir -ItemType Directory}
     dism /Mount-Image /ImageFile:"$tmp\boot.wim" /Index:1 /MountDir:$mDir /Quiet
-    
-    # Lệnh bơm Drivers
-    if ($optDriver.IsChecked -and (Test-Path "$folderGoc\Drivers")) {
-        dism /Image:$mDir /Add-Driver /Driver:"$folderGoc\Drivers" /Recurse /ForceUnsigned /Quiet
-    }
-    
-    # Lệnh copy thư mục Apps
-    if ($optApps.IsChecked -and (Test-Path "$folderGoc\Apps")) {
-        xcopy "$folderGoc\Apps" "$mDir\Apps\" /e /y /i /q
-    }
+    if ($optDriver.IsChecked -and (Test-Path "$folderGoc\Drivers")) { dism /Image:$mDir /Add-Driver /Driver:"$folderGoc\Drivers" /Recurse /ForceUnsigned /Quiet }
+    if ($optApps.IsChecked -and (Test-Path "$folderGoc\Apps")) { xcopy "$folderGoc\Apps" "$mDir\Apps\" /e /y /i /q }
 
     $cmd = "@echo off`r`nwpeinit`r`n"
     $cmd += "for %%i in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist `"%%i:\VietToolbox_Setup\install.wim`" set `"W=%%i:\VietToolbox_Setup\install.wim`"`r`n"
     $cmd += "for %%j in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do if exist `"%%j:\Windows\System32\cmd.exe`" if not exist `"%%j:\VietToolbox_Setup`" set `"OS=%%j:`"`r`n"
-    $cmd += "format %OS% /fs:ntfs /q /y`r`ndism /Apply-Image /ImageFile:`"%W%`" /Index:1 /ApplyDir:%OS%\`r`nbcdboot %OS%\Windows /f ALL`r`n"
+    $cmd += "format %OS% /fs:ntfs /q /y`r`ndism /Apply-Image /ImageFile:`"%W%`" /Index:$idx /ApplyDir:%OS%\`r`nbcdboot %OS%\Windows /f ALL`r`n"
     $cmd += "md %OS%\Windows\Setup\Scripts`r`n(echo @echo off`r`nfor %%f in (X:\Apps\*.exe) do start /wait %%f /S /silent /install`r`nrd /s /q `"$($safe.DriveLetter):\VietToolbox_Setup`") > %OS%\Windows\Setup\Scripts\SetupComplete.cmd`r`nwpeutil reboot"
     Set-Content "$mDir\Windows\System32\startnet.cmd" $cmd -Encoding Ascii
     dism /Unmount-Image /MountDir:$mDir /Commit /Quiet
 
-    # BƯỚC 4: ÉP BOOT RAMDISK
-    Update-Step 95 "Bước 4/4: Đang cưỡng chế nạp Boot..."
-    Copy-Item -Path "C:\Windows\System32\boot.sdi" -Destination "$tmp\boot.sdi" -Force
+    # BƯỚC 3: CHIÊU NUCLEAR BOOT (ÉP CHẾT THỨ TỰ KHỞI ĐỘNG)
+    Update-UI 90 "Bước 3/4: Đang ép máy phải khởi động vào Tool..."
+    Copy-Item "C:\Windows\System32\boot.sdi" "$tmp\boot.sdi" -Force
     bcdedit /set "{ramdiskoptions}" ramdisksdidevice partition=$($safe.DriveLetter): | Out-Null
     bcdedit /set "{ramdiskoptions}" ramdisksdipath \VietToolbox_Setup\boot.sdi | Out-Null
+    
     $id = ((bcdedit /create /d "VietToolbox_Setup" /application osloader) -match '\{.*\}')[0]
     bcdedit /set $id device "ramdisk=[$($safe.DriveLetter):]\VietToolbox_Setup\boot.wim,{ramdiskoptions}" | Out-Null
     bcdedit /set $id osdevice "ramdisk=[$($safe.DriveLetter):]\VietToolbox_Setup\boot.wim,{ramdiskoptions}" | Out-Null
-    bcdedit /set $id systemroot \windows | Out-Null; bcdedit /set $id winpe yes | Out-Null
+    bcdedit /set $id systemroot \windows | Out-Null; bcdedit /set $id winpe yes | Out-Null; bcdedit /set $id detecthal yes | Out-Null
+    
+    # ÉP THỨ TỰ ƯU TIÊN TUYỆT ĐỐI
+    bcdedit /set "{bootmgr}" displayorder $id /addfirst | Out-Null
+    bcdedit /set "{bootmgr}" default $id | Out-Null
+    bcdedit /set "{bootmgr}" timeout 30 | Out-Null
     bcdedit /bootsequence $id /addfirst | Out-Null
-    bcdedit /timeout 30 | Out-Null
 
-    Update-Step 100 "✅ THÀNH CÔNG!"
-    [System.Windows.MessageBox]::Show("Mọi thứ đã sẵn sàng! Restart máy để bắt đầu Reinstall.", "VietToolbox")
-    Restart-Computer -Force
+    Update-UI 100 "✅ THÀNH CÔNG!"
+    [System.Windows.MessageBox]::Show("Xong rồi sếp Tuấn! Restart máy là nó phi thẳng vào bộ cài.", "VietToolbox")
+    # Lệnh restart cưỡng chế bypass Fast Startup
+    shutdown /r /f /t 00
 })
 
 $window.ShowDialog() | Out-Null
