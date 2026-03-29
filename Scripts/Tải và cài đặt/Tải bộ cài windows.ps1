@@ -1,6 +1,6 @@
 ﻿# ==========================================================
-# VIETTOOLBOX ISO CLIENT V141 - ANTI-DROP & SMART FILENAME
-# Đặc trị: Rớt gói mạng, Tự động lấy tên file Cloud, ETA
+# VIETTOOLBOX ISO CLIENT V142 - SYNC & FINISH (FIX BUG)
+# Đặc trị: ProgressBar không đầy, Trạng thái không đồng bộ
 # ==========================================================
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,23 +13,23 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
 $Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
 
-$LogicIsoClientV141 = {
+$LogicIsoClientV142 = {
     $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
     $script:CancelDL = $false; $script:PauseDL = $false
 
-    # --- GIAO DIỆN WPF ---
+    # --- GIAO DIỆN WPF (GIỮ NGUYÊN FORM ĐẸP) ---
     $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VIETTOOLBOX V141 - ANTI-DROP DOWNLOADER" Width="880" Height="820" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VIETTOOLBOX V142 - SYNC DOWNLOADER" Width="880" Height="820" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
     <Grid Margin="20">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="TRUNG TÂM TẢI XUỐNG V141" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
-            <TextBlock Text="Cơ chế Retry chống rớt gói + Smart Filename + ETA" Foreground="#666666"/>
+            <TextBlock Text="TRUNG TÂM TẢI XUỐNG V142" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
+            <TextBlock Text="Đã sửa lỗi đồng bộ ProgressBar và Trạng thái" Foreground="#666666"/>
         </StackPanel>
         <ListView Name="BangISO" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" Margin="0,0,0,15">
             <ListView.View><GridView>
                 <GridViewColumn Width="45"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Check}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
-                <GridViewColumn Header="TÊN TRONG DANH SÁCH" DisplayMemberBinding="{Binding Name}" Width="520"/>
+                <GridViewColumn Header="TÊN FILE TRÊN CLOUD" DisplayMemberBinding="{Binding Name}" Width="520"/>
                 <GridViewColumn Header="TRẠNG THÁI" Width="200"><GridViewColumn.CellTemplate><DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" FontWeight="SemiBold"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
             </GridView></ListView.View>
         </ListView>
@@ -54,7 +54,7 @@ $LogicIsoClientV141 = {
         </Grid>
         <Grid Grid.Row="5">
             <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="2.5*"/></Grid.ColumnDefinitions>
-            <Button Name="btnSync" Grid.Column="0" Content="🔄 LÀM MỚI LIST"/><Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI (ANTI-DROP)" Height="60" Background="#007ACC" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            <Button Name="btnSync" Grid.Column="0" Content="🔄 LÀM MỚI"/><Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI (FIX SYNC)" Height="60" Background="#007ACC" Foreground="White" FontSize="18" FontWeight="Bold"/>
         </Grid>
     </Grid>
 </Window>
@@ -79,7 +79,7 @@ $LogicIsoClientV141 = {
             $csv = Invoke-WebRequest -Uri ($RawUrl + "?t=" + (Get-Date -UFormat %s)) -UseBasicParsing | ConvertFrom-Csv
             $Global:DanhSachDuLieu.Clear()
             foreach ($r in $csv) { if ($r.Name -and $r.FileID) { $Global:DanhSachDuLieu.Add([PSCustomObject]@{ Check = $false; Name = $r.Name; FileID = $r.FileID; Status = "Sẵn sàng"; StatusColor = "#666666" }) } }
-            $lblStatus.Text = "✅ Đã đồng bộ danh sách."
+            $lblStatus.Text = "✅ Đã đồng bộ danh sách thành công."
         } catch { $lblStatus.Text = "❌ Lỗi kết nối list!" }
     }
 
@@ -90,7 +90,7 @@ $LogicIsoClientV141 = {
     $btnDownload.Add_Click({
         $DaChon = @($Global:DanhSachDuLieu | Where-Object { $_.Check -eq $true })
         if ($DaChon.Count -eq 0) { return }
-        $btnDownload.IsEnabled = $false; $btnCancel.IsEnabled = $true; $btnPause.IsEnabled = $true
+        $btnDownload.IsEnabled = $false; $btnCancel.IsEnabled = $true; $btnPause.IsEnabled = $true; $btnSync.IsEnabled = $false
         $script:CancelDL = $false; $script:PauseDL = $false
         
         $HttpClient = New-Object System.Net.Http.HttpClient
@@ -98,28 +98,27 @@ $LogicIsoClientV141 = {
         
         foreach ($item in $DaChon) {
             $MaxRetries = 5; $CurrentRetry = 0; $Success = $false
+            $pgBar.Value = 0; $lblTime.Text = ""; $lblSpeed.Text = "0 MB/s"
             
             while (-not $Success -and $CurrentRetry -lt $MaxRetries) {
                 if ($script:CancelDL) { break }
                 try {
-                    $item.Status = "🔍 Đang lấy Metadata..."; &$CapNhatGiaoDien
+                    $item.Status = "🔍 Đang lấy tên file..."; $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() }); &$CapNhatGiaoDien
                     $metaUrl = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?fields=name&key=$($Global:DriveApiKey)"
                     $metaResponse = Invoke-RestMethod -Uri $metaUrl
                     $realName = $metaResponse.name.Replace(" ", "_")
-                    
                     $dest = Join-Path $txtPath.Text $realName
                     if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory -Force | Out-Null }
                     
                     $item.Status = "⏳ Đang kết nối..."; $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() }); &$CapNhatGiaoDien
                     $url = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?alt=media&key=$($Global:DriveApiKey)&acknowledgeAbuse=true"
-                    
                     $response = $HttpClient.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
                     if (-not $response.IsSuccessStatusCode) { throw "Lỗi server: $($response.StatusCode)" }
 
                     $totalBytes = $response.Content.Headers.ContentLength
                     $stream = $response.Content.ReadAsStreamAsync().Result
                     $fileStream = [System.IO.File]::Create($dest)
-                    $buffer = New-Object byte[] 1048576 # 1MB buffer để tải ổn định hơn
+                    $buffer = New-Object byte[] 1048576 
                     $totalRead = 0; $chunkRead = 0; $sw = [System.Diagnostics.Stopwatch]::StartNew()
 
                     $item.Status = "⬇️ Đang tải..."; $item.StatusColor = "#1565C0"
@@ -133,7 +132,8 @@ $LogicIsoClientV141 = {
                         $totalRead += $bytesRead; $chunkRead += $bytesRead
 
                         if ($sw.ElapsedMilliseconds -ge 800) {
-                            $pgBar.Value = if ($totalBytes -gt 0) { [math]::Min(100, [int](($totalRead / $totalBytes) * 100)) } else { 0 }
+                            $phanTram = if ($totalBytes -gt 0) { [math]::Min(100, [int](($totalRead / $totalBytes) * 100)) } else { 0 }
+                            $pgBar.Value = $phanTram
                             $tocDoByte = $chunkRead / $sw.Elapsed.TotalSeconds
                             $lblSpeed.Text = "$([Math]::Round($tocDoByte / 1MB, 2)) MB/s"
                             
@@ -141,24 +141,41 @@ $LogicIsoClientV141 = {
                                 $ts = [TimeSpan]::FromSeconds(($totalBytes - $totalRead) / $tocDoByte)
                                 $lblTime.Text = "⏳ Còn lại: $(if($ts.TotalHours -ge 1){[int]$ts.TotalHours + 'g '})$($ts.Minutes)p $($ts.Seconds)s"
                             }
-                            $lblStatus.Text = "Đang tải: $realName"
+                            $lblStatus.Text = "Tiến độ: $phanTram% | File: $realName"
                             $sw.Restart(); $chunkRead = 0; &$CapNhatGiaoDien
                         }
                     }
+                    
+                    # CHỐT HẠ: Ép ProgressBar và Status khi xong file
                     $fileStream.Close(); $fileStream.Dispose(); $stream.Close(); $stream.Dispose()
-                    if (-not $script:CancelDL) { $Success = $true; $item.Status = "✅ Hoàn tất"; $item.StatusColor = "#2E7D32" }
-                    else { $item.Status = "🛑 Đã hủy"; $item.StatusColor = "#D32F2F" }
+                    
+                    if (-not $script:CancelDL) { 
+                        $pgBar.Value = 100 
+                        $item.Status = "✅ Hoàn tất"
+                        $item.StatusColor = "#2E7D32"
+                        $Success = $true
+                        $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
+                        &$CapNhatGiaoDien
+                    } else { 
+                        $item.Status = "🛑 Đã hủy"
+                        $item.StatusColor = "#D32F2F"
+                        $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
+                    }
                 } catch {
                     $CurrentRetry++
-                    $item.Status = "⚠️ Rớt gói! Thử lại ($CurrentRetry/$MaxRetries)"; $item.StatusColor = "#D32F2F"
+                    $item.Status = "⚠️ Thử lại ($CurrentRetry/5)"; $item.StatusColor = "#D32F2F"
                     $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
-                    Start-Sleep -Seconds 3 # Đợi 3 giây để mạng ổn định rồi thử lại
+                    Start-Sleep -Seconds 2
                 }
             }
             if ($script:CancelDL) { break }
         }
-        $HttpClient.Dispose(); $btnDownload.IsEnabled = $true; $btnCancel.IsEnabled = $false; $lblTime.Text = ""; $lblSpeed.Text = "0 MB/s"; $lblStatus.Text = "Chu trình tải kết thúc!"
+        
+        $HttpClient.Dispose()
+        $btnDownload.IsEnabled = $true; $btnCancel.IsEnabled = $false; $btnSync.IsEnabled = $true
+        $lblTime.Text = ""; $lblSpeed.Text = "0 MB/s"; $lblStatus.Text = "✅ ĐÃ TẢI XONG TOÀN BỘ DANH SÁCH!"
+        &$CapNhatGiaoDien
     })
     $CuaSo.ShowDialog() | Out-Null
 }
-&$LogicIsoClientV141
+&$LogicIsoClientV142
