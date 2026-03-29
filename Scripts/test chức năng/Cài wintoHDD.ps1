@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX - ULTIMATE REINSTALLER (V28.25 - FULL & STABLE)
-# Đặc trị: Đầy đủ Index, Apps, Driver - Hiện tiến trình DISM để chống treo
+# Tên công cụ: VIETTOOLBOX - ULTIMATE REINSTALLER (V28.26 - SMART BOOT)
+# Đặc trị: Tự động dùng boot.wim ngoài nếu máy khách bị mất WinRE
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -17,12 +17,12 @@ if ($PSScriptRoot.StartsWith("C:", "CurrentCultureIgnoreCase")) {
     }
 }
 
-# --- 2. GIAO DIỆN XUẤT XƯỞNG ---
+# --- 2. GIAO DIỆN (GIỮ NGUYÊN FULL OPTION) ---
 $maXAML = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox V28.25" Width="700" Height="750" Background="#F3F4F6" WindowStartupLocation="CenterScreen">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox V28.26" Width="700" Height="750" Background="#F3F4F6" WindowStartupLocation="CenterScreen">
     <Border BorderBrush="#D1D5DB" BorderThickness="1">
         <StackPanel Margin="30">
-            <TextBlock Text="VIETTOOLBOX - FULL REINSTALL PRO" FontSize="20" FontWeight="Bold" Foreground="#0284C7" Margin="0,0,0,20" HorizontalAlignment="Center"/>
+            <TextBlock Text="VIETTOOLBOX - SMART REINSTALL" FontSize="20" FontWeight="Bold" Foreground="#0284C7" Margin="0,0,0,20" HorizontalAlignment="Center"/>
             <TextBlock Text="BỘ CÀI (WIM/ISO):" FontWeight="Bold"/><Grid Margin="0,5,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions><TextBox Name="TxtFile" Height="30" IsReadOnly="True"/><Button Name="BtnFile" Grid.Column="1" Content="📁 Chọn file" Width="100" Margin="5,0,0,0"/></Grid>
             <TextBlock Text="PHIÊN BẢN:" FontWeight="Bold"/><ComboBox Name="ComboEdition" Height="30" Margin="0,5,0,20"/>
             <CheckBox Name="OptDriver" Content="Tự bơm Driver (Thư mục Drivers)" IsChecked="True" Margin="5" FontWeight="Bold"/>
@@ -30,7 +30,7 @@ $maXAML = @"
             <CheckBox Name="OptClean" Content="Tự dọn rác sau khi cài xong" IsChecked="True" Margin="5" FontWeight="Bold"/>
             <Separator Margin="0,20"/>
             <TextBlock Name="TxtStatus" Text="Sẵn sàng." Foreground="#059669" FontWeight="Bold" HorizontalAlignment="Center"/>
-            <Button Name="BtnRun" Content="🚀 BẮT ĐẦU CÀI ĐẶT (HIỆN TIẾN TRÌNH)" Height="60" Background="#10B981" Foreground="White" FontWeight="Bold" Margin="0,20,0,0"/>
+            <Button Name="BtnRun" Content="🚀 BẮT ĐẦU CÀI ĐẶT" Height="60" Background="#10B981" Foreground="White" FontWeight="Bold" Margin="0,20,0,0"/>
         </StackPanel>
     </Border>
 </Window>
@@ -51,14 +51,15 @@ $btnFile.Add_Click({
 
 $btnRun.Add_Click({
     if(!$txtFile.Text){return}
-    $idx = [int]([regex]::Match($comboEdition.Text, "Index (\d+)").Groups[1].Value)
-    $path = $txtFile.Text; $injDr = $optDriver.IsChecked; $injAp = $optApps.IsChecked; $doCl = $optClean.IsChecked
+    $idx = [int]([regex]::Match($comboEdition.Text, "Index (\d+)").Groups[1].Value); $path = $txtFile.Text
+    $injDr = $optDriver.IsChecked; $injAp = $optApps.IsChecked; $doCl = $optClean.IsChecked
     $safe = Get-Volume | Where-Object {$_.DriveLetter -ne "C" -and $_.DriveType -eq "Fixed" -and $_.SizeRemaining -gt 15GB} | Select-Object -First 1
     $tmp = "$($safe.DriveLetter):\VietToolbox_Setup"; if(!(Test-Path $tmp)){New-Item $tmp -Type Directory -Force}
 
     $batchScript = @"
 @echo off
-title DANG THI TRIEN - VUI LONG THEO DOI TIEN TRINH
+setlocal enabledelayedexpansion
+title DANG THI TRIEN - SMART BOOT MODE
 color 0B
 echo [1/4] DICH CHUYEN BO CAI...
 if /i "%~x1"==".iso" (
@@ -69,24 +70,34 @@ if /i "%~x1"==".iso" (
     powershell -command "Dismount-DiskImage '$path'"
 ) else ( copy /y "$path" "$tmp\install.wim" )
 
-echo [2/4] SAN TIM WINRE VA BOM DRIVER...
+echo [2/4] CHUAN BI MOI TRUONG BOOT...
 reagentc /disable
 copy /y C:\Windows\System32\Recovery\Winre.wim "$tmp\boot.wim"
-if not exist "$tmp\boot.wim" ( echo LOI: KHONG TIM THAY WINRE! & pause & exit )
+
+if not exist "$tmp\boot.wim" (
+    echo [CANH BAO] Khong thay WinRE trong may. Dang tim file boot.wim cua sep...
+    if exist "$(Split-Path $PSScriptRoot)\boot.wim" (
+        copy /y "$(Split-Path $PSScriptRoot)\boot.wim" "$tmp\boot.wim"
+        echo [OK] Da tim thay boot.wim ben ngoai!
+    ) else (
+        echo [LOI] Khong tim thay bat ky file Boot nao!
+        echo Vui long vut file boot.wim ben canh script nay.
+        pause & exit
+    )
+)
 
 md "$tmp\Mount"
 dism /Mount-Image /ImageFile:"$tmp\boot.wim" /Index:1 /MountDir:"$tmp\Mount"
 
 if "$injDr"=="True" (
     if exist "$(Split-Path $path)\Drivers" (
-        echo Dang bom Driver... Vui long doi DISM chay...
+        echo Dang bom Driver...
         dism /Image:"$tmp\Mount" /Add-Driver /Driver:"$(Split-Path $path)\Drivers" /Recurse /ForceUnsigned
     )
 )
-
 if "$injAp"=="True" (
     if exist "$(Split-Path $path)\Apps" (
-        echo Dang bom Apps vao WinPE...
+        echo Dang bom Apps...
         xcopy "$(Split-Path $path)\Apps" "$tmp\Mount\Apps\" /e /y /i /q
     )
 )
@@ -123,14 +134,13 @@ bcdedit /set {%%g} winpe yes
 bcdedit /set {%%g} detecthal yes
 bcdedit /bootsequence {%%g} /addfirst
 
-echo.
-echo === XONG ROI SEP TUAN OI! BAM PHIM BAT KY DE RESTART ===
+echo === XONG! BAM PHIM BAT KY DE RESTART ===
 pause
 exit
 "@
     $batchPath = "$tmp\Execute.bat"
     Set-Content $batchPath $batchScript -Encoding Ascii
     Start-Process cmd.exe -ArgumentList "/c `"$batchPath`"" -Verb RunAs -Wait
-    [System.Windows.MessageBox]::Show("Xong! Restart máy đi sếp.", "Kết quả")
+    [System.Windows.MessageBox]::Show("Nếu bảng đen không báo lỗi, mời sếp Restart!", "Kết quả")
 })
 $window.ShowDialog() | Out-Null
