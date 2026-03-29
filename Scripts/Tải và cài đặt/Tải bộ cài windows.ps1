@@ -1,6 +1,6 @@
 ﻿# ==========================================================
-# VIETTOOLBOX ISO CLIENT V140 - SMART FILENAME & ETA
-# Đặc trị: Tự lấy đuôi file từ Cloud, Tính thời gian tải (ETA)
+# VIETTOOLBOX ISO CLIENT V141 - ANTI-DROP & SMART FILENAME
+# Đặc trị: Rớt gói mạng, Tự động lấy tên file Cloud, ETA
 # ==========================================================
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,18 +13,18 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
 $Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
 
-$LogicIsoClientV140 = {
+$LogicIsoClientV141 = {
     $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
     $script:CancelDL = $false; $script:PauseDL = $false
 
     # --- GIAO DIỆN WPF ---
     $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VIETTOOLBOX V140 - SMART DOWNLOADER" Width="880" Height="820" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VIETTOOLBOX V141 - ANTI-DROP DOWNLOADER" Width="880" Height="820" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
     <Grid Margin="20">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="TRUNG TÂM TẢI XUỐNG V140" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
-            <TextBlock Text="Tự động lấy đuôi file từ Google Drive + ETA" Foreground="#666666"/>
+            <TextBlock Text="TRUNG TÂM TẢI XUỐNG V141" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
+            <TextBlock Text="Cơ chế Retry chống rớt gói + Smart Filename + ETA" Foreground="#666666"/>
         </StackPanel>
         <ListView Name="BangISO" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" Margin="0,0,0,15">
             <ListView.View><GridView>
@@ -54,7 +54,7 @@ $LogicIsoClientV140 = {
         </Grid>
         <Grid Grid.Row="5">
             <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="2.5*"/></Grid.ColumnDefinitions>
-            <Button Name="btnSync" Grid.Column="0" Content="🔄 LÀM MỚI"/><Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI FILE" Height="60" Background="#007ACC" Foreground="White" FontSize="18" FontWeight="Bold"/>
+            <Button Name="btnSync" Grid.Column="0" Content="🔄 LÀM MỚI LIST"/><Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI (ANTI-DROP)" Height="60" Background="#007ACC" Foreground="White" FontSize="18" FontWeight="Bold"/>
         </Grid>
     </Grid>
 </Window>
@@ -80,7 +80,7 @@ $LogicIsoClientV140 = {
             $Global:DanhSachDuLieu.Clear()
             foreach ($r in $csv) { if ($r.Name -and $r.FileID) { $Global:DanhSachDuLieu.Add([PSCustomObject]@{ Check = $false; Name = $r.Name; FileID = $r.FileID; Status = "Sẵn sàng"; StatusColor = "#666666" }) } }
             $lblStatus.Text = "✅ Đã đồng bộ danh sách."
-        } catch { $lblStatus.Text = "❌ Lỗi kết nối!" }
+        } catch { $lblStatus.Text = "❌ Lỗi kết nối list!" }
     }
 
     $CuaSo.Add_ContentRendered({ Load-IsoList })
@@ -92,69 +92,73 @@ $LogicIsoClientV140 = {
         if ($DaChon.Count -eq 0) { return }
         $btnDownload.IsEnabled = $false; $btnCancel.IsEnabled = $true; $btnPause.IsEnabled = $true
         $script:CancelDL = $false; $script:PauseDL = $false
+        
         $HttpClient = New-Object System.Net.Http.HttpClient
         $HttpClient.Timeout = [System.Threading.Timeout]::InfiniteTimeSpan
         
         foreach ($item in $DaChon) {
-            $item.Status = "🔍 Đang lấy tên file..."; &$CapNhatGiaoDien
+            $MaxRetries = 5; $CurrentRetry = 0; $Success = $false
             
-            # --- CHIÊU MỚI: LẤY TÊN THẬT VÀ ĐUÔI FILE TỪ GOOGLE DRIVE ---
-            try {
-                $metaUrl = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?fields=name&key=$($Global:DriveApiKey)"
-                $metaResponse = Invoke-RestMethod -Uri $metaUrl
-                $realName = $metaResponse.name.Replace(" ", "_")
-                $item.Status = "⏳ Đang kết nối..."; $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
-            } catch {
-                $realName = $item.Name.Replace(" ", "_") + ".iso" # Fallback nếu lỗi meta
-            }
-
-            $dest = Join-Path $txtPath.Text $realName
-            if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory -Force | Out-Null }
-            
-            $url = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?alt=media&key=$($Global:DriveApiKey)&acknowledgeAbuse=true"
-
-            try {
-                $response = $HttpClient.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
-                if (-not $response.IsSuccessStatusCode) { $item.Status = "❌ Lỗi link"; continue }
-
-                $totalBytes = $response.Content.Headers.ContentLength
-                $stream = $response.Content.ReadAsStreamAsync().Result
-                $fileStream = [System.IO.File]::Create($dest)
-                $buffer = New-Object byte[] 102400
-                $totalRead = 0; $chunkRead = 0; $sw = [System.Diagnostics.Stopwatch]::StartNew()
-
-                $item.Status = "⬇️ Đang tải..."; $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
-
-                while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                    if ($script:CancelDL) { break }
-                    while ($script:PauseDL) { &$CapNhatGiaoDien; Start-Sleep -Milliseconds 200 }
-                    
-                    $fileStream.Write($buffer, 0, $bytesRead)
-                    $totalRead += $bytesRead; $chunkRead += $bytesRead
-
-                    if ($sw.ElapsedMilliseconds -ge 800) {
-                        $pgBar.Value = if ($totalBytes -gt 0) { [math]::Min(100, [int](($totalRead / $totalBytes) * 100)) } else { 0 }
-                        $tocDoByte = $chunkRead / $sw.Elapsed.TotalSeconds
-                        $lblSpeed.Text = "$([Math]::Round($tocDoByte / 1MB, 2)) MB/s"
-                        
-                        # TÍNH ETA (THỜI GIAN CÒN LẠI)
-                        if ($totalBytes -gt 0 -and $tocDoByte -gt 0) {
-                            $ts = [TimeSpan]::FromSeconds(($totalBytes - $totalRead) / $tocDoByte)
-                            $lblTime.Text = "⏳ Còn lại: $(if($ts.TotalHours -ge 1){[int]$ts.TotalHours + 'g '})$($ts.Minutes)p $($ts.Seconds)s"
-                        }
-
-                        $lblStatus.Text = "Tải file: $realName ($([Math]::Round($totalRead/1GB, 2)) / $([Math]::Round($totalBytes/1GB, 2)) GB)"
-                        $sw.Restart(); $chunkRead = 0; &$CapNhatGiaoDien
-                    }
-                }
-                $fileStream.Close(); $fileStream.Dispose(); $stream.Close(); $stream.Dispose()
-                $item.Status = if ($script:CancelDL) { "🛑 Đã hủy" } else { "✅ Hoàn tất" }
-                $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
+            while (-not $Success -and $CurrentRetry -lt $MaxRetries) {
                 if ($script:CancelDL) { break }
-            } catch { $item.Status = "❌ Lỗi mạng" }
+                try {
+                    $item.Status = "🔍 Đang lấy Metadata..."; &$CapNhatGiaoDien
+                    $metaUrl = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?fields=name&key=$($Global:DriveApiKey)"
+                    $metaResponse = Invoke-RestMethod -Uri $metaUrl
+                    $realName = $metaResponse.name.Replace(" ", "_")
+                    
+                    $dest = Join-Path $txtPath.Text $realName
+                    if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory -Force | Out-Null }
+                    
+                    $item.Status = "⏳ Đang kết nối..."; $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() }); &$CapNhatGiaoDien
+                    $url = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?alt=media&key=$($Global:DriveApiKey)&acknowledgeAbuse=true"
+                    
+                    $response = $HttpClient.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
+                    if (-not $response.IsSuccessStatusCode) { throw "Lỗi server: $($response.StatusCode)" }
+
+                    $totalBytes = $response.Content.Headers.ContentLength
+                    $stream = $response.Content.ReadAsStreamAsync().Result
+                    $fileStream = [System.IO.File]::Create($dest)
+                    $buffer = New-Object byte[] 1048576 # 1MB buffer để tải ổn định hơn
+                    $totalRead = 0; $chunkRead = 0; $sw = [System.Diagnostics.Stopwatch]::StartNew()
+
+                    $item.Status = "⬇️ Đang tải..."; $item.StatusColor = "#1565C0"
+                    $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
+
+                    while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                        if ($script:CancelDL) { break }
+                        while ($script:PauseDL) { &$CapNhatGiaoDien; Start-Sleep -Milliseconds 200 }
+                        
+                        $fileStream.Write($buffer, 0, $bytesRead)
+                        $totalRead += $bytesRead; $chunkRead += $bytesRead
+
+                        if ($sw.ElapsedMilliseconds -ge 800) {
+                            $pgBar.Value = if ($totalBytes -gt 0) { [math]::Min(100, [int](($totalRead / $totalBytes) * 100)) } else { 0 }
+                            $tocDoByte = $chunkRead / $sw.Elapsed.TotalSeconds
+                            $lblSpeed.Text = "$([Math]::Round($tocDoByte / 1MB, 2)) MB/s"
+                            
+                            if ($totalBytes -gt 0 -and $tocDoByte -gt 0) {
+                                $ts = [TimeSpan]::FromSeconds(($totalBytes - $totalRead) / $tocDoByte)
+                                $lblTime.Text = "⏳ Còn lại: $(if($ts.TotalHours -ge 1){[int]$ts.TotalHours + 'g '})$($ts.Minutes)p $($ts.Seconds)s"
+                            }
+                            $lblStatus.Text = "Đang tải: $realName"
+                            $sw.Restart(); $chunkRead = 0; &$CapNhatGiaoDien
+                        }
+                    }
+                    $fileStream.Close(); $fileStream.Dispose(); $stream.Close(); $stream.Dispose()
+                    if (-not $script:CancelDL) { $Success = $true; $item.Status = "✅ Hoàn tất"; $item.StatusColor = "#2E7D32" }
+                    else { $item.Status = "🛑 Đã hủy"; $item.StatusColor = "#D32F2F" }
+                } catch {
+                    $CurrentRetry++
+                    $item.Status = "⚠️ Rớt gói! Thử lại ($CurrentRetry/$MaxRetries)"; $item.StatusColor = "#D32F2F"
+                    $CuaSo.Dispatcher.Invoke([action]{ $BangISO.Items.Refresh() })
+                    Start-Sleep -Seconds 3 # Đợi 3 giây để mạng ổn định rồi thử lại
+                }
+            }
+            if ($script:CancelDL) { break }
         }
-        $HttpClient.Dispose(); $btnDownload.IsEnabled = $true; $btnCancel.IsEnabled = $false; $lblTime.Text = ""; $lblSpeed.Text = "0 MB/s"
+        $HttpClient.Dispose(); $btnDownload.IsEnabled = $true; $btnCancel.IsEnabled = $false; $lblTime.Text = ""; $lblSpeed.Text = "0 MB/s"; $lblStatus.Text = "Chu trình tải kết thúc!"
     })
     $CuaSo.ShowDialog() | Out-Null
 }
-&$LogicIsoClientV140
+&$LogicIsoClientV141
