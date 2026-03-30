@@ -74,7 +74,7 @@ $inputXML = @"
                     </Border>
                     
                     <StackPanel Grid.Column="1" VerticalAlignment="Center">
-                        <TextBlock Text="WINDOWS TOOL BOX PRO" Foreground="#F8FAFC" FontSize="34" FontWeight="Bold"/>
+                        <TextBlock Text="CÔNG CỤ HỖ TRỢ KỸ THUẬT ONLINE" Foreground="#F8FAFC" FontSize="34" FontWeight="Bold"/>
                         <TextBlock Text="Hệ thống quản trị chuyên nghiệp - Tuấn Kỹ Thuật Máy Tính" Foreground="#94A3B8" FontSize="15" Margin="0,5,0,0"/>
                         <TextBlock Name="TxtThongBao" Text="Đang kiểm tra cập nhật..." Foreground="#10B981" FontSize="14" FontWeight="SemiBold" Margin="0,10,0,0">
                             <TextBlock.Triggers>
