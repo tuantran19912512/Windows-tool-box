@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# Tên công cụ: VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG (V19.12 - DARK MODE EDITION)
+# Tên công cụ: VIETTOOLBOX - TÙY CHỈNH HỆ THỐNG (V19.12 - NEW LAYOUT)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Nâng cấp: Thêm chức năng chuyển đổi nhanh Giao diện Sáng (Light) / Tối (Dark)
+# Layout Mới: Tắt/Ẩn <Nút Gạt> Bật/Hiện (Giữ nguyên toàn bộ logic gốc)
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -9,13 +9,13 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 
 $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if ($isAdmin -eq $false) { 
-    [System.Windows.MessageBox]::Show("Tuấn ơi, chuột phải chọn Run as Administrator nhé!", "Thiếu quyền", 0, 48)
+    [System.Windows.MessageBox]::Show("Sếp Tuấn ơi, chuột phải chọn Run as Administrator nhé!", "Thiếu quyền", 0, 48)
     exit 
 }
 
 $IsWin11 = [Environment]::OSVersion.Version.Build -ge 22000
 
-# --- GIAO DIỆN XAML WPF ---
+# --- GIAO DIỆN XAML WPF (NEW LAYOUT) ---
 $inputXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -27,12 +27,9 @@ $inputXML = @"
                     <ControlTemplate TargetType="CheckBox">
                         <Grid Background="Transparent" Margin="0,5">
                             <Grid.ColumnDefinitions>
-                                <ColumnDefinition Width="230"/> 
-                                <ColumnDefinition Width="65"/>  
-                                <ColumnDefinition Width="*"/>   
-                            </Grid.ColumnDefinitions>
+                                <ColumnDefinition Width="200"/> <ColumnDefinition Width="65"/>  <ColumnDefinition Width="*"/>   </Grid.ColumnDefinitions>
                             
-                            <TextBlock Grid.Column="0" Text="{TemplateBinding Tag}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#64748B" FontSize="13" Margin="0,0,10,0" TextWrapping="Wrap"/>
+                            <TextBlock Grid.Column="0" Text="{TemplateBinding Tag}" HorizontalAlignment="Right" VerticalAlignment="Center" Foreground="#94A3B8" FontSize="13" Margin="0,0,10,0" TextWrapping="Wrap"/>
                             
                             <Grid Grid.Column="1" Width="45" Height="22" HorizontalAlignment="Left">
                                 <Border x:Name="Bg" Background="#334155" CornerRadius="11"/>
@@ -93,7 +90,7 @@ $inputXML = @"
                             <CheckBox Name="ChkDarkMode" Tag="Giao diện Sáng (Light)" Content="Giao diện Tối (Dark Mode)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,12" Foreground="#F59E0B" FontWeight="Bold"/>
                             <CheckBox Name="ChkWidgets" Tag="Ẩn Widgets (Thời tiết)" Content="Hiện Widgets trên Taskbar" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkSearchIcon" Tag="Tắt ô Search Taskbar" Content="Hiện biểu tượng Search (Icon nhỏ)" Style="{StaticResource ToggleSwitch}"/>
-                            <CheckBox Name="ChkClassicMenu" Tag="Menu Win 11" Content="Trở về Menu Win 10 (Cần Restart Explorer)" Style="{StaticResource ToggleSwitch}"/>
+                            <CheckBox Name="ChkClassicMenu" Tag="Dùng Menu Win 11" Content="Trở về Menu Win 10" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkThisPC" Tag="Mở vào Quick Access" Content="Mở Explorer vào thẳng This PC" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkTaskbarCenter" Tag="Taskbar lệch Trái" Content="Căn giữa Taskbar" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkShowAllIcons" Tag="Giấu bớt Icon góc phải" Content="Hiện tất cả Icon dưới khay hệ thống" Style="{StaticResource ToggleSwitch}"/>
@@ -105,9 +102,9 @@ $inputXML = @"
                     <TextBlock Text="QUẢN LÝ THỜI GIAN" Foreground="#10B981" FontWeight="Bold" FontSize="13" Margin="0,0,0,10"/>
                     <Border Background="#1E293B" CornerRadius="10" Padding="15" Margin="0,0,0,20">
                         <StackPanel>
-                            <CheckBox Name="ChkSetVNTZ" Tag="Múi giờ hiện tại" Content="Ép Múi giờ Việt Nam (UTC+7)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5"/>
-                            <CheckBox Name="ChkDateDDMM" Tag="Tháng/Ngày/Năm" Content="Định dạng Ngày/Tháng/Năm (VN)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5"/>
-                            <CheckBox Name="ChkTime24h" Tag="Giờ 12h (AM/PM)" Content="Định dạng giờ 24h" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,15"/>
+                            <CheckBox Name="ChkSetVNTZ" Tag="Dùng Múi giờ hiện tại" Content="Ép Múi giờ Việt Nam (UTC+7)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5"/>
+                            <CheckBox Name="ChkDateDDMM" Tag="Dùng Tháng/Ngày/Năm" Content="Định dạng Ngày/Tháng/Năm (VN)" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,5"/>
+                            <CheckBox Name="ChkTime24h" Tag="Dùng Giờ 12h (AM/PM)" Content="Định dạng giờ 24h" Style="{StaticResource ToggleSwitch}" Margin="0,0,0,15"/>
                             
                             <Grid Margin="0,0,0,10">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -135,7 +132,7 @@ $inputXML = @"
                             <CheckBox Name="ChkWinUpdate" Tag="TẮT Update (Khóa Cập Nhật)" Content="BẬT Update (Cho phép Cập Nhật)" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkSAC" Tag="Tắt Smart App Control" Content="Bật Smart App Control" Style="{StaticResource ToggleSwitch}"/>
                             <CheckBox Name="ChkWPP" Tag="Bật WPP (Chuẩn Bảo mật mới)" Content="TẮT WPP (Cho phép kết nối Máy in cũ)" Style="{StaticResource ToggleSwitch}"/>
-                            <CheckBox Name="ChkBitlocker" Tag="Mở bảng điều khiển BitLocker" Content="Cấu hình mã hóa ổ đĩa (C:)" Style="{StaticResource ToggleSwitch}"/>
+                            <CheckBox Name="ChkBitlocker" Tag="Đóng Bitlocker" Content="Mở bảng điều khiển mã hóa ổ đĩa (C:)" Style="{StaticResource ToggleSwitch}"/>
                         </StackPanel>
                     </Border>
 
