@@ -75,19 +75,46 @@ $btnStart.Add_Click({
         $bootDir = "C:\VietBoot"
         if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
         
-        # --- FIX TREO SDI (CƯỠNG CHẾ QUYỀN) ---
-        $lblStatus.Text = "Dang xu ly boot.sdi..."; Refresh-UI
-        $sdiPaths = @("C:\Windows\Boot\EFI\boot.sdi", "C:\Windows\Boot\PCAT\boot.sdi")
+        # --- FIX TREO SDI (SIÊU TÌM KIẾM - ĐẶC TRỊ LỖI KHÔNG THẤY FILE) ---
+        $lblStatus.Text = "Dang lùng sục tìm boot.sdi..."; Refresh-UI
+        
+        # Danh sách các nơi tiềm năng nhất
+        $sdiSearchList = @(
+            "C:\Windows\Boot\EFI\boot.sdi",
+            "C:\Windows\Boot\PCAT\boot.sdi",
+            "C:\Windows\Boot\DVD\EFI\boot.sdi",
+            "C:\Windows\System32\Recovery\boot.sdi",
+            "C:\Recovery\WindowsRE\boot.sdi"
+        )
+
         $foundSdi = $false
-        foreach ($path in $sdiPaths) {
+        foreach ($path in $sdiSearchList) {
             if (Test-Path $path) {
-                takeown /f $path /a | Out-Null
-                icacls $path /grant Administrators:F | Out-Null
-                Copy-Item $path "$bootDir\boot.sdi" -Force -ErrorAction SilentlyContinue
-                $foundSdi = $true; break
+                $targetSdi = $path
+                $foundSdi = $true
+                break
             }
         }
-        if (!$foundSdi) { throw "Khong tim thay boot.sdi!" }
+
+        # Nếu vẫn không thấy, dùng tuyệt chiêu cuối: Quét toàn bộ thư mục Boot
+        if (!$foundSdi) {
+            $extraSearch = Get-ChildItem -Path "C:\Windows\Boot" -Filter "boot.sdi" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($extraSearch) {
+                $targetSdi = $extraSearch.FullName
+                $foundSdi = $true
+            }
+        }
+
+        if ($foundSdi) {
+            echo "Da tim thay boot.sdi tai: $targetSdi"
+            # Chiếm quyền và copy
+            takeown /f $targetSdi /a | Out-Null
+            icacls $targetSdi /grant Administrators:F | Out-Null
+            Copy-Item $targetSdi "$bootDir\boot.sdi" -Force -ErrorAction SilentlyContinue
+        } else {
+            # Nếu đến đây vẫn không thấy, ép người dùng phải tự tìm hoặc báo lỗi chuẩn
+            throw "Khong tim thay boot.sdi! Tuấn hãy kiểm tra xem máy có folder C:\Windows\Boot không?"
+        }
 
         $lblStatus.Text = "Dang Mount WinRE..."; $pgBar.Value = 20; Refresh-UI
         $mount = "C:\MountTemp"
