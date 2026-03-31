@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # VIETTOOLBOX V29 - FINAL REPAIR (FIX HANGING & PERMISSION)
-# Đặc trị: Treo ở bước copy boot.sdi, Lỗi quyền truy cập hệ thống.
+# Fix lỗi: Chớp tắt WinRE, Treo boot.sdi, Sai đường dẫn WIM.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -69,40 +69,40 @@ $btnStart.Add_Click({
         }
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
-        $wim = $txtWim.Text; $reSource = $txtRe.Text; $tenWim = [System.IO.Path]::GetFileName($wim)
-        $bootDir = "C:\VietBoot"; if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
+        $wimPathHost = $txtWim.Text
+        $wimFileName = [System.IO.Path]::GetFileName($wimPathHost)
+        $reSource = $txtRe.Text
+        $bootDir = "C:\VietBoot"
+        if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
         
-        # --- FIX TREO SDI (QUAN TRỌNG) ---
-        $lblStatus.Text = "Dang lay tep moi boot.sdi (Cuong che quyen)..."; Refresh-UI
-        $sdiPaths = @("C:\Windows\Boot\EFI\boot.sdi", "C:\Windows\Boot\DVD\EFI\boot.sdi", "C:\Windows\Boot\PCAT\boot.sdi")
+        # --- FIX TREO SDI (CƯỠNG CHẾ QUYỀN) ---
+        $lblStatus.Text = "Dang xu ly boot.sdi..."; Refresh-UI
+        $sdiPaths = @("C:\Windows\Boot\EFI\boot.sdi", "C:\Windows\Boot\PCAT\boot.sdi")
         $foundSdi = $false
         foreach ($path in $sdiPaths) {
             if (Test-Path $path) {
-                # Chiếm quyền file để tránh bị treo
                 takeown /f $path /a | Out-Null
                 icacls $path /grant Administrators:F | Out-Null
                 Copy-Item $path "$bootDir\boot.sdi" -Force -ErrorAction SilentlyContinue
                 $foundSdi = $true; break
             }
         }
-        if (!$foundSdi) { throw "Khong tim thay boot.sdi trong he thong!" }
+        if (!$foundSdi) { throw "Khong tim thay boot.sdi!" }
 
-        $lblStatus.Text = "Dang chuan bi DISM..."; $pgBar.Value = 20; Refresh-UI
+        $lblStatus.Text = "Dang Mount WinRE..."; $pgBar.Value = 20; Refresh-UI
         $mount = "C:\MountTemp"
         if (Test-Path $mount) { Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Discard" -Wait -WindowStyle Hidden }
         New-Item $mount -ItemType Directory -Force | Out-Null
         Copy-Item $reSource "$bootDir\boot.wim" -Force
         
-        $lblStatus.Text = "Dang Mount WinRE (Tien trinh nang)..."; $pgBar.Value = 40; Refresh-UI
-        # Chạy Dism mồi để không bị đơ giao diện
         $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$bootDir\boot.wim`" /Index:1 /MountDir:$mount" -PassThru -WindowStyle Hidden
         while (!$p.HasExited) { Refresh-UI; Start-Sleep -Milliseconds 500 }
 
-        # --- UNATTEND & STARTNET (THE GHOST STYLE) ---
+        # --- TẠO SCRIPT STARTNET.CMD (FIX LỖI %WIM_PATH%) ---
         $driverCmd = ""
         if (![string]::IsNullOrEmpty($txtDriver.Text)) { 
             Copy-Item -Path "$($txtDriver.Text)\*" -Destination "$bootDir\Drivers" -Recurse -Force
-            $driverCmd = "dism /Image:C:\ /Add-Driver /Driver:X:\VietBoot\Drivers /Recurse >nul"
+            $driverCmd = "echo [3/4] Dang nap Driver...`ndism /Image:C:\ /Add-Driver /Driver:X:\VietBoot\Drivers /Recurse >nul"
         }
 
         $unattend = @"
@@ -113,9 +113,21 @@ $btnStart.Add_Click({
 <UserAccounts><LocalAccounts><LocalAccount action="Add"><Password><Value></Value><PlainText>true</PlainText></Password><DisplayName>Admin</DisplayName><Group>Administrators</Group><Name>Admin</Name></LocalAccount></LocalAccounts></UserAccounts>
 <AutoLogon><Enabled>true</Enabled><Username>Admin</Username></AutoLogon></component></settings></unattend>
 "@
+        # Script này sẽ chạy khi boot vào RE
         $cmd = @"
 @echo off
 wpeinit
+set "WIM_NAME=$wimFileName"
+set "WIM_PATH="
+echo Dang tim file: %WIM_NAME%...
+for %%i in (C D E F G H I J K L M N O P) do (
+    if exist "%%i:\%WIM_NAME%" set "WIM_PATH=%%i:\%WIM_NAME%"
+    if exist "%%i:\VietBoot\%WIM_NAME%" set "WIM_PATH=%%i:\VietBoot\%WIM_NAME%"
+)
+if not defined WIM_PATH (
+    echo [LOI] Khong tim thay file Windows Image!
+    pause & exit
+)
 echo [1/4] Dang format o C...
 format C: /fs:ntfs /q /y >nul
 echo [2/4] Dang Apply Windows (Index $idx)...
@@ -127,20 +139,19 @@ echo [4/4] Dang tao bootloader...
 bcdboot C:\Windows /s C: /f ALL
 mkdir C:\Windows\Setup\Scripts >nul
 (echo @echo off
-echo for /f "tokens=2 delims={}" %%%%g in ('bcdedit /enum all ^^| findstr /i "VietToolbox"') do (bcdedit /delete {%%%%g} /f)
 echo bcdedit /timeout 0
 echo rd /s /q "C:\VietBoot"
 echo del %%0)>C:\Windows\Setup\Scripts\SetupComplete.cmd
 wpeutil reboot
 "@
         $cmd | Out-File "$mount\Windows\System32\startnet.cmd" -Encoding ASCII -Force
-        "[LaunchApps]`nwpeinit.exe`ncmd.exe, /c %SYSTEMROOT%\System32\startnet.cmd" | Out-File "$mount\Windows\System32\winpeshl.ini" -Encoding ASCII -Force
+        "[LaunchApps]`ncmd.exe, /c %SYSTEMROOT%\System32\startnet.cmd" | Out-File "$mount\Windows\System32\winpeshl.ini" -Encoding ASCII -Force
 
-        $lblStatus.Text = "Dang luu WinRE (Commit)..."; $pgBar.Value = 80; Refresh-UI
+        $lblStatus.Text = "Dang Save WinRE..."; $pgBar.Value = 80; Refresh-UI
         $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Commit" -PassThru -WindowStyle Hidden
         while (!$p.HasExited) { Refresh-UI; Start-Sleep -Milliseconds 500 }
 
-        # --- DANG KY BOOT ---
+        # --- ĐĂNG KÝ BCD ---
         $ramGuid = "{$( [guid]::NewGuid().ToString() )}"
         bcdedit /create $ramGuid /d "VietToolbox Options" /device | Out-Null
         bcdedit /set $ramGuid ramdisksdidevice partition=C: | Out-Null
@@ -159,6 +170,11 @@ wpeutil reboot
 
         $lblStatus.Text = "HOAN TAT! Dang Restart..."; $pgBar.Value = 100; Refresh-UI
         Restart-Computer -Force
-    } catch { [System.Windows.MessageBox]::Show("Loi: $_") }
+    } catch { 
+        [System.Windows.MessageBox]::Show("Loi: $_") 
+        $btnStart.IsEnabled = $true
+        $lblStatus.Text = "Loi: Khong the thuc hien."
+    }
 })
+
 $CuaSo.ShowDialog() | Out-Null
