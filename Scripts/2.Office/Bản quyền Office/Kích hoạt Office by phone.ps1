@@ -1,7 +1,7 @@
 ﻿# ==========================================================
 # VIETTOOLBOX - OFFICE ACTIVATION V1.5 (DUAL-ENGINE)
 # Đặc trị: Mất file ospp.vbs, Office Crack, Repack, C2R
-# Tác giả: AI cộng sự của sếp Tuấn
+# Tác giả: AI cộng sự
 # ==========================================================
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -26,7 +26,7 @@ $xaml = @"
                 <TextBlock Text="BƯỚC 0: Nhận diện phiên bản Office:" Foreground="#FFCC00" FontWeight="Bold" Margin="0,0,0,5"/>
                 <Button Name="BtnCheck" Content="🔍 KIỂM TRA OFFICE HIỆN TẠI" Height="40" Background="#444" Foreground="White" FontWeight="Bold" Margin="0,0,0,15" Cursor="Hand"/>
 
-                <TextBlock Text="BƯỚC 1: Nhập Key Office (Retail/MAK):" Foreground="#FFCC00" FontWeight="Bold" Margin="0,0,0,5"/>
+                <TextBlock Text="BƯỚC 1: Nạp License (Convert) &amp; Nhập Key:" Foreground="#FFCC00" FontWeight="Bold" Margin="0,0,0,5"/>
                 <Grid Margin="0,0,0,20">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
                     <TextBox Name="TxtKey" Height="35" Background="#252525" Foreground="White" BorderThickness="1" BorderBrush="#444" Padding="5" FontSize="15" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
@@ -66,29 +66,41 @@ $btnCheck = $window.FindName("BtnCheck"); $btnInstallKey = $window.FindName("Btn
 $btnGetIID = $window.FindName("BtnGetIID"); $btnCopyIID = $window.FindName("BtnCopyIID")
 $btnActivate = $window.FindName("BtnActivate"); $btnExit = $window.FindName("BtnExit"); $txtStatus = $window.FindName("TxtStatus")
 
-# --- HÀM TÌM ĐƯỜNG DẪN OSPP (NẾU CÓ) ---
+# --- HÀM TÌM KIẾM ĐỆ QUY TƯƠNG ĐƯƠNG LỆNH DIR /S /B ---
 function Get-OSPP-Path {
-    $paths = @("${env:ProgramFiles}\Microsoft Office\Office16", "${env:ProgramFiles(x86)}\Microsoft Office\Office16",
-               "${env:ProgramFiles}\Microsoft Office\Office15", "${env:ProgramFiles(x86)}\Microsoft Office\Office15",
-               "C:\Program Files\Common Files\microsoft shared\OfficeSoftwareProtectionPlatform")
-    foreach ($p in $paths) { $f = "$p\ospp.vbs"; if (Test-Path $f) { return $f } }
+    $paths = @("$env:ProgramFiles\Microsoft Office", "${env:ProgramFiles(x86)}\Microsoft Office")
+    foreach ($p in $paths) {
+        if (Test-Path $p) {
+            $ospp = Get-ChildItem -Path $p -Filter "ospp.vbs" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($ospp) { return $ospp.FullName }
+        }
+    }
     return $null
 }
 
-# --- HÀM QUÉT IID THÔNG MINH (CHỐT HẠ) ---
+function Get-Licenses-Path {
+    $paths = @("$env:ProgramFiles\Microsoft Office", "${env:ProgramFiles(x86)}\Microsoft Office")
+    foreach ($p in $paths) {
+        if (Test-Path $p) {
+            $licDir = Get-ChildItem -Path $p -Filter "Licenses16" -Directory -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1
+            if ($licDir) { return $licDir.FullName }
+        }
+    }
+    return $null
+}
+
+# --- HÀM QUÉT IID THÔNG MINH ---
 function Get-IID-Smart {
     $txtStatus.Text = "Đang quét IID hệ thống..."
     [System.Windows.Forms.Application]::DoEvents()
     
     $finalIID = ""
-    # Cách 1: Dùng OSPP.VBS (Nếu tìm thấy)
     $ospp = Get-OSPP-Path
     if ($ospp) {
         $out = cscript //nologo "$ospp" /dinstid
         if ($out -match "Installation ID: (\d+)") { $finalIID = $matches[1] }
     }
 
-    # Cách 2: Quét thẳng vào WMI (Bất chấp mất file ospp)
     if (-not $finalIID) {
         $OfficeAppID = "59a52881-a989-479d-af46-f275c6370663"
         $prod = Get-CimInstance -Query "SELECT InstallationID FROM SoftwareLicensingProduct WHERE ApplicationID = '$OfficeAppID' AND PartialProductKey IS NOT NULL" -ErrorAction SilentlyContinue
@@ -111,7 +123,6 @@ $btnCheck.Add_Click({
         $out = cscript //nologo "$ospp" /dstatus
         [System.Windows.Forms.MessageBox]::Show($out, "Chi tiết Office")
     } else {
-        # Nếu mất ospp, dùng PowerShell quét sơ bộ
         $OfficeAppID = "59a52881-a989-479d-af46-f275c6370663"
         $prod = Get-CimInstance -Query "SELECT Name, LicenseStatus FROM SoftwareLicensingProduct WHERE ApplicationID = '$OfficeAppID' AND PartialProductKey IS NOT NULL" -ErrorAction SilentlyContinue
         if ($prod) { [System.Windows.Forms.MessageBox]::Show("Tìm thấy qua WMI: $($prod.Name)", "Kết quả") }
@@ -119,30 +130,54 @@ $btnCheck.Add_Click({
     }
 })
 
+# --- ÁP DỤNG LOGIC TỪ BATCH SCRIPT CỦA NGƯỜI DÙNG ---
 $btnInstallKey.Add_Click({
-    $ospp = Get-OSPP-Path
     $k = $txtKey.Text.Trim()
-    if ($k.Length -lt 5) { [System.Windows.Forms.MessageBox]::Show("Nhập Key đi sếp!"); return }
+    if ($k.Length -lt 5) { [System.Windows.Forms.MessageBox]::Show("Vui lòng nhập Key hợp lệ!", "Thông báo"); return }
     
+    $ospp = Get-OSPP-Path
     if ($ospp) {
+        $txtStatus.Text = "Đang quét và nạp file bản quyền (xrm-ms)..."
+        [System.Windows.Forms.Application]::DoEvents()
+
+        # Tương đương: For /f ... dir /s /b /ad "%ProgramFiles%\Microsoft Office\Licenses16"
+        $licPath = Get-Licenses-Path
+        if ($licPath) {
+            # Tương đương: For /f %i in ('dir /b "%P%\ProPlus2019VL_MAK_AE*.xrm-ms"') do cscript ospp.vbs /inslic:"%P%\%i"
+            $xrmFiles = Get-ChildItem -Path $licPath -Filter "ProPlus2019VL_MAK_AE*.xrm-ms" -ErrorAction SilentlyContinue
+            if ($xrmFiles) {
+                foreach ($file in $xrmFiles) {
+                    cscript //nologo "$ospp" /inslic:"$($file.FullName)" | Out-Null
+                }
+            }
+        }
+
+        $txtStatus.Text = "Đang nạp Product Key..."
+        [System.Windows.Forms.Application]::DoEvents()
+        
+        # Tương đương: cscript OSPP.VBS /inpkey:%k1%
         cscript //nologo "$ospp" /inpkey:$k | Out-Null
+        
+        Start-Sleep -Seconds 2
+        Get-IID-Smart
+        [System.Windows.Forms.MessageBox]::Show("Đã nạp License Convert và Key thành công. Vui lòng kiểm tra mã IID ở Bước 2!", "Hoàn tất")
     } else {
-        # Nạp Key qua slmgr nếu ospp mất (Nhiều bản Win cho phép làm vậy)
+        # Fallback nếu mất hẳn thư mục Office
         cscript //nologo $env:windir\system32\slmgr.vbs /ipk $k | Out-Null
+        Start-Sleep -Seconds 2
+        Get-IID-Smart
+        [System.Windows.Forms.MessageBox]::Show("Đã nạp Key thông qua hệ thống Windows (slmgr).", "Thông báo")
     }
-    Start-Sleep -Seconds 2
-    Get-IID-Smart
-    [System.Windows.Forms.MessageBox]::Show("Đã nạp Key. Sếp kiểm tra IID nhé!")
 })
 
 $btnGetIID.Add_Click({ Get-IID-Smart })
 
-$btnCopyIID.Add_Click({ if ($txtIID.Text) { [System.Windows.Forms.Clipboard]::SetText($txtIID.Text); [System.Windows.Forms.MessageBox]::Show("Đã copy IID!") } })
+$btnCopyIID.Add_Click({ if ($txtIID.Text -and $txtIID.Text -notmatch "Không tìm thấy") { [System.Windows.Forms.Clipboard]::SetText($txtIID.Text); [System.Windows.Forms.MessageBox]::Show("Đã copy IID thành công!", "Thông báo") } })
 
 $btnActivate.Add_Click({
     $ospp = Get-OSPP-Path
     $cid = $txtCID.Text.Trim() -replace "\s",""
-    if ($cid.Length -lt 10) { return }
+    if ($cid.Length -lt 10) { [System.Windows.Forms.MessageBox]::Show("Vui lòng nhập CID hợp lệ!", "Lỗi"); return }
 
     if ($ospp) {
         cscript //nologo "$ospp" /actcid:$cid | Out-Null
@@ -151,7 +186,7 @@ $btnActivate.Add_Click({
         cscript //nologo $env:windir\system32\slmgr.vbs /atp $cid | Out-Null
         cscript //nologo $env:windir\system32\slmgr.vbs /ato | Out-Null
     }
-    [System.Windows.Forms.MessageBox]::Show("Đã gửi mã CID kích hoạt Office!")
+    [System.Windows.Forms.MessageBox]::Show("Đã gửi mã CID và lệnh kích hoạt Office. Vui lòng kiểm tra lại trạng thái bản quyền!", "Hoàn tất")
 })
 
 $btnExit.Add_Click({ $window.Close() })
