@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # Tên công cụ: VIETTOOLBOX - TỰ ĐỘNG CÀI ĐẶT PHẦN MỀM (WINGET)
-# Đặc tính: Chuột phải copy lỗi, Hiện Console Winget, Chống treo, Cắt khoảng trắng
+# Đặc tính: Chuột phải copy lỗi, Hiện Console Winget, Chống treo, Cắt khoảng trắng, HIỆN ICON
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -28,7 +28,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 # --- ĐƯỜNG DẪN TẢI DANH SÁCH TỪ GITHUB ---
 $Global:DuongDanCsv = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachPhanMem.csv"
 
-# 2. GIAO DIỆN XAML WPF
+# 2. GIAO DIỆN XAML WPF (ĐÃ THÊM CỘT BIỂU TƯỢNG)
 $GiaoDienXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -85,7 +85,7 @@ $GiaoDienXML = @"
                             <Button Name="NutBoChon" Content="☐ Bỏ Chọn Hết" Padding="10,5" Background="#475569" Foreground="White" BorderThickness="0" Cursor="Hand"/>
                         </StackPanel>
 
-                        <ListView Name="BangDanhSach" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="#E2E8F0" FontSize="14">
+                        <ListView Name="BangDanhSach" Grid.Row="1" Background="Transparent" BorderThickness="0" Foreground="#E2E8F0" FontSize="14" VirtualizingStackPanel.IsVirtualizing="True" ScrollViewer.CanContentScroll="True">
                             <ListView.ContextMenu>
                                 <ContextMenu>
                                     <MenuItem Name="NutSaoChep" Header="📋 Sao chép thông tin phần mềm này"/>
@@ -126,9 +126,16 @@ $GiaoDienXML = @"
                                             </DataTemplate>
                                         </GridViewColumn.CellTemplate>
                                     </GridViewColumn>
-                                    <GridViewColumn Header="TÊN PHẦN MỀM" Width="280" DisplayMemberBinding="{Binding Name}"/>
-                                    <GridViewColumn Header="MÃ ID WINGET" Width="250" DisplayMemberBinding="{Binding ID}"/>
-                                    <GridViewColumn Header="TRẠNG THÁI" Width="250" DisplayMemberBinding="{Binding Status}"/>
+                                    <GridViewColumn Header="ICON" Width="60">
+                                        <GridViewColumn.CellTemplate>
+                                            <DataTemplate>
+                                                <Image Source="{Binding BieuTuong}" Width="24" Height="24" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality"/>
+                                            </DataTemplate>
+                                        </GridViewColumn.CellTemplate>
+                                    </GridViewColumn>
+                                    <GridViewColumn Header="TÊN PHẦN MỀM" Width="260" DisplayMemberBinding="{Binding Name}"/>
+                                    <GridViewColumn Header="MÃ ID WINGET" Width="230" DisplayMemberBinding="{Binding ID}"/>
+                                    <GridViewColumn Header="TRẠNG THÁI" Width="200" DisplayMemberBinding="{Binding Status}"/>
                                 </GridView>
                             </ListView.View>
                         </ListView>
@@ -317,7 +324,19 @@ $NutTaiDanhSach.Add_Click({
         
         $Global:DanhSachTong = @()
         foreach ($dong in $duLieuCsv) {
-            $Global:DanhSachTong += [PSCustomObject]@{ IsSelected = $true; Name = $dong.Name; ID = $dong.WingetID; Status = "Đang chờ" }
+            # Ép kiểu URI để chắc chắn WPF tải được hình ảnh qua web
+            $duongDanAnh = $null
+            if (-not [string]::IsNullOrWhiteSpace($dong.iconurl)) {
+                $duongDanAnh = [uri]$dong.iconurl
+            }
+
+            $Global:DanhSachTong += [PSCustomObject]@{ 
+                IsSelected = $true; 
+                BieuTuong = $duongDanAnh; 
+                Name = $dong.Name; 
+                ID = $dong.WingetID; 
+                Status = "Đang chờ" 
+            }
         }
         
         $BangDanhSach.ItemsSource = $Global:DanhSachTong
