@@ -109,7 +109,7 @@ $LogicCaiOfficeV182 = {
         <Grid Grid.Row="6" Margin="0,0,0,5">
             <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <TextBlock Name="NhanTrangThai" Grid.Column="0" Text="Sẵn sàng..." FontWeight="SemiBold" Foreground="#1565C0" FontSize="14"/>
-            <TextBlock Name="NhanTocDo" Grid.Column="1" Text="-- MB/s | -- / -- MB" FontWeight="Bold" FontFamily="Consolas" Foreground="#D84315" TextAlignment="Right" FontSize="14"/>
+            <TextBlock Name="NhanTocDo" Grid.Column="1" Text="-- MB/s | -- / -- MB (0%)" FontWeight="Bold" FontFamily="Consolas" Foreground="#D84315" TextAlignment="Right" FontSize="14"/>
         </Grid>
 
         <ProgressBar Name="ThanhChay" Grid.Row="7" Height="25" Margin="0,0,0,20" Foreground="#2E7D32" Background="#E0E0E0" BorderThickness="0"/>
@@ -294,9 +294,11 @@ $LogicCaiOfficeV182 = {
                     if ($DongHo.ElapsedMilliseconds -ge 1000) {
                         $TocDoMB = [Math]::Round(($SoByteTaiLuotNay / $DongHo.Elapsed.TotalSeconds) / 1MB, 2)
                         $PhanTram = if ($TongDungLuong -gt 0) { [int](($DaTaiDuoc / $TongDungLuong) * 100) } else { 0 }
+                        $TongMB = if ($TongDungLuong -gt 0) { [Math]::Round($TongDungLuong/1MB, 1) } else { "???" }
+                        
                         $CuaSo.Dispatcher.Invoke([action]{ 
                             $ThanhChay.Value = $PhanTram
-                            $NhanTocDo.Text = "$TocDoMB MB/s | $([Math]::Round($DaTaiDuoc/1MB,1)) MB" 
+                            $NhanTocDo.Text = "$TocDoMB MB/s | $([Math]::Round($DaTaiDuoc/1MB,1)) / $TongMB MB ($PhanTram%)" 
                         })
                         [System.Windows.Forms.Application]::DoEvents()
                     }
@@ -353,7 +355,7 @@ $LogicCaiOfficeV182 = {
         if ($HopThoai.ShowDialog() -eq "OK") { $OTimDuongDan.Text = $HopThoai.SelectedPath } 
     })
     
-    $NutHuy.Add_Click({ $script:HuyTai = $true; $NhanTrangThai.Text = "Đang hủy lệnh..."; $NhanTrangThai.Foreground = "#D32F2F" })
+    $NutHuy.Add_Click({ $script:HuyTai = $true; $NhanTrangThai.Text = "Đang hủy lệnh..."; $NhanTrangThai.Foreground = "#D32F2F"; $NhanTocDo.Text = "-- MB/s | -- / -- MB (0%)" })
     $NutTamDung.Add_Click({ $script:TamDung = $true; $NutTamDung.IsEnabled = $false; $NutTiepTuc.IsEnabled = $true; $NhanTrangThai.Text = "Đang tạm dừng"; $NhanTrangThai.Foreground = "#FF9800" })
     $NutTiepTuc.Add_Click({ $script:TamDung = $false; $NutTiepTuc.IsEnabled = $false; $NutTamDung.IsEnabled = $true; $NhanTrangThai.Text = "Đang tải tiếp..."; $NhanTrangThai.Foreground = "#1565C0" })
 
@@ -381,6 +383,7 @@ $LogicCaiOfficeV182 = {
             if ($KetQua -eq "THÀNH_CÔNG") {
                 $UngDung.Status = "📦 Đang bung nén ISO..."; $UngDung.StatusColor = "#1565C0"
                 $NhanTrangThai.Text = "Đang bung nén dữ liệu cài đặt..."
+                $NhanTocDo.Text = "Đã tải xong 100%"
                 $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
 
                 $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"
@@ -483,7 +486,7 @@ $LogicCaiOfficeV182 = {
                 }
             } elseif ($KetQua -eq "ĐÃ_HỦY") { 
                 $UngDung.Status = "🛑 Đã hủy tải xuống"; $UngDung.StatusColor = "#D32F2F"
-                $NhanTrangThai.Text = "Đã hủy lệnh tải!"; $NhanTocDo.Text = "-- MB/s | -- / -- MB"
+                $NhanTrangThai.Text = "Đã hủy lệnh tải!"; $NhanTocDo.Text = "-- MB/s | -- / -- MB (0%)"
                 $ThanhChay.Value = 0
                 break 
             } else {
