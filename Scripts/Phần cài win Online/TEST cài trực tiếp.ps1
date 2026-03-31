@@ -164,6 +164,10 @@ mkdir C:\Windows\Panther >nul
 echo $unattend > C:\Windows\Panther\unattend.xml
 echo [4/4] Dang tao bootloader...
 bcdboot C:\Windows /s C: /f ALL
+echo [5/5] Dang don dep Menu Boot truoc khi thoat...
+bcdedit /delete %bootGuid% /f
+bcdedit /delete %ramGuid% /f
+bcdedit /timeout 0
 mkdir C:\Windows\Setup\Scripts >nul
 (echo @echo off
 echo bcdedit /timeout 0
