@@ -1,145 +1,211 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX - PHUONG AN E: NATIVE RAMDISK (FIX LOI 0x7B & 0xED)
-# Dac tri: Win 11 ban quyen, Secure Boot, thieu file moi boot.sdi
+# VIETTOOLBOX V21 - PRO EDITION (FIXED XAML & NO-NAME UI)
+# Tinh nang: Tat BitLocker - Tich hop Driver - Tu dong don dep Menu Boot
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
 
-Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
-# --- GIAO DIEN ---
-$CuaSo = New-Object System.Windows.Forms.Form
-$CuaSo.Text = "VietToolbox V16 - Native Boot (Giai Phap Cuoi)"; $CuaSo.Size = New-Object System.Drawing.Size(560, 480)
-$CuaSo.BackColor = "#121212"; $CuaSo.ForeColor = "White"; $CuaSo.StartPosition = "CenterScreen"
+# --- GIAO DIỆN WPF (MODERN DARK UI) ---
+$MaXAML = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="VietToolbox V21 - Pro Installer" Height="620" Width="620" 
+        WindowStartupLocation="CenterScreen" Background="#121212">
+    <Window.Resources>
+        <Style x:Key="RoundedButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#00adb5"/>
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="FontWeight" Value="Bold"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="6">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="ModernTextBox" TargetType="TextBox">
+            <Setter Property="Background" Value="#1E1E1E"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="BorderBrush" Value="#333333"/><Setter Property="Padding" Value="5"/>
+        </Style>
+    </Window.Resources>
 
-$fontTitle = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
-$lblTitle = New-Object System.Windows.Forms.Label
-$lblTitle.Text = "CAI WIN 1-CLICK (NATIVE RAMDISK)"; $lblTitle.Font = $fontTitle; $lblTitle.ForeColor = "#00adb5"
-$lblTitle.AutoSize = $true; $lblTitle.Location = New-Object System.Drawing.Point(20, 20); $CuaSo.Controls.Add($lblTitle)
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/><RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
 
-# Controls chon file
-$lblWim = New-Object System.Windows.Forms.Label; $lblWim.Text = "Tep Windows (.wim):"; $lblWim.Location = New-Object System.Drawing.Point(20, 70); $CuaSo.Controls.Add($lblWim)
-$txtWim = New-Object System.Windows.Forms.TextBox; $txtWim.Size = New-Object System.Drawing.Size(380, 25); $txtWim.Location = New-Object System.Drawing.Point(20, 95); $CuaSo.Controls.Add($txtWim)
-$btnWim = New-Object System.Windows.Forms.Button; $btnWim.Text = "Duyet..."; $btnWim.Location = New-Object System.Drawing.Point(420, 93); $CuaSo.Controls.Add($btnWim)
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="VIETTOOLBOX PRO V21" FontSize="26" FontWeight="ExtraBold" Foreground="#00adb5"/>
+            <TextBlock Text="PHIEN BAN CHUYEN NGHIEP - MODERN INSTALLER" FontSize="10" Foreground="#666666"/>
+        </StackPanel>
 
-$lblRe = New-Object System.Windows.Forms.Label; $lblRe.Text = "Tep WinRE.wim (Bat buoc):"; $lblRe.Location = New-Object System.Drawing.Point(20, 130); $lblRe.ForeColor = "#f1c40f"; $CuaSo.Controls.Add($lblRe)
-$txtRe = New-Object System.Windows.Forms.TextBox; $txtRe.Size = New-Object System.Drawing.Size(380, 25); $txtRe.Location = New-Object System.Drawing.Point(20, 155); $CuaSo.Controls.Add($txtRe)
-$btnRe = New-Object System.Windows.Forms.Button; $btnRe.Text = "Duyet..."; $btnRe.Location = New-Object System.Drawing.Point(420, 153); $CuaSo.Controls.Add($btnRe)
+        <StackPanel Grid.Row="1" Margin="0,0,0,10">
+            <TextBlock Text="Tep tin Windows (.wim):" Foreground="#888888" Margin="0,0,0,3"/>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
+                <TextBox Name="txtWim" Style="{StaticResource ModernTextBox}" IsReadOnly="True" Height="30"/>
+                <Button Name="btnWim" Grid.Column="1" Content="Duyet" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0"/></Grid>
+        </StackPanel>
 
-$cmbIndex = New-Object System.Windows.Forms.ComboBox; $cmbIndex.Size = New-Object System.Drawing.Size(490, 25); $cmbIndex.Location = New-Object System.Drawing.Point(20, 200); $cmbIndex.DropDownStyle = "DropDownList"; $CuaSo.Controls.Add($cmbIndex)
-$lblStatus = New-Object System.Windows.Forms.Label; $lblStatus.Text = "Kiem tra BitLocker truoc khi chay!"; $lblStatus.Location = New-Object System.Drawing.Point(20, 240); $lblStatus.AutoSize = $true; $lblStatus.ForeColor = "#ff4d4d"; $CuaSo.Controls.Add($lblStatus)
+        <StackPanel Grid.Row="2" Margin="0,0,0,10">
+            <TextBlock Text="Tep tin Cuu ho (WinRE.wim):" Foreground="#888888" Margin="0,0,0,3"/>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
+                <TextBox Name="txtRe" Style="{StaticResource ModernTextBox}" IsReadOnly="True" Height="30"/>
+                <Button Name="btnRe" Grid.Column="1" Content="Duyet" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="#444444"/></Grid>
+        </StackPanel>
 
-$btnGo = New-Object System.Windows.Forms.Button; $btnGo.Text = "KICH HOAT CAI DAT"; $btnGo.Size = New-Object System.Drawing.Size(490, 60); $btnGo.Location = New-Object System.Drawing.Point(20, 300); $btnGo.BackColor = "#00adb5"; $btnGo.Font = $fontTitle; $btnGo.Enabled = $false; $CuaSo.Controls.Add($btnGo)
+        <StackPanel Grid.Row="3" Margin="0,0,0,10">
+            <TextBlock Text="Thu muc Driver muon tich hop (Tuy chon):" Foreground="#888888" Margin="0,0,0,3"/>
+            <Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
+                <TextBox Name="txtDriver" Style="{StaticResource ModernTextBox}" IsReadOnly="True" Height="30"/>
+                <Button Name="btnDriver" Grid.Column="1" Content="Chon" Style="{StaticResource RoundedButtonStyle}" Margin="5,0,0,0" Background="#444444"/></Grid>
+        </StackPanel>
 
-# --- LOGIC ---
-function Refresh-UI { [System.Windows.Forms.Application]::DoEvents() }
+        <Grid Grid.Row="4" Margin="0,5,0,15">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+            <StackPanel>
+                <TextBlock Text="Phien ban cai dat:" Foreground="#888888" Margin="0,0,0,3"/>
+                <ComboBox Name="cmbIndex" Height="30" Width="350" HorizontalAlignment="Left" Background="#1E1E1E" Foreground="Black"/>
+            </StackPanel>
+            <CheckBox Name="chkBitLocker" Grid.Column="1" Content="Tu dong tat BitLocker" Foreground="#ffab00" VerticalAlignment="Bottom" Margin="0,0,0,5" IsChecked="True"/>
+        </Grid>
 
+        <StackPanel Grid.Row="5" VerticalAlignment="Center">
+            <ProgressBar Name="pgBar" Height="8" Background="#1E1E1E" Foreground="#00adb5" BorderThickness="0" Margin="0,0,0,5"/>
+            <TextBlock Name="lblStatus" Text="San sang." Foreground="#666666" HorizontalAlignment="Center" FontSize="11"/>
+        </StackPanel>
+
+        <Button Name="btnStart" Grid.Row="7" Content="TIEN HANH CAI DAT NGAY" Style="{StaticResource RoundedButtonStyle}" 
+                Height="50" Background="#d63031" FontSize="15"/>
+    </Grid>
+</Window>
+"@
+
+$DocXml = [System.Xml.XmlReader]::Create((New-Object System.IO.StringReader($MaXAML)))
+$CuaSo = [Windows.Markup.XamlReader]::Load($DocXml)
+
+# Ánh xạ Controls
+$txtWim = $CuaSo.FindName("txtWim"); $btnWim = $CuaSo.FindName("btnWim")
+$txtRe = $CuaSo.FindName("txtRe"); $btnRe = $CuaSo.FindName("btnRe")
+$txtDriver = $CuaSo.FindName("txtDriver"); $btnDriver = $CuaSo.FindName("btnDriver")
+$cmbIndex = $CuaSo.FindName("cmbIndex"); $chkBitLocker = $CuaSo.FindName("chkBitLocker")
+$pgBar = $CuaSo.FindName("pgBar"); $lblStatus = $CuaSo.FindName("lblStatus"); $btnStart = $CuaSo.FindName("btnStart")
+
+$btnStart.IsEnabled = $false
+
+function CapNhat-UI { 
+    [System.Windows.Forms.Application]::DoEvents()
+    [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background)
+}
+
+# --- SỰ KIỆN NÚT BẤM ---
 $btnWim.Add_Click({
-    $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "WIM File|*.wim"
-    if ($fd.ShowDialog() -eq "OK") {
+    $fd = New-Object Microsoft.Win32.OpenFileDialog; $fd.Filter = "Windows Image (*.wim)|*.wim"
+    if ($fd.ShowDialog()) {
         $txtWim.Text = $fd.FileName; $cmbIndex.Items.Clear()
-        $imgs = Get-WindowsImage -ImagePath $fd.FileName
-        foreach ($i in $imgs) { $cmbIndex.Items.Add("$($i.ImageIndex) - $($i.ImageName)") | Out-Null }
-        $cmbIndex.SelectedIndex = 0; if ($txtRe.Text) { $btnGo.Enabled = $true }
+        (Get-WindowsImage -ImagePath $fd.FileName) | ForEach-Object { $cmbIndex.Items.Add("$($_.ImageIndex) - $($_.ImageName)") }
+        $cmbIndex.SelectedIndex = 0
+        if ($txtRe.Text) { $btnStart.IsEnabled = $true }
     }
 })
 
 $btnRe.Add_Click({
-    $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "WinRE File|*.wim"
-    if ($fd.ShowDialog() -eq "OK") { $txtRe.Text = $fd.FileName; if ($txtWim.Text) { $btnGo.Enabled = $true } }
+    $fd = New-Object Microsoft.Win32.OpenFileDialog; $fd.Filter = "WinRE (*.wim)|*.wim"
+    if ($fd.ShowDialog()) { $txtRe.Text = $fd.FileName; if ($txtWim.Text) { $btnStart.IsEnabled = $true } }
 })
 
-$btnGo.Add_Click({
+$btnDriver.Add_Click({
+    $fb = New-Object System.Windows.Forms.FolderBrowserDialog
+    if ($fb.ShowDialog() -eq "OK") { $txtDriver.Text = $fb.SelectedPath }
+})
+
+$btnStart.Add_Click({
+    $confirm = [System.Windows.MessageBox]::Show("Toan bo du lieu o C se bi xoa. Tiep tuc?", "Xac nhan", 4, 48)
+    if ($confirm -ne 'Yes') { return }
+
+    $btnStart.IsEnabled = $false; $lblStatus.Text = "Dang khoi dong..."; CapNhat-UI
+
     try {
+        if ($chkBitLocker.IsChecked) {
+            $lblStatus.Text = "Dang giai ma BitLocker o C..."; CapNhat-UI
+            manage-bde -off C: | Out-Null
+        }
+
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
-        $wim = $txtWim.Text; $reSource = $txtRe.Text
-        $bootDir = "C:\VietBoot"
-        if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
-
-        $lblStatus.Text = "Trang thai: Dang lay file moi boot.sdi..."; Refresh-UI
-        # Tim file boot.sdi xịn trong máy để làm mồi
-        $sdiSource = "C:\Windows\Boot\DVD\EFI\boot.sdi"
-        if (!(Test-Path $sdiSource)) { $sdiSource = "C:\Windows\Boot\EFI\boot.sdi" }
-        Copy-Item $sdiSource "$bootDir\boot.sdi" -Force
-
-        $lblStatus.Text = "Trang thai: Dang Mount WinRE de nap script..."; Refresh-UI
-        $mount = "C:\MountTemp"
-        if (Test-Path $mount) { Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Discard" -Wait -WindowStyle Hidden }
-        New-Item $mount -ItemType Directory -Force | Out-Null
+        $wim = $txtWim.Text; $reSource = $txtRe.Text; $tenWim = [System.IO.Path]::GetFileName($wim)
+        $bootDir = "C:\VietBoot"; if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
         
+        $hasDriver = $false
+        if ($txtDriver.Text -and (Test-Path $txtDriver.Text)) {
+            $lblStatus.Text = "Dang copy Driver..."; CapNhat-UI
+            $driDir = "$bootDir\Drivers"
+            if (!(Test-Path $driDir)) { New-Item $driDir -ItemType Directory | Out-Null }
+            Copy-Item -Path "$($txtDriver.Text)\*" -Destination $driDir -Recurse -Force
+            $hasDriver = $true
+        }
+
+        $lblStatus.Text = "Dang Mount WinRE..."; $pgBar.Value = 30; CapNhat-UI
+        $sdi = "C:\Windows\Boot\EFI\boot.sdi"; if (!(Test-Path $sdi)) { $sdi = "C:\Windows\Boot\DVD\EFI\boot.sdi" }
+        Copy-Item $sdi "$bootDir\boot.sdi" -Force
+        
+        $mount = "C:\MountTemp"; if (Test-Path $mount) { Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Discard" -Wait -WindowStyle Hidden }
+        New-Item $mount -ItemType Directory -Force | Out-Null
         Copy-Item $reSource "$bootDir\boot.wim" -Force
+        
         $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$bootDir\boot.wim`" /Index:1 /MountDir:$mount" -PassThru -WindowStyle Normal
-        while (!$p.HasExited) { Refresh-UI; Start-Sleep -Milliseconds 500 }
+        while (!$p.HasExited) { CapNhat-UI; Start-Sleep -Milliseconds 500 }
+
+        $driverLogic = if ($hasDriver) { "echo [3/4] Dang nap Driver...`ndism /Image:C:\ /Add-Driver /Driver:X:\VietBoot\Drivers /Recurse >nul" } else { "echo [3/4] Bo qua nap Driver." }
 
         $cmd = @"
 @echo off
 wpeinit
 cls
-echo ========================================================
-echo         TIEN TRINH CAI DAT WINDOWS TU DONG
-echo ========================================================
-
-echo [1/3] Dang tim kiem tep tin $tenFileWim...
-set WIM_PATH=
-for %%i in (C D E F G H I J K L M N O P Q R S T U V) do (
-    if exist "%%i:\$tenFileWim" (
-        set WIM_PATH=%%i:\$tenFileWim
-        echo Da tim thay tep tai: %%i:\$tenFileWim
-    )
-)
-
-if "%WIM_PATH%"=="" (
-    echo [LOI] Khong tim thay tep $tenFileWim tren bat ky o dia nao!
-    echo Vui long kiem tra lai va restart.
-    pause
-    exit
-)
-
-echo.
-echo [2/3] Dang dinh dang lai o dia he thong (C:)...
-echo Chu y: WinPE se tu xac dinh o C la o cai Win.
+echo DANG TIM TEP $tenWim...
+for %%i in (C D E F G H I J K L M N O P Q R S T U V) do (if exist "%%i:\$tenWim" (set WIM_PATH=%%i:\$tenWim))
+echo [1/4] Dang format o C...
 format C: /fs:ntfs /q /y >nul
-
-echo.
-echo [3/3] Dang bung anh he thong (Apply Image)...
+echo [2/4] Dang Apply Image...
 dism /Apply-Image /ImageFile:"%WIM_PATH%" /Index:$idx /ApplyDir:C:\
-
-echo.
-echo [4/4] Dang tao bo khoi dong (Bootloader)...
+$driverLogic
+echo [4/4] Dang tao boot...
 bcdboot C:\Windows /s C: /f ALL
-
-echo ========================================================
-echo        HOAN TAT! May se Restart sau 10 giay.
-echo ========================================================
-timeout /t 10
+echo DANG TAO LENH DON DEP...
+mkdir C:\Windows\Setup\Scripts >nul
+(echo @echo off
+echo for /f "tokens=2 delims={}" %%%%g in ('bcdedit /enum all ^^| findstr /i "VietToolbox"') do (bcdedit /delete {%%%%g} /f)
+echo bcdedit /timeout 0
+echo rd /s /q "C:\VietBoot"
+echo del %%0)>C:\Windows\Setup\Scripts\SetupComplete.cmd
 wpeutil reboot
 "@
         $cmd | Out-File "$mount\Windows\System32\startnet.cmd" -Encoding ASCII -Force
-        dism /Unmount-Image /MountDir:$mount /Commit
+        $ini = "[LaunchApp]`nAppPath = %SYSTEMROOT%\System32\cmd.exe`nCommandLine = `"/c %SYSTEMROOT%\System32\startnet.cmd`""
+        $ini | Out-File "$mount\Windows\System32\winpeshl.ini" -Encoding ASCII -Force
 
-        $lblStatus.Text = "Trang thai: Dang don dep Menu Boot cu..."; Refresh-UI
-        # Xóa hết các dòng boot rác mang tên VietToolbox
-        $list = bcdedit /enum all
-        $oldGuids = $list | Select-String "{.*}" -AllMatches | ForEach-Object { $_.Matches.Value } | Select-Object -Unique
-        foreach ($g in $oldGuids) {
-            $info = bcdedit /enum $g
-            if ($info -like "*VietToolbox*") { bcdedit /delete $g /cleanup | Out-Null }
-        }
+        $lblStatus.Text = "Dang Unmount..."; $pgBar.Value = 80; CapNhat-UI
+        $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Commit" -PassThru -WindowStyle Normal
+        while (!$p.HasExited) { CapNhat-UI; Start-Sleep -Milliseconds 500 }
 
-        $lblStatus.Text = "Trang thai: Dang dang ky Ramdisk chuẩn..."; Refresh-UI
-        # Tạo Ramdisk Options chuẩn
-        $ramdiskGuid = "{$( [guid]::NewGuid().ToString() )}"
-        bcdedit /create $ramdiskGuid /d "VietToolbox Ramdisk Options" /device | Out-Null
-        bcdedit /set $ramdiskGuid ramdisksdidevice partition=C: | Out-Null
-        bcdedit /set $ramdiskGuid ramdisksdipath "\VietBoot\boot.sdi" | Out-Null
-
-        # Tạo Loader Boot
+        # Đăng ký BCD
+        $ramGuid = "{$( [guid]::NewGuid().ToString() )}"
+        bcdedit /create $ramGuid /d "VietToolbox Options" /device | Out-Null
+        bcdedit /set $ramGuid ramdisksdidevice partition=C: | Out-Null
+        bcdedit /set $ramGuid ramdisksdipath "\VietBoot\boot.sdi" | Out-Null
         $bootGuid = "{$( [guid]::NewGuid().ToString() )}"
         bcdedit /create $bootGuid /d "VietToolbox Installer" /application osloader | Out-Null
-        bcdedit /set $bootGuid device "ramdisk=[C:]\VietBoot\boot.wim,$ramdiskGuid" | Out-Null
-        bcdedit /set $bootGuid osdevice "ramdisk=[C:]\VietBoot\boot.wim,$ramdiskGuid" | Out-Null
+        bcdedit /set $bootGuid device "ramdisk=[C:]\VietBoot\boot.wim,$ramGuid" | Out-Null
+        bcdedit /set $bootGuid osdevice "ramdisk=[C:]\VietBoot\boot.wim,$ramGuid" | Out-Null
         bcdedit /set $bootGuid path "\windows\system32\boot\winload.efi" | Out-Null
         bcdedit /set $bootGuid systemroot "\windows" | Out-Null
         bcdedit /set $bootGuid winpe yes | Out-Null
@@ -148,11 +214,9 @@ wpeutil reboot
         bcdedit /default $bootGuid | Out-Null
         bcdedit /timeout 5 | Out-Null
 
-        [System.Windows.Forms.MessageBox]::Show("Hoan tat! Neu may van văng, hay kiem tra BitLocker da TAT chua.")
+        $lblStatus.Text = "Hoan thanh!"; $pgBar.Value = 100; CapNhat-UI
         Restart-Computer -Force
-    } catch {
-        [System.Windows.Forms.MessageBox]::Show("Loi: $_")
-    }
+    } catch { [System.Windows.MessageBox]::Show("Loi: $_") }
 })
 
 $CuaSo.ShowDialog() | Out-Null
