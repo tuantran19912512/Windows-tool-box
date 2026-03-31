@@ -1,4 +1,129 @@
-﻿# 4. Xu ly su kien nut Tien Hanh
+﻿Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Drawing
+
+# 1. Thiet lap giao dien chinh (Form)
+$form = New-Object System.Windows.Forms.Form
+$form.Text = "Cong Cu Phuc Hoi He Thong 1-Click"
+$form.Size = New-Object System.Drawing.Size(550, 420)
+$form.StartPosition = "CenterScreen"
+$form.FormBorderStyle = "FixedDialog"
+$form.BackColor = "#1e1e1e"
+$form.ForeColor = "White"
+
+# 2. Cac thanh phan giao dien (Controls)
+$fontTitle = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
+$fontNormal = New-Object System.Drawing.Font("Segoe UI", 10)
+
+$lblTitle = New-Object System.Windows.Forms.Label
+$lblTitle.Text = "CAI DAT WINDOWS TU DONG"
+$lblTitle.Font = $fontTitle
+$lblTitle.ForeColor = "#00adb5"
+$lblTitle.AutoSize = $true
+$lblTitle.Location = New-Object System.Drawing.Point(20, 20)
+$form.Controls.Add($lblTitle)
+
+$lblWim = New-Object System.Windows.Forms.Label
+$lblWim.Text = "Duong dan tep .wim (Khong de tren o C):"
+$lblWim.Font = $fontNormal
+$lblWim.AutoSize = $true
+$lblWim.Location = New-Object System.Drawing.Point(20, 70)
+$form.Controls.Add($lblWim)
+
+$txtWim = New-Object System.Windows.Forms.TextBox
+$txtWim.Size = New-Object System.Drawing.Size(390, 25)
+$txtWim.Location = New-Object System.Drawing.Point(20, 95)
+$txtWim.Font = $fontNormal
+$txtWim.ReadOnly = $true # Khoa chi cho phep chon qua nut Duyet
+$form.Controls.Add($txtWim)
+
+$btnBrowse = New-Object System.Windows.Forms.Button
+$btnBrowse.Text = "Duyet..."
+$btnBrowse.Size = New-Object System.Drawing.Size(90, 27)
+$btnBrowse.Location = New-Object System.Drawing.Point(420, 94)
+$btnBrowse.BackColor = "#3a3a3a"
+$btnBrowse.FlatStyle = "Flat"
+$form.Controls.Add($btnBrowse)
+
+$lblIndex = New-Object System.Windows.Forms.Label
+$lblIndex.Text = "Chon phien ban Windows muon cai:"
+$lblIndex.Font = $fontNormal
+$lblIndex.AutoSize = $true
+$lblIndex.Location = New-Object System.Drawing.Point(20, 135)
+$form.Controls.Add($lblIndex)
+
+# Thay the TextBox thanh ComboBox (Danh sach tha xuong)
+$cmbIndex = New-Object System.Windows.Forms.ComboBox
+$cmbIndex.Size = New-Object System.Drawing.Size(490, 25)
+$cmbIndex.Location = New-Object System.Drawing.Point(20, 160)
+$cmbIndex.Font = $fontNormal
+$cmbIndex.DropDownStyle = [System.Windows.Forms.ComboBoxStyle]::DropDownList
+$cmbIndex.BackColor = "#3f3f3f"
+$cmbIndex.ForeColor = "White"
+$form.Controls.Add($cmbIndex)
+
+$progressBar = New-Object System.Windows.Forms.ProgressBar
+$progressBar.Size = New-Object System.Drawing.Size(490, 25)
+$progressBar.Location = New-Object System.Drawing.Point(20, 210)
+$progressBar.Style = "Continuous"
+$form.Controls.Add($progressBar)
+
+$lblStatus = New-Object System.Windows.Forms.Label
+$lblStatus.Text = "Trang thai: San sang."
+$lblStatus.Font = $fontNormal
+$lblStatus.AutoSize = $true
+$lblStatus.ForeColor = "#aaaaaa"
+$lblStatus.Location = New-Object System.Drawing.Point(20, 245)
+$form.Controls.Add($lblStatus)
+
+$btnStart = New-Object System.Windows.Forms.Button
+$btnStart.Text = "TIEN HANH CAI DAT"
+$btnStart.Size = New-Object System.Drawing.Size(490, 50)
+$btnStart.Location = New-Object System.Drawing.Point(20, 290)
+$btnStart.BackColor = "#d63031"
+$btnStart.ForeColor = "White"
+$btnStart.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold)
+$btnStart.FlatStyle = "Flat"
+$btnStart.Enabled = $false # Khoa nut nay cho den khi chon dung file WIM
+$form.Controls.Add($btnStart)
+
+# 3. Xu ly su kien nut Duyet
+$btnBrowse.Add_Click({
+    $dialog = New-Object System.Windows.Forms.OpenFileDialog
+    $dialog.Filter = "Windows Image (*.wim)|*.wim"
+    
+    if ($dialog.ShowDialog() -eq "OK") {
+        $txtWim.Text = $dialog.FileName
+        $cmbIndex.Items.Clear()
+        $btnStart.Enabled = $false
+        
+        $lblStatus.Text = "Trang thai: Dang doc thong tin phien ban tu tep WIM..."
+        [System.Windows.Forms.Application]::DoEvents()
+        
+        try {
+            # Dung lenh Get-WindowsImage de doc file WIM
+            $imageInfo = Get-WindowsImage -ImagePath $txtWim.Text
+            
+            foreach ($img in $imageInfo) {
+                # Noi so Index va Ten vao cung 1 dong (VD: "1 - Windows 10 Pro")
+                $itemText = "$($img.ImageIndex) - $($img.ImageName)"
+                $cmbIndex.Items.Add($itemText) | Out-Null
+            }
+            
+            if ($cmbIndex.Items.Count -gt 0) {
+                $cmbIndex.SelectedIndex = 0 # Tu dong chon dong dau tien
+                $btnStart.Enabled = $true
+                $lblStatus.Text = "Trang thai: Da doc xong. San sang cai dat."
+            } else {
+                $lblStatus.Text = "Trang thai: Tep WIM trong hoac bi loi."
+            }
+        } catch {
+            [System.Windows.Forms.MessageBox]::Show("Khong the doc tep WIM. Kiem tra xem ban co dang chay bang quyen Administrator khong.", "Loi doc tep", "OK", "Error")
+            $lblStatus.Text = "Trang thai: Loi doc du lieu."
+        }
+    }
+})
+
+# 4. Xu ly su kien nut Tien Hanh
 $btnStart.Add_Click({
     $drive = [System.IO.Path]::GetPathRoot($txtWim.Text)
     if ($drive -eq "C:\") {
@@ -147,3 +272,5 @@ wpeutil reboot
         $cmbIndex.Enabled = $true
     }
 })
+
+$form.ShowDialog() | Out-Null
