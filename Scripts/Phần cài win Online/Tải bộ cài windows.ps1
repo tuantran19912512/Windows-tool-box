@@ -89,11 +89,27 @@ $LogicIsoClientV143 = {
 
     function Load-IsoList {
         try {
+            # Báo trạng thái đang tải để người dùng biết
+            $lblStatus.Text = "🔄 Đang làm mới danh sách..."
+            &$CapNhatGiaoDien
+            
             $csv = Invoke-WebRequest -Uri ($RawUrl + "?t=" + (Get-Date -UFormat %s)) -UseBasicParsing | ConvertFrom-Csv
-            $Global:DanhSachDuLieu.Clear()
-            foreach ($r in $csv) { if ($r.Name -and $r.FileID) { $Global:DanhSachDuLieu.Add([PSCustomObject]@{ Check = $false; Name = $r.Name; FileID = $r.FileID; Status = "Sẵn sàng"; StatusColor = "#666666" }) } }
-            $lblStatus.Text = "✅ Đã cập nhật danh sách mới nhất."
-        } catch { $lblStatus.Text = "❌ Lỗi mạng khi lấy list!" }
+            
+            # TỐI ƯU HÓA: Gom dữ liệu vào mảng tạm, KHÔNG Add lắt nhắt
+            $MangTam = foreach ($r in $csv) { 
+                if ($r.Name -and $r.FileID) { 
+                    [PSCustomObject]@{ Check = $false; Name = $r.Name; FileID = $r.FileID; Status = "Sẵn sàng"; StatusColor = "#666666" } 
+                } 
+            }
+            
+            # Khởi tạo danh sách mới ôm trọn mảng tạm và gán thẳng vào giao diện trong 1 nhịp
+            $Global:DanhSachDuLieu = New-Object System.Collections.ObjectModel.ObservableCollection[Object]($MangTam)
+            $BangISO.ItemsSource = $Global:DanhSachDuLieu
+            
+            $lblStatus.Text = "✅ Đã cập nhật $($Global:DanhSachDuLieu.Count) mục mới nhất."
+        } catch { 
+            $lblStatus.Text = "❌ Lỗi mạng khi lấy list!" 
+        }
     }
 
     # Sự kiện nút bấm bổ trợ
