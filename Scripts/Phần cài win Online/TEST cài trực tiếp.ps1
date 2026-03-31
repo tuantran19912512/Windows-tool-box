@@ -1,212 +1,121 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX - CONG CU CAI WIN 1-CLICK (ANTI-FREEZE & FORCED BOOT)
-# Phien ban: Full Toi Uu - Ho tro nap WinRE du phong tu man hinh chinh
+# VIETTOOLBOX - PHUONG AN B: TAO BOOT AO TAM THOI (VHD BOOT)
+# Dac tri: May lỳ, bi vang khoi WinRE, Secure Boot gat gao
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator")) {
-    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
-    exit
+    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
 
-Add-Type -AssemblyName System.Windows.Forms
-Add-Type -AssemblyName System.Drawing
+Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
-# --- KHOI TAO GIAO DIEN ---
+# --- GIAO DIEN ---
 $CuaSo = New-Object System.Windows.Forms.Form
-$CuaSo.Text = "VietToolbox - Cai Win 1-Click (Phien Ban On Dinh)"
-$CuaSo.Size = New-Object System.Drawing.Size(560, 500)
-$CuaSo.StartPosition = "CenterScreen"
-$CuaSo.FormBorderStyle = "FixedDialog"
-$CuaSo.BackColor = "#1e1e1e"
-$CuaSo.ForeColor = "White"
+$CuaSo.Text = "VietToolbox - Cai Win Phuong An B (VHD Boot)"; $CuaSo.Size = New-Object System.Drawing.Size(560, 400)
+$CuaSo.BackColor = "#121212"; $CuaSo.ForeColor = "White"; $CuaSo.StartPosition = "CenterScreen"
 
-$fontTieuDe = New-Object System.Drawing.Font("Segoe UI", 16, [System.Drawing.FontStyle]::Bold)
-$fontThuong = New-Object System.Drawing.Font("Segoe UI", 10)
+$fontTieuDe = New-Object System.Drawing.Font("Segoe UI", 14, [System.Drawing.FontStyle]::Bold)
+$fontChuan = New-Object System.Drawing.Font("Segoe UI", 10)
 
-# --- CAC THANH PHAN GIAO DIEN ---
-$NhanTieuDe = New-Object System.Windows.Forms.Label
-$NhanTieuDe.Text = "CAI DAT WINDOWS TU DONG"; $NhanTieuDe.Font = $fontTieuDe; $NhanTieuDe.ForeColor = "#00adb5"
-$NhanTieuDe.AutoSize = $true; $NhanTieuDe.Location = New-Object System.Drawing.Point(20, 20); $CuaSo.Controls.Add($NhanTieuDe)
+$lblTieuDe = New-Object System.Windows.Forms.Label
+$lblTieuDe.Text = "CAI WIN TU DONG (PHUONG AN BOOT AO)"; $lblTieuDe.Font = $fontTieuDe; $lblTieuDe.ForeColor = "#ff4d4d"
+$lblTieuDe.AutoSize = $true; $lblTieuDe.Location = New-Object System.Drawing.Point(20, 20); $CuaSo.Controls.Add($lblTieuDe)
 
 # Chon WIM
-$NhanWim = New-Object System.Windows.Forms.Label
-$NhanWim.Text = "Duong dan tep .wim (Luu o o khac C):"; $NhanWim.Location = New-Object System.Drawing.Point(20, 70); $NhanWim.AutoSize = $true
-$CuaSo.Controls.Add($NhanWim)
+$lblWim = New-Object System.Windows.Forms.Label
+$lblWim.Text = "Tep Windows (.wim):"; $lblWim.Location = New-Object System.Drawing.Point(20, 70); $CuaSo.Controls.Add($lblWim)
+$txtWim = New-Object System.Windows.Forms.TextBox; $txtWim.Size = New-Object System.Drawing.Size(380, 25); $txtWim.Location = New-Object System.Drawing.Point(20, 95); $txtWim.ReadOnly = $true; $CuaSo.Controls.Add($txtWim)
+$btnWim = New-Object System.Windows.Forms.Button; $btnWim.Text = "Duyet..."; $btnWim.Location = New-Object System.Drawing.Point(420, 93); $CuaSo.Controls.Add($btnWim)
 
-$OChonWim = New-Object System.Windows.Forms.TextBox
-$OChonWim.Size = New-Object System.Drawing.Size(400, 25); $OChonWim.Location = New-Object System.Drawing.Point(20, 95); $OChonWim.ReadOnly = $true; $OChonWim.BackColor = "#333333"; $OChonWim.ForeColor = "White"
-$CuaSo.Controls.Add($OChonWim)
+# Chon WinRE.wim (Lam nguon cho Boot ao)
+$lblRe = New-Object System.Windows.Forms.Label
+$lblRe.Text = "Tep WinRE.wim (Bat buoc phai co):"; $lblRe.Location = New-Object System.Drawing.Point(20, 130); $CuaSo.Controls.Add($lblRe)
+$txtRe = New-Object System.Windows.Forms.TextBox; $txtRe.Size = New-Object System.Drawing.Size(380, 25); $txtRe.Location = New-Object System.Drawing.Point(20, 155); $txtRe.ReadOnly = $true; $CuaSo.Controls.Add($txtRe)
+$btnRe = New-Object System.Windows.Forms.Button; $btnRe.Text = "Duyet..."; $btnRe.Location = New-Object System.Drawing.Point(420, 153); $CuaSo.Controls.Add($btnRe)
 
-$NutDuyetWim = New-Object System.Windows.Forms.Button
-$NutDuyetWim.Text = "Duyet..."; $NutDuyetWim.Size = New-Object System.Drawing.Size(90, 27); $NutDuyetWim.Location = New-Object System.Drawing.Point(430, 94); $NutDuyetWim.BackColor = "#3a3a3a"; $NutDuyetWim.FlatStyle = "Flat"
-$CuaSo.Controls.Add($NutDuyetWim)
+$cmbIndex = New-Object System.Windows.Forms.ComboBox; $cmbIndex.Size = New-Object System.Drawing.Size(490, 25); $cmbIndex.Location = New-Object System.Drawing.Point(20, 200); $cmbIndex.DropDownStyle = "DropDownList"; $CuaSo.Controls.Add($cmbIndex)
+$lblStatus = New-Object System.Windows.Forms.Label; $lblStatus.Text = "San sang."; $lblStatus.Location = New-Object System.Drawing.Point(20, 240); $lblStatus.AutoSize = $true; $CuaSo.Controls.Add($lblStatus)
 
-# Chon WinRE
-$NhanWinRE = New-Object System.Windows.Forms.Label
-$NhanWinRE.Text = "Tep winre.wim du phong (Neu may thieu WinRE):"; $NhanWinRE.ForeColor = "#f1c40f"; $NhanWinRE.Location = New-Object System.Drawing.Point(20, 135); $NhanWinRE.AutoSize = $true
-$CuaSo.Controls.Add($NhanWinRE)
+$btnGo = New-Object System.Windows.Forms.Button; $btnGo.Text = "TAO BOOT AO & CAI WIN"; $btnGo.Size = New-Object System.Drawing.Size(490, 50); $btnGo.Location = New-Object System.Drawing.Point(20, 280); $btnGo.BackColor = "#ff4d4d"; $btnGo.Font = $fontTieuDe; $btnGo.Enabled = $false; $CuaSo.Controls.Add($btnGo)
 
-$OChonWinRE = New-Object System.Windows.Forms.TextBox
-$OChonWinRE.Size = New-Object System.Drawing.Size(400, 25); $OChonWinRE.Location = New-Object System.Drawing.Point(20, 160); $OChonWinRE.ReadOnly = $true; $OChonWinRE.BackColor = "#333333"; $OChonWinRE.ForeColor = "White"
-$CuaSo.Controls.Add($OChonWinRE)
+# --- LOGIC ---
+function Refresh-UI { [System.Windows.Forms.Application]::DoEvents() }
 
-$NutDuyetRE = New-Object System.Windows.Forms.Button
-$NutDuyetRE.Text = "Duyet..."; $NutDuyetRE.Size = New-Object System.Drawing.Size(90, 27); $NutDuyetRE.Location = New-Object System.Drawing.Point(430, 159); $NutDuyetRE.BackColor = "#3a3a3a"; $NutDuyetRE.FlatStyle = "Flat"
-$CuaSo.Controls.Add($NutDuyetRE)
-
-# Chon Index
-$NhanIndex = New-Object System.Windows.Forms.Label
-$NhanIndex.Text = "Chon phien ban muon cai:"; $NhanIndex.Location = New-Object System.Drawing.Point(20, 205); $NhanIndex.AutoSize = $true
-$CuaSo.Controls.Add($NhanIndex)
-
-$DanhSachIndex = New-Object System.Windows.Forms.ComboBox
-$DanhSachIndex.Size = New-Object System.Drawing.Size(500, 25); $DanhSachIndex.Location = New-Object System.Drawing.Point(20, 230); $DanhSachIndex.DropDownStyle = "DropDownList"; $DanhSachIndex.BackColor = "#333333"; $DanhSachIndex.ForeColor = "White"
-$CuaSo.Controls.Add($DanhSachIndex)
-
-# Progress & Status
-$ThanhTienDo = New-Object System.Windows.Forms.ProgressBar
-$ThanhTienDo.Size = New-Object System.Drawing.Size(500, 25); $ThanhTienDo.Location = New-Object System.Drawing.Point(20, 285)
-$CuaSo.Controls.Add($ThanhTienDo)
-
-$NhanTrangThai = New-Object System.Windows.Forms.Label
-$NhanTrangThai.Text = "Trang thai: San sang."; $NhanTrangThai.Location = New-Object System.Drawing.Point(20, 320); $NhanTrangThai.AutoSize = $true; $NhanTrangThai.ForeColor = "#888888"
-$CuaSo.Controls.Add($NhanTrangThai)
-
-$NutBatDau = New-Object System.Windows.Forms.Button
-$NutBatDau.Text = "BAT DAU CAI DAT (FORCED REBOOT)"; $NutBatDau.Size = New-Object System.Drawing.Size(500, 55); $NutBatDau.Location = New-Object System.Drawing.Point(20, 365)
-$NutBatDau.BackColor = "#d63031"; $NutBatDau.Font = New-Object System.Drawing.Font("Segoe UI", 12, [System.Drawing.FontStyle]::Bold); $NutBatDau.FlatStyle = "Flat"; $NutBatDau.Enabled = $false
-$CuaSo.Controls.Add($NutBatDau)
-
-# --- HAM HO TRO ---
-function CapNhat-UI { [System.Windows.Forms.Application]::DoEvents() }
-
-$NutDuyetWim.Add_Click({
-    $fd = New-Object System.Windows.Forms.OpenFileDialog
-    $fd.Filter = "Windows Image (*.wim)|*.wim"
+$btnWim.Add_Click({
+    $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "WIM File|*.wim"
     if ($fd.ShowDialog() -eq "OK") {
-        $OChonWim.Text = $fd.FileName
-        $DanhSachIndex.Items.Clear()
-        $NhanTrangThai.Text = "Dang doc thong tin Index..."
-        CapNhat-UI
-        try {
-            $images = Get-WindowsImage -ImagePath $fd.FileName
-            foreach ($img in $images) { $DanhSachIndex.Items.Add("$($img.ImageIndex) - $($img.ImageName)") | Out-Null }
-            if ($DanhSachIndex.Items.Count -gt 0) { $DanhSachIndex.SelectedIndex = 0; $NutBatDau.Enabled = $true }
-            $NhanTrangThai.Text = "San sang cai dat."
-        } catch { $NhanTrangThai.Text = "Loi: Khong doc duoc tep WIM!" }
+        $txtWim.Text = $fd.FileName; $cmbIndex.Items.Clear()
+        $imgs = Get-WindowsImage -ImagePath $fd.FileName
+        foreach ($i in $imgs) { $cmbIndex.Items.Add("$($i.ImageIndex) - $($i.ImageName)") | Out-Null }
+        $cmbIndex.SelectedIndex = 0; if ($txtRe.Text) { $btnGo.Enabled = $true }
     }
 })
 
-$NutDuyetRE.Add_Click({
-    $fd = New-Object System.Windows.Forms.OpenFileDialog
-    $fd.Filter = "WinRE File (winre.wim)|winre.wim"
-    if ($fd.ShowDialog() -eq "OK") { $OChonWinRE.Text = $fd.FileName }
+$btnRe.Add_Click({
+    $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "WinRE File|*.wim"
+    if ($fd.ShowDialog() -eq "OK") { $txtRe.Text = $fd.FileName; if ($txtWim.Text) { $btnGo.Enabled = $true } }
 })
 
-# --- LOGIC CHINH ---
-$NutBatDau.Add_Click({
-    if ([System.IO.Path]::GetPathRoot($OChonWim.Text) -eq "C:\") {
-        [System.Windows.Forms.MessageBox]::Show("Khong duoc de tep WIM o o C!", "Loi", "OK", "Error"); return
-    }
+$btnGo.Add_Click({
+    if ([System.IO.Path]::GetPathRoot($txtWim.Text) -eq "C:\") { [System.Windows.Forms.MessageBox]::Show("Tep WIM phai de o o khac C!"); return }
     
-    $confirm = [System.Windows.Forms.MessageBox]::Show("MAY SE MAT HET DU LIEU O O C. Xac nhan tiep tuc?", "Canh bao", "YesNo", "Warning")
-    if ($confirm -ne "Yes") { return }
-
-    $NutBatDau.Enabled = $false; $NutDuyetWim.Enabled = $false; $NutDuyetRE.Enabled = $false
-
     try {
-        $idx = $DanhSachIndex.SelectedItem.ToString().Split('-')[0].Trim()
-        $wim = $OChonWim.Text
-        $winre = "C:\Windows\System32\Recovery\winre.wim"
-        $mount = "C:\MountWinRE"
-
-        $NhanTrangThai.Text = "Trang thai: [5%] Dang chuan doan WinRE..."
-        $ThanhTienDo.Value = 5; CapNhat-UI
+        $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
+        $wim = $txtWim.Text; $reSource = $txtRe.Text
+        $vhdPath = "D:\VietToolboxBoot.vhd" # Luu tam o o khac C de tranh bi format xoa mat
+        if (! (Test-Path "D:\")) { $vhdPath = "E:\VietToolboxBoot.vhd" } # Phong do may chia o dia khac
         
-        # Vo hieu hoa cu de lam sach cau truc BCD Recovery
-        reagentc /disable | Out-Null
+        $lblStatus.Text = "Trang thai: Dang tao o dia ao (VHD)..."; Refresh-UI
+        $vhdScript = @"
+create vdisk file="$vhdPath" maximum=1024 type=fixed
+select vdisk file="$vhdPath"
+attach vdisk
+create partition primary
+format fs=ntfs quick label="VT_BOOT"
+assign letter=Z
+"@
+        $vhdScript | diskpart | Out-Null
 
-        # Phuc hoi WinRE neu may bi thieu (Nap tu o chon)
-        if (!(Test-Path $winre)) {
-            if (!(Test-Path $OChonWinRE.Text)) {
-                [System.Windows.Forms.MessageBox]::Show("May nay mat WinRE. Vui long chon file winre.wim du phong o man hinh chinh!", "Loi He Thong", "OK", "Error")
-                $NutBatDau.Enabled = $true; return
-            }
-            $NhanTrangThai.Text = "Trang thai: Dang bom WinRE du phong..."
-            CapNhat-UI
-            $recDir = "C:\Windows\System32\Recovery"
-            if (!(Test-Path $recDir)) { New-Item $recDir -ItemType Directory -Force | Out-Null }
-            Copy-Item $OChonWinRE.Text $winre -Force
-            reagentc /setreimage /path $recDir | Out-Null
-            reagentc /enable | Out-Null
-            reagentc /disable | Out-Null
-        }
+        $lblStatus.Text = "Trang thai: Dang nap WinRE vao o ao..."; Refresh-UI
+        $mount = "C:\MountPE"
+        if (!(Test-Path $mount)) { New-Item $mount -ItemType Directory | Out-Null }
+        dism /Mount-Image /ImageFile:$reSource /Index:1 /MountDir:$mount
 
-        # Don dep & Chuan bi o dia ao
-        $NhanTrangThai.Text = "Trang thai: [20%] Dang don dep o Mount bi ket..."
-        $ThanhTienDo.Value = 20; CapNhat-UI
-        if (Test-Path $mount) {
-            $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Discard" -PassThru -WindowStyle Hidden
-            while (!$p.HasExited) { CapNhat-UI; Start-Sleep -Milliseconds 200 }
-            Remove-Item $mount -Force -Recurse -ErrorAction SilentlyContinue
-        }
-        New-Item $mount -ItemType Directory -Force | Out-Null
-
-        # Bung nen WinRE (Fix Freezing UI)
-        $NhanTrangThai.Text = "Trang thai: [40%] Dang bung nen WinRE (Theo doi o cua so den)..."
-        $ThanhTienDo.Value = 40; CapNhat-UI
-        $p = Start-Process dism.exe "/Mount-Image /ImageFile:$winre /Index:1 /MountDir:$mount" -PassThru -WindowStyle Normal
-        while (!$p.HasExited) { CapNhat-UI; Start-Sleep -Milliseconds 500 }
-        
-        if ($p.ExitCode -ne 0) { throw "Loi Mount WinRE (Mã: $($p.ExitCode))" }
-
-        # Viet script Startnet tu dong
-        $NhanTrangThai.Text = "Trang thai: [70%] Dang nap lenh cai dat tu dong..."
-        $ThanhTienDo.Value = 70; CapNhat-UI
+        # Nap script tu dong cai win
         $cmd = @"
 @echo off
 wpeinit
-cls
-echo ========================================================
-echo         TIEN TRINH CAI DAT WINDOWS 1-CLICK
-echo ========================================================
-echo [1/3] Dang dinh dang lai o C (NTFS)...
-format C: /fs:ntfs /q /y >nul
-echo [2/3] Dang Apply Image (Index $idx)...
+echo DANG PHAN VUNG & CAI WIN...
+format C: /fs:ntfs /q /y
 dism /Apply-Image /ImageFile:"$wim" /Index:$idx /ApplyDir:C:\
-echo [3/3] Dang tao moi bootloader...
-bcdboot C:\Windows /s C: /f ALL >nul
-echo HOAN TAT! May se restart sau 5 giay.
-timeout /t 5 >nul
+bcdboot C:\Windows /s C: /f ALL
+echo XONG! RESTART...
+timeout /t 5
 wpeutil reboot
 "@
         $cmd | Out-File "$mount\Windows\System32\startnet.cmd" -Encoding ASCII -Force
-
-        # Dong goi lai WinRE (Fix Freezing UI)
-        $NhanTrangThai.Text = "Trang thai: [85%] Dang luu cau hinh he thong..."
-        $ThanhTienDo.Value = 85; CapNhat-UI
-        $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mount /Commit" -PassThru -WindowStyle Normal
-        while (!$p.HasExited) { CapNhat-UI; Start-Sleep -Milliseconds 500 }
-
-        # KICH HOAT BOOT TO WINRE (CUONG CHE)
-        $NhanTrangThai.Text = "Trang thai: [95%] Dang kich hoat Forced Boot..."
-        $ThanhTienDo.Value = 95; CapNhat-UI
-        reagentc /setreimage /path "C:\Windows\System32\Recovery" | Out-Null
-        reagentc /enable | Out-Null
         
-        # Ep Windows ghi nhan menu Recovery
-        bcdedit /set "{current}" recoveryenabled yes | Out-Null
-        reagentc /boottore | Out-Null
-
-        $NhanTrangThai.Text = "Trang thai: [100%] HOAN TAT!"
-        $ThanhTienDo.Value = 100; CapNhat-UI
+        dism /Unmount-Image /MountDir:$mount /Commit
+        Copy-Item "$reSource" "Z:\boot.wim" -Force # Day thuc chat la file WinRE da sua
         
-        [System.Windows.Forms.MessageBox]::Show("Chuan bi xong! May se Restart va tu dong cai lai Windows ngay bay gio.", "Thanh Cong")
+        $lblStatus.Text = "Trang thai: Dang tao Menu Boot moi..."; Refresh-UI
+        # Dung bcdedit de tao dong boot tu file WIM trong o ảo
+        $guid = ([guid]::NewGuid()).ToString("B")
+        bcdedit /create $guid /d "VietToolbox Installer" /application osloader | Out-Null
+        bcdedit /set $guid device ramdisk="[Z:]\boot.wim,{ramdiskoptions}" | Out-Null
+        bcdedit /set $guid osdevice ramdisk="[Z:]\boot.wim,{ramdiskoptions}" | Out-Null
+        bcdedit /set $guid path \windows\system32\boot\winload.efi | Out-Null
+        bcdedit /set $guid systemroot \windows | Out-Null
+        bcdedit /set $guid winpe yes | Out-Null
+        bcdedit /set $guid detecthal yes | Out-Null
+        bcdedit /displayorder $guid /addfirst | Out-Null
+        bcdedit /default $guid | Out-Null
+        bcdedit /timeout 5 | Out-Null
+
+        [System.Windows.Forms.MessageBox]::Show("Da tao xong phan vung Boot ao! May se Restart vao trinh cai dat ngay.")
         Restart-Computer -Force
-
     } catch {
-        [System.Windows.Forms.MessageBox]::Show("Loi nghiem trong: $_", "Loi", "OK", "Error")
-        $NutBatDau.Enabled = $true; $NutDuyetWim.Enabled = $true; $NutDuyetRE.Enabled = $true
+        [System.Windows.Forms.MessageBox]::Show("Loi: $_")
     }
 })
 
