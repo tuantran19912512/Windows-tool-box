@@ -77,12 +77,43 @@ $btnGo.Add_Click({
 @echo off
 wpeinit
 cls
-echo DANG CAI WINDOWS...
+echo ========================================================
+echo         TIEN TRINH CAI DAT WINDOWS TU DONG
+echo ========================================================
+
+echo [1/3] Dang tim kiem tep tin $tenFileWim...
+set WIM_PATH=
+for %%i in (C D E F G H I J K L M N O P Q R S T U V) do (
+    if exist "%%i:\$tenFileWim" (
+        set WIM_PATH=%%i:\$tenFileWim
+        echo Da tim thay tep tai: %%i:\$tenFileWim
+    )
+)
+
+if "%WIM_PATH%"=="" (
+    echo [LOI] Khong tim thay tep $tenFileWim tren bat ky o dia nao!
+    echo Vui long kiem tra lai va restart.
+    pause
+    exit
+)
+
+echo.
+echo [2/3] Dang dinh dang lai o dia he thong (C:)...
+echo Chu y: WinPE se tu xac dinh o C la o cai Win.
 format C: /fs:ntfs /q /y >nul
-dism /Apply-Image /ImageFile:"$wim" /Index:$idx /ApplyDir:C:\
+
+echo.
+echo [3/3] Dang bung anh he thong (Apply Image)...
+dism /Apply-Image /ImageFile:"%WIM_PATH%" /Index:$idx /ApplyDir:C:\
+
+echo.
+echo [4/4] Dang tao bo khoi dong (Bootloader)...
 bcdboot C:\Windows /s C: /f ALL
-echo XONG! RESTART...
-timeout /t 5
+
+echo ========================================================
+echo        HOAN TAT! May se Restart sau 10 giay.
+echo ========================================================
+timeout /t 10
 wpeutil reboot
 "@
         $cmd | Out-File "$mount\Windows\System32\startnet.cmd" -Encoding ASCII -Force
