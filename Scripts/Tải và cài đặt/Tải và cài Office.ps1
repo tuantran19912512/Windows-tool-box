@@ -47,7 +47,7 @@ $LogicCaiOfficeV182 = {
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VIETTOOLBOX - OFFICE V182 (XOAY KEY API)" Width="850" Height="920" 
+        Title="VIETTOOLBOX - OFFICE V182 (XOAY KEY API)" Width="850" Height="650" 
         WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
     <Grid Margin="20">
         <Grid.RowDefinitions>
