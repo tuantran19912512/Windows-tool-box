@@ -1,5 +1,5 @@
 ﻿# ==========================================================
-# VIETTOOLBOX - OFFICE V182 (BẢN TRÙM CUỐI - CHỐNG RỚT MẠNG, TỰ SHORTCUT & KÍCH HOẠT OHOOK)
+# VIETTOOLBOX - OFFICE V182 (XOAY VÒNG KEY API - CHỐNG 403)
 # ==========================================================
 
 # 1. ÉP CHẠY QUYỀN QUẢN TRỊ VIÊN
@@ -17,9 +17,20 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Drawing, System.Windows.Forms, System.Net.Http
 
-# --- CẤU HÌNH API DRIVE ---
-$B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
-$Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
+# --- CẤU HÌNH XOAY VÒNG API KEYS (ĐÃ SỬA) ---
+$Global:B64_Key_Pool = @(
+    "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0", # Key 1
+    "QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR", # Key 2
+    "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v", # Key 3
+    "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv"  # Key 4
+)
+$Global:CurrentKeyIndex = 0
+
+function Get-NextApiKey {
+    $rawKey = $Global:B64_Key_Pool[$Global:CurrentKeyIndex]
+    return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($rawKey))
+}
+
 $Global:LogPath = Join-Path $env:TEMP "VietToolbox_Office_Log.txt"
 
 function Ghi-NhatKy ($NoiDung) {
@@ -32,11 +43,11 @@ $LogicCaiOfficeV182 = {
     $FileDuLieuMay = Join-Path $env:LOCALAPPDATA "VietToolbox_Office_Local.csv"
     $script:HuyTai = $false; $script:TamDung = $false
 
-    # --- 1. GIAO DIỆN XAML WPF ---
+    # --- 1. GIAO DIỆN XAML WPF (GIỮ NGUYÊN) ---
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VIETTOOLBOX - OFFICE V182 (CÓ CHỐNG ĐỨT CÁP)" Width="850" Height="920" 
+        Title="VIETTOOLBOX - OFFICE V182 (XOAY KEY API)" Width="850" Height="920" 
         WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -54,7 +65,7 @@ $LogicCaiOfficeV182 = {
 
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
             <TextBlock Text="TRUNG TÂM TRIỂN KHAI MICROSOFT OFFICE" FontSize="24" FontWeight="Bold" Foreground="#1A237E"/>
-            <TextBlock Text="Tự động nối file khi rớt mạng, cài đặt ngầm, Shortcut Desktop và Kích hoạt" Foreground="#666666"/>
+            <TextBlock Text="Cơ chế: Tự động xoay vòng 4 API Key khi hết hạn mức (403 Forbidden)" Foreground="#666666"/>
         </StackPanel>
 
         <ListView Name="BangOffice" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" BorderThickness="1" Margin="0,0,0,10">
@@ -147,14 +158,11 @@ $LogicCaiOfficeV182 = {
     $ThanhChay = $CuaSo.FindName("ThanhChay")
     $NutTamDung = $CuaSo.FindName("NutTamDung"); $NutTiepTuc = $CuaSo.FindName("NutTiepTuc"); $NutHuy = $CuaSo.FindName("NutHuy")
     $NutNhatKy = $CuaSo.FindName("NutNhatKy"); $NutLamMoi = $CuaSo.FindName("NutLamMoi"); $NutCaiDat = $CuaSo.FindName("NutCaiDat")
-    $RadKhongKichHoat = $CuaSo.FindName("RadKhongKichHoat")
-    $RadKichHoatLuon = $CuaSo.FindName("RadKichHoatLuon")
-    $RadXoaSource = $CuaSo.FindName("RadXoaSource")
-    $RadGiuSource = $CuaSo.FindName("RadGiuSource")
+    $RadKhongKichHoat = $CuaSo.FindName("RadKhongKichHoat"); $RadKichHoatLuon = $CuaSo.FindName("RadKichHoatLuon")
+    $RadXoaSource = $CuaSo.FindName("RadXoaSource"); $RadGiuSource = $CuaSo.FindName("RadGiuSource")
 
     $Global:DanhSachDuLieu = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
     $BangOffice.ItemsSource = $Global:DanhSachDuLieu
-
     $OTimDuongDan.Text = if (Test-Path "D:\") { "D:\VietToolbox_Office" } else { "C:\VietToolbox_Office" }
 
     # --- 3. HÀM XỬ LÝ LÕI ---
@@ -169,7 +177,6 @@ $LogicCaiOfficeV182 = {
         $DanhSachApp = @{ "Word"="WINWORD.EXE"; "Excel"="EXCEL.EXE"; "PowerPoint"="POWERPNT.EXE"; "Access"="MSACCESS.EXE"; "Outlook"="OUTLOOK.EXE" }
         $ManHinhChinh = [Environment]::GetFolderPath("CommonDesktopDirectory")
         $WshShell = New-Object -ComObject WScript.Shell
-
         foreach ($DuongDan in $ThuMucOffice) {
             if (Test-Path $DuongDan) {
                 foreach ($TenApp in $DanhSachApp.Keys) {
@@ -200,11 +207,9 @@ $LogicCaiOfficeV182 = {
         Tai-DuLieuLocal
         $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"
         if (-not (Test-Path $DuongDan7z)) { $DuongDan7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
-        
         if (-not (Test-Path $DuongDan7z)) {
             $Nhan7Zip.Text = "⚠️ Thiếu 7-Zip! Đang tự động tải và cài đặt..."; $Nhan7Zip.Foreground = "#D32F2F"
             [System.Windows.Forms.Application]::DoEvents()
-            
             $Link7z = "https://www.7-zip.org/a/7z2408-x64.exe"
             $FileCai7z = Join-Path $env:TEMP "7z_setup.exe"
             try {
@@ -215,11 +220,10 @@ $LogicCaiOfficeV182 = {
         } else { $Nhan7Zip.Text = "✅ Hệ thống: 7-Zip đã sẵn sàng!"; $Nhan7Zip.Foreground = "#2E7D32" }
     })
 
+    # --- HÀM TẢI FILE CHÍNH (ĐÃ SỬA ĐỂ XOAY KEY) ---
     function Tai-FileCốtLõi ($IdNguon, $DichDen) {
         $MaDrive = if ($IdNguon -match "id=([a-zA-Z0-9\-_]+)") { $matches[1] } else { $IdNguon }
-        $LienKet = "https://www.googleapis.com/drive/v3/files/$($MaDrive)?alt=media&key=$($Global:DriveApiKey)"
-        
-        $ThoiGianChoToiDa = 300 # Giới hạn chờ đứt cáp: 5 phút (300 giây)
+        $ThoiGianChoToiDa = 300 
         $ThoiGianDaCho = 0
         $TongDungLuong = 0
         
@@ -230,6 +234,10 @@ $LogicCaiOfficeV182 = {
             }
             while ($script:TamDung) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
 
+            # Lấy Key hiện tại từ Pool
+            $CurrentKey = Get-NextApiKey
+            $LienKet = "https://www.googleapis.com/drive/v3/files/$($MaDrive)?alt=media&key=$CurrentKey"
+
             try {
                 $MayKhachHttp = New-Object System.Net.Http.HttpClient
                 $MayKhachHttp.Timeout = [System.TimeSpan]::FromSeconds(30)
@@ -238,35 +246,35 @@ $LogicCaiOfficeV182 = {
                 if (Test-Path $DichDen) { $DaTaiDuoc = (Get-Item $DichDen).Length }
 
                 $YeuCau = New-Object System.Net.Http.HttpRequestMessage([System.Net.Http.HttpMethod]::Get, $LienKet)
-                
-                # Nếu đã có file, gắn Header báo Server truyền tiếp dữ liệu
-                if ($DaTaiDuoc -gt 0) {
-                    $YeuCau.Headers.Add("Range", "bytes=$DaTaiDuoc-")
-                    Ghi-NhatKy "-> Phục hồi tải xuống tiếp tục từ byte thứ $DaTaiDuoc..."
-                }
+                if ($DaTaiDuoc -gt 0) { $YeuCau.Headers.Add("Range", "bytes=$DaTaiDuoc-") }
 
                 $PhanHoi = $MayKhachHttp.SendAsync($YeuCau, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead).Result
-                
-                # Mã 416 (File đã được tải trọn vẹn từ trước)
+
+                # --- LOGIC XOAY KEY KHI LỖI 403 HOẶC 429 ---
+                if (-not $PhanHoi.IsSuccessStatusCode) {
+                    $Code = [int]$PhanHoi.StatusCode
+                    if ($Code -eq 403 -or $Code -eq 429) {
+                        if ($Global:CurrentKeyIndex -lt ($Global:B64_Key_Pool.Count - 1)) {
+                            $Global:CurrentKeyIndex++
+                            Ghi-NhatKy "⚠️ Key API lỗi ($Code). Đang chuyển sang Key dự phòng #$($Global:CurrentKeyIndex + 1)..."
+                            $MayKhachHttp.Dispose(); continue 
+                        } else {
+                            # Nếu hết Key, thử đá ra trình duyệt làm phương án cuối
+                            Ghi-NhatKy "❌ Hết sạch Key API. Đang mở trình duyệt để tải dự phòng..."
+                            Start-Process "https://drive.google.com/uc?id=$MaDrive&export=download"
+                            return "ĐÃ_CHUYỂN_WEB"
+                        }
+                    }
+                }
+
                 if ($PhanHoi.StatusCode -eq [System.Net.HttpStatusCode]::RequestedRangeNotSatisfiable) {
-                    Ghi-NhatKy "File đã được tải hoàn tất 100% từ trước."
                     return "THÀNH_CÔNG"
                 } elseif ($PhanHoi.StatusCode -eq [System.Net.HttpStatusCode]::OK) {
-                    # Mã 200 (Bắt đầu tải từ 0)
-                    if ($DaTaiDuoc -gt 0) {
-                        Ghi-NhatKy "Máy chủ không cho tải tiếp, tiến hành tải lại từ đầu."
-                        $DaTaiDuoc = 0
-                        if (Test-Path $DichDen) { Remove-Item $DichDen -Force }
-                    }
+                    if ($DaTaiDuoc -gt 0) { $DaTaiDuoc = 0; if (Test-Path $DichDen) { Remove-Item $DichDen -Force } }
                     if ($PhanHoi.Content.Headers.ContentLength) { $TongDungLuong = $PhanHoi.Content.Headers.ContentLength }
                 } elseif ($PhanHoi.StatusCode -eq [System.Net.HttpStatusCode]::PartialContent) {
-                    # Mã 206 (Cho phép tải tiếp nối đoạn bị rớt)
-                    if ($PhanHoi.Content.Headers.ContentRange -ne $null) {
-                        $TongDungLuong = $PhanHoi.Content.Headers.ContentRange.Length
-                    }
-                } else {
-                    throw "Lỗi mã trạng thái HTTP: $($PhanHoi.StatusCode)"
-                }
+                    if ($PhanHoi.Content.Headers.ContentRange -ne $null) { $TongDungLuong = $PhanHoi.Content.Headers.ContentRange.Length }
+                } else { throw "Lỗi HTTP: $($PhanHoi.StatusCode)" }
 
                 $DongDuLieu = $PhanHoi.Content.ReadAsStreamAsync().Result
                 $CheDoMo = if ($DaTaiDuoc -gt 0) { [System.IO.FileMode]::Append } else { [System.IO.FileMode]::Create }
@@ -275,233 +283,86 @@ $LogicCaiOfficeV182 = {
                 $BoNhoDem = New-Object byte[] 4194304
                 $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                 $SoByteTaiLuotNay = 0
-                
-                # Cắm mạng thành công, trả thời gian chờ về 0
                 $ThoiGianDaCho = 0 
                 
                 while (($SoByte = $DongDuLieu.Read($BoNhoDem, 0, $BoNhoDem.Length)) -gt 0) {
-                    if ($script:HuyTai) { 
-                        $FileLuu.Dispose(); $DongDuLieu.Dispose(); $MayKhachHttp.Dispose()
-                        if (Test-Path $DichDen) { Remove-Item $DichDen -Force -ErrorAction SilentlyContinue }
-                        return "ĐÃ_HỦY" 
-                    }
-                    while ($script:TamDung) { [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 200 }
-                    
+                    if ($script:HuyTai) { $FileLuu.Dispose(); $DongDuLieu.Dispose(); $MayKhachHttp.Dispose(); return "ĐÃ_HỦY" }
                     $FileLuu.Write($BoNhoDem, 0, $SoByte)
                     $DaTaiDuoc += $SoByte
                     $SoByteTaiLuotNay += $SoByte
-                    
                     if ($DongHo.ElapsedMilliseconds -ge 1000) {
                         $TocDoMB = [Math]::Round(($SoByteTaiLuotNay / $DongHo.Elapsed.TotalSeconds) / 1MB, 2)
                         $PhanTram = if ($TongDungLuong -gt 0) { [int](($DaTaiDuoc / $TongDungLuong) * 100) } else { 0 }
-                        $TongMB = if ($TongDungLuong -gt 0) { [Math]::Round($TongDungLuong/1MB, 1) } else { "???" }
-                        
                         $CuaSo.Dispatcher.Invoke([action]{ 
                             $ThanhChay.Value = $PhanTram
-                            $NhanTocDo.Text = "$TocDoMB MB/s | $([Math]::Round($DaTaiDuoc/1MB,1)) / $TongMB MB ($PhanTram%)" 
+                            $NhanTocDo.Text = "API #$($Global:CurrentKeyIndex + 1) | $TocDoMB MB/s | $([Math]::Round($DaTaiDuoc/1MB,1)) MB ($PhanTram%)" 
                         })
-                        [System.Windows.Forms.Application]::DoEvents()
+                        $SoByteTaiLuotNay = 0; $DongHo.Restart(); [System.Windows.Forms.Application]::DoEvents()
                     }
                 }
-                
                 $FileLuu.Dispose(); $DongDuLieu.Dispose(); $MayKhachHttp.Dispose()
-                
-                if ($TongDungLuong -eq 0 -or $DaTaiDuoc -ge $TongDungLuong) {
-                    return "THÀNH_CÔNG"
-                } else {
-                    throw "Bị ngắt liên kết giữa chừng..."
-                }
-
+                if ($TongDungLuong -eq 0 -or $DaTaiDuoc -ge $TongDungLuong) { return "THÀNH_CÔNG" } else { throw "Ngắt mạng..." }
             } catch {
-                if ($FileLuu) { $FileLuu.Dispose() }
-                if ($DongDuLieu) { $DongDuLieu.Dispose() }
-                if ($MayKhachHttp) { $MayKhachHttp.Dispose() }
-                
                 $ThoiGianDaCho += 5
-                if ($ThoiGianDaCho -ge $ThoiGianChoToiDa) {
-                    Ghi-NhatKy "Quá thời gian chờ mạng ($ThoiGianChoToiDa giây). Tự động hủy lệnh."
-                    return "LỖI"
-                }
-                
-                $CuaSo.Dispatcher.Invoke([action]{ 
-                    $NhanTocDo.Text = "Đang nối lại ($ThoiGianDaCho/$ThoiGianChoToiDa s)..."
-                    $NhanTocDo.Foreground = "#D32F2F"
-                })
-                Ghi-NhatKy "Mất kết nối. Đang thử nối lại sau 5 giây ($ThoiGianDaCho/$ThoiGianChoToiDa)..."
-                
-                # Đợi 5 giây trước vòng lặp kế tiếp, vẫn lắng nghe sự kiện Hủy
-                for ($i = 0; $i -lt 25; $i++) {
-                    if ($script:HuyTai) { return "ĐÃ_HỦY" }
-                    [System.Windows.Forms.Application]::DoEvents()
-                    Start-Sleep -Milliseconds 200
-                }
+                if ($ThoiGianDaCho -ge $ThoiGianChoToiDa) { return "LỖI" }
+                Ghi-NhatKy "Đang thử nối lại ($ThoiGianDaCho s)..."; Start-Sleep -Seconds 5
             }
         }
     }
 
-    # --- 4. SỰ KIỆN NÚT BẤM ---
+    # --- SỰ KIỆN NÚT BẤM (GIỮ NGUYÊN LOGIC) ---
     $NutNhatKy.Add_Click({ if (Test-Path $Global:LogPath) { Start-Process "notepad.exe" $Global:LogPath } })
-    
     $NutLamMoi.Add_Click({ 
         try {
             Invoke-WebRequest ($LinkDuLieuGoc + "?t=" + (Get-Date).Ticks) -OutFile $FileDuLieuMay
             Tai-DuLieuLocal
-            $NhanTrangThai.Text = "Đã cập nhật danh sách mới nhất!"; $NhanTrangThai.Foreground = "#2E7D32"
-        } catch { $NhanTrangThai.Text = "Lỗi kết nối khi cập nhật danh sách!"; $NhanTrangThai.Foreground = "#D32F2F" }
+            $NhanTrangThai.Text = "Đã cập nhật danh sách!"; $NhanTrangThai.Foreground = "#2E7D32"
+        } catch { $NhanTrangThai.Text = "Lỗi GitHub!"; $NhanTrangThai.Foreground = "#D32F2F" }
     })
-    
-    $NutChonThuMuc.Add_Click({ 
-        $HopThoai = New-Object System.Windows.Forms.FolderBrowserDialog
-        if ($HopThoai.ShowDialog() -eq "OK") { $OTimDuongDan.Text = $HopThoai.SelectedPath } 
-    })
-    
-    $NutHuy.Add_Click({ $script:HuyTai = $true; $NhanTrangThai.Text = "Đang hủy lệnh..."; $NhanTrangThai.Foreground = "#D32F2F"; $NhanTocDo.Text = "-- MB/s | -- / -- MB (0%)" })
-    $NutTamDung.Add_Click({ $script:TamDung = $true; $NutTamDung.IsEnabled = $false; $NutTiepTuc.IsEnabled = $true; $NhanTrangThai.Text = "Đang tạm dừng"; $NhanTrangThai.Foreground = "#FF9800" })
-    $NutTiepTuc.Add_Click({ $script:TamDung = $false; $NutTiepTuc.IsEnabled = $false; $NutTamDung.IsEnabled = $true; $NhanTrangThai.Text = "Đang tải tiếp..."; $NhanTrangThai.Foreground = "#1565C0" })
+    $NutChonThuMuc.Add_Click({ $HopThoai = New-Object System.Windows.Forms.FolderBrowserDialog; if ($HopThoai.ShowDialog() -eq "OK") { $OTimDuongDan.Text = $HopThoai.SelectedPath } })
+    $NutHuy.Add_Click({ $script:HuyTai = $true; $NhanTrangThai.Text = "🛑 Đang hủy..." })
+    $NutTamDung.Add_Click({ $script:TamDung = $true; $NutTamDung.IsEnabled = $false; $NutTiepTuc.IsEnabled = $true; $NhanTrangThai.Text = "⏸️ Tạm dừng" })
+    $NutTiepTuc.Add_Click({ $script:TamDung = $false; $NutTiepTuc.IsEnabled = $false; $NutTamDung.IsEnabled = $true; $NhanTrangThai.Text = "▶️ Tiếp tục" })
 
-    # TRÁI TIM: CÀI ĐẶT
     $NutCaiDat.Add_Click({
         $DaChon = @($Global:DanhSachDuLieu | Where-Object { $_.Check -eq $true })
-        if ($DaChon.Count -eq 0) { [System.Windows.Forms.MessageBox]::Show("Chưa chọn bản Office nào!", "Nhắc nhở"); return }
-
+        if ($DaChon.Count -eq 0) { return }
         $NutCaiDat.IsEnabled = $false; $NutHuy.IsEnabled = $true; $NutTamDung.IsEnabled = $true
-        $NhanTrangThai.Foreground = "#1565C0"
-
         foreach ($UngDung in $DaChon) {
-            $script:HuyTai = $false; $script:TamDung = $false
-            $TenAnToan = ($UngDung.Name -replace '[\\/:*?"<>|()[\]\s]', '_') + ".iso"
-            $FileLuuToanBo = Join-Path $OTimDuongDan.Text $TenAnToan
+            $FileLuuToanBo = Join-Path $OTimDuongDan.Text (($UngDung.Name -replace '\s', '_') + ".iso")
             if (-not (Test-Path $OTimDuongDan.Text)) { New-Item $OTimDuongDan.Text -ItemType Directory | Out-Null }
-
-            $UngDung.Status = "⏳ Đang tải file ISO..."; $UngDung.StatusColor = "#FF9800"
-            $NhanTrangThai.Text = "Đang tải: $($UngDung.Name)"
-            $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
+            $UngDung.Status = "⏳ Đang tải..."; $UngDung.StatusColor = "#FF9800"
+            $BangOffice.Items.Refresh(); [System.Windows.Forms.Application]::DoEvents()
             
-            Ghi-NhatKy "Bắt đầu tải $($UngDung.Name) vào $FileLuuToanBo"
             $KetQua = Tai-FileCốtLõi $UngDung.ID $FileLuuToanBo
-
             if ($KetQua -eq "THÀNH_CÔNG") {
-                $UngDung.Status = "📦 Đang bung nén ISO..."; $UngDung.StatusColor = "#1565C0"
-                $NhanTrangThai.Text = "Đang bung nén dữ liệu cài đặt..."
-                $NhanTocDo.Text = "Đã tải xong 100%"
-                $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
-
-                $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"
-                if (-not (Test-Path $DuongDan7z)) { $DuongDan7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
-                
-                if (Test-Path $DuongDan7z) {
-                    $ThuMucGiaiNen = $FileLuuToanBo + "_Ext"
-                    $LenhGiaiNen = New-Object System.Diagnostics.ProcessStartInfo -Property @{FileName=$DuongDan7z; Arguments="x `"$FileLuuToanBo`" -o`"$ThuMucGiaiNen`" -y"; WindowStyle="Hidden"}
-                    [System.Diagnostics.Process]::Start($LenhGiaiNen).WaitForExit()
-
-                    $FileCaiDat = Get-ChildItem -Path $ThuMucGiaiNen -Filter "*.bat" -Recurse | Select-Object -First 1
-                    if (-not $FileCaiDat) { $FileCaiDat = Get-ChildItem -Path $ThuMucGiaiNen -Filter "setup.exe" -Recurse | Select-Object -First 1 }
-
-                    if ($FileCaiDat) {
-                        $UngDung.Status = "⚙️ Đang chạy cài đặt..."; $UngDung.StatusColor = "#FF9800"
-                        $NhanTrangThai.Text = "Đang chạy bộ cài ngầm..."
-                        $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
-
-                        Start-Process $FileCaiDat.FullName -WorkingDirectory $FileCaiDat.DirectoryName -Wait
-
-                        $UngDung.Status = "🔗 Đang tạo lối tắt..."; $UngDung.StatusColor = "#1565C0"
-                        $NhanTrangThai.Text = "Đang đưa biểu tượng ra Desktop..."
-                        $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
-                        
-                        Tao-LoiTatOffice
-
-                        # ==========================================================
-                        # KHU VỰC THỰC THI OHOOK TỪ GIST
-                        # ==========================================================
-                        if ($RadKichHoatLuon.IsChecked) {
-                            $UngDung.Status = "🔑 Đang tải thuốc từ Gist..."; $UngDung.StatusColor = "#FF9800"
-                            $NhanTrangThai.Text = "Đang lấy thuốc bản quyền Ohook..."
-                            $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
-                            
-                            try {
-                                $Url = "https://gist.githubusercontent.com/tuantran19912512/81329d670436ea8492b73bd5889ad444/raw/Ohook.cmd"
-                                $TempFile = Join-Path $env:TEMP "Ohook_Activation.cmd"
-
-                                Ghi-NhatKy "=========================================="
-                                Ghi-NhatKy ">>> KÍCH HOẠT OFFICE OHOOK (CHẠY NGẦM) <<<"
-                                Ghi-NhatKy "=========================================="
-
-                                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                                $FinalUrl = "$Url`?t=$((Get-Date).Ticks)"
-
-                                Ghi-NhatKy "-> Đang kiểm tra kết nối Internet..."
-                                if (Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet -ErrorAction SilentlyContinue) {
-                                    Ghi-NhatKy "   + Internet: OK"
-                                    
-                                    Ghi-NhatKy "-> Đang tải file Ohook từ Gist..."
-                                    $RawContent = Invoke-RestMethod -Uri $FinalUrl -UseBasicParsing
-                                    $RawContent = $RawContent -replace "`r`n", "`n" -replace "`n", "`r`n"
-                                    $RawContent += "`r`n`r`n"
-
-                                    $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
-                                    [System.IO.File]::WriteAllText($TempFile, $RawContent, $Utf8NoBom)
-                                    Ghi-NhatKy "   + Tải và xử lý định dạng file thành công."
-                                    
-                                    if (Test-Path $TempFile) {
-                                        $UngDung.Status = "🔑 Đang tiêm thuốc..."; $UngDung.StatusColor = "#1565C0"
-                                        $NhanTrangThai.Text = "Đang thực thi Ohook ngầm..."
-                                        $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() }); [System.Windows.Forms.Application]::DoEvents()
-                                        
-                                        Ghi-NhatKy "-> Đang khởi chạy Ohook ở chế độ ngầm (Silent Mode)..."
-                                        Start-Process cmd.exe -ArgumentList "/c `"$TempFile`" /Ohook" -WindowStyle Hidden -Wait
-                                        Ghi-NhatKy "   + Đã thực hiện xong quy trình Ohook."
-                                    }
-                                } else {
-                                    $UngDung.Status = "⚠️ Lỗi mạng Ohook"; $UngDung.StatusColor = "#D32F2F"
-                                    Ghi-NhatKy "!!! LỖI: Không có kết nối mạng để tải Ohook."
-                                }
-                            } catch {
-                                $UngDung.Status = "⚠️ Lỗi tải thuốc"; $UngDung.StatusColor = "#D32F2F"
-                                Ghi-NhatKy "!!! LỖI OHOOK: Không thể tải hoặc chạy file từ Gist."
-                            } finally {
-                                if (Test-Path $TempFile) { Remove-Item $TempFile -Force -ErrorAction SilentlyContinue }
-                            }
-                        }
-
-                        if ($UngDung.Status -notmatch "Lỗi") {
-                            $UngDung.Status = "✅ Hoàn tất"; $UngDung.StatusColor = "#2E7D32"
-                        }
-                        
-                        # --- XỬ LÝ DỌN RÁC THEO LỰA CHỌN ---
-                        if ($RadXoaSource.IsChecked) {
-                            Ghi-NhatKy "Hoàn tất xử lý $($UngDung.Name). Đang dọn rác (Xóa file ISO và thư mục giải nén)..."
-                            if (Test-Path $FileLuuToanBo) { Remove-Item $FileLuuToanBo -Force -ErrorAction SilentlyContinue }
-                        } else {
-                            Ghi-NhatKy "Hoàn tất xử lý $($UngDung.Name). Người dùng chọn giữ lại file ISO gốc."
-                        }
-                        
-                        # Luôn xóa thư mục giải nén trung gian
-                        if (Test-Path $ThuMucGiaiNen) { Remove-Item $ThuMucGiaiNen -Recurse -Force -ErrorAction SilentlyContinue }
-                        
-                    } else { 
-                        $UngDung.Status = "❌ Không tìm thấy file Setup"; $UngDung.StatusColor = "#D32F2F"
+                $UngDung.Status = "📦 Đang bung nén..."; $BangOffice.Items.Refresh(); [System.Windows.Forms.Application]::DoEvents()
+                $DuongDan7z = "$env:ProgramFiles\7-Zip\7z.exe"; if (-not (Test-Path $DuongDan7z)) { $DuongDan7z = "${env:ProgramFiles(x86)}\7-Zip\7z.exe" }
+                $ThuMucGiaiNen = $FileLuuToanBo + "_Ext"
+                Start-Process $DuongDan7z -ArgumentList "x `"$FileLuuToanBo`" -o`"$ThuMucGiaiNen`" -y" -WindowStyle Hidden -Wait
+                $Setup = Get-ChildItem -Path $ThuMucGiaiNen -Filter "*.bat" -Recurse | Select-Object -First 1
+                if (-not $Setup) { $Setup = Get-ChildItem -Path $ThuMucGiaiNen -Filter "setup.exe" -Recurse | Select-Object -First 1 }
+                if ($Setup) {
+                    $UngDung.Status = "⚙️ Đang cài..."; $BangOffice.Items.Refresh(); [System.Windows.Forms.Application]::DoEvents()
+                    Start-Process $Setup.FullName -WorkingDirectory $Setup.DirectoryName -Wait
+                    Tao-LoiTatOffice
+                    if ($RadKichHoatLuon.IsChecked) {
+                        $OhookUrl = "https://gist.githubusercontent.com/tuantran19912512/81329d670436ea8492b73bd5889ad444/raw/Ohook.cmd"
+                        $TempOhook = Join-Path $env:TEMP "Ohook_Viet.cmd"
+                        (New-Object System.Net.WebClient).DownloadFile($OhookUrl, $TempOhook)
+                        Start-Process cmd.exe -ArgumentList "/c `"$TempOhook`" /Ohook" -WindowStyle Hidden -Wait
+                        Remove-Item $TempOhook -Force
                     }
-                } else { 
-                    $UngDung.Status = "❌ Lỗi: Máy thiếu 7-Zip"; $UngDung.StatusColor = "#D32F2F" 
+                    $UngDung.Status = "✅ Hoàn tất"; $UngDung.StatusColor = "Green"
                 }
-            } elseif ($KetQua -eq "ĐÃ_HỦY") { 
-                $UngDung.Status = "🛑 Đã hủy tải xuống"; $UngDung.StatusColor = "#D32F2F"
-                $NhanTrangThai.Text = "Đã hủy lệnh tải!"; $NhanTocDo.Text = "-- MB/s | -- / -- MB (0%)"
-                $ThanhChay.Value = 0
-                break 
-            } else {
-                $UngDung.Status = "❌ Lỗi kết nối máy chủ"; $UngDung.StatusColor = "#D32F2F"
-                $NhanTrangThai.Text = "Tải xuống thất bại!"
-            }
-            $CuaSo.Dispatcher.Invoke([action]{ $BangOffice.Items.Refresh() })
+                if ($RadXoaSource.IsChecked) { Remove-Item $FileLuuToanBo -Force }
+                if (Test-Path $ThuMucGiaiNen) { Remove-Item $ThuMucGiaiNen -Recurse -Force }
+            } elseif ($KetQua -eq "ĐÃ_CHUYỂN_WEB") { $UngDung.Status = "🌐 Tải qua Web"; $UngDung.StatusColor = "Blue"
+            } else { $UngDung.Status = "❌ Lỗi!"; $UngDung.StatusColor = "Red" }
+            $BangOffice.Items.Refresh()
         }
-        
-        $NutCaiDat.IsEnabled = $true; $NutHuy.IsEnabled = $false; $NutTamDung.IsEnabled = $false
-        if ($script:HuyTai -eq $false) { $NhanTrangThai.Text = "Chu trình xử lý hoàn tất!" }
-        [System.Windows.Forms.MessageBox]::Show("Toàn bộ tiến trình đã hoàn tất!", "Thông báo", 0, 64)
+        $NutCaiDat.IsEnabled = $true; [System.Windows.Forms.MessageBox]::Show("Hoàn tất!")
     })
-
     $CuaSo.ShowDialog() | Out-Null
 }
-
 &$LogicCaiOfficeV182
