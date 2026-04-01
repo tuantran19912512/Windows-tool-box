@@ -1,5 +1,5 @@
 ﻿# ==========================================================
-# VIETTOOLBOX ISO CLIENT V143 - PHIÊN BẢN HIỂN THỊ TỐC ĐỘ (MB/S)
+# VIETTOOLBOX ISO CLIENT V148 - GIỮ NGUYÊN ĐỊNH DẠNG GỐC
 # ==========================================================
 
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -10,17 +10,27 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Net.Http, System.Windows.Forms
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 
-$B64_Key = "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
-$Global:DriveApiKey = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($B64_Key))
+# --- DANH SÁCH API KEYS ---
+$Global:B64_Key_Pool = @(
+    "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0", # Key 1
+    "QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR", # Key 2
+    "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v", # Key 3
+    "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv"  # Key 4
+)
+$Global:CurrentKeyIndex = 0
 
-$LogicIsoClientV143 = {
+function Get-NextApiKey {
+    $rawKey = $Global:B64_Key_Pool[$Global:CurrentKeyIndex]
+    return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($rawKey))
+}
+
+$LogicIsoClientV148 = {
     $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
     $script:CancelDL = $false
 
-    # --- GIAO DIỆN WPF NÂNG CẤP ---
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-        Title="VIETTOOLBOX V143 - PRO DOWNLOADER" Width="900" Height="850" 
+        Title="VIETTOOLBOX V148 - DỮ PHÒNG WEB + GIỮ ĐỊNH DẠNG" Width="900" Height="850" 
         WindowStartupLocation="CenterScreen" Background="#F0F2F5" FontFamily="Segoe UI">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -29,8 +39,8 @@ $LogicIsoClientV143 = {
         </Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="HỆ THỐNG TẢI ISO CHUYÊN NGHIỆP" FontSize="26" FontWeight="Bold" Foreground="#1A237E"/>
-            <TextBlock Text="Đầy đủ trạng thái: Tốc độ tải | % Tiến độ | Dung lượng" Foreground="#555555"/>
+            <TextBlock Text="HỆ THỐNG TẢI FILE - GIỮ NGUYÊN ĐỊNH DẠNG" FontSize="26" FontWeight="Bold" Foreground="#1A237E"/>
+            <TextBlock Text="Đã sửa: Tải file theo đúng tên và đuôi file trong danh sách CSV." Foreground="#555555"/>
         </StackPanel>
 
         <ListView Name="BangISO" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" Margin="0,0,0,15">
@@ -40,8 +50,8 @@ $LogicIsoClientV143 = {
                         <DataTemplate><CheckBox IsChecked="{Binding Check, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"/></DataTemplate>
                     </GridViewColumn.CellTemplate>
                 </GridViewColumn>
-                <GridViewColumn Header="TÊN FILE" DisplayMemberBinding="{Binding Name}" Width="540"/>
-                <GridViewColumn Header="TRẠNG THÁI" Width="200">
+                <GridViewColumn Header="TÊN FILE" DisplayMemberBinding="{Binding Name}" Width="520"/>
+                <GridViewColumn Header="TRẠNG THÁI" Width="220">
                     <GridViewColumn.CellTemplate>
                         <DataTemplate><TextBlock Text="{Binding Status}" Foreground="{Binding StatusColor}" FontWeight="SemiBold"/></DataTemplate>
                     </GridViewColumn.CellTemplate>
@@ -60,21 +70,21 @@ $LogicIsoClientV143 = {
         <Grid Grid.Row="3" Margin="0,0,0,15">
             <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
             <StackPanel Orientation="Horizontal" HorizontalAlignment="Stretch" Margin="0,0,0,5">
-                <TextBlock Name="lblStatus" Text="Sẵn sàng..." FontWeight="Bold" Foreground="#1565C0" FontSize="14" Width="400"/>
-                <TextBlock Name="lblSpeed" Text="Tốc độ: 0 MB/s" FontWeight="Bold" Foreground="#D81B60" FontSize="14" TextAlignment="Right" Width="420"/>
+                <TextBlock Name="lblStatus" Text="Sẵn sàng..." FontWeight="Bold" Foreground="#1565C0" FontSize="14" Width="420"/>
+                <TextBlock Name="lblSpeed" Text="Tốc độ: 0 MB/s" FontWeight="Bold" Foreground="#D81B60" FontSize="14" TextAlignment="Right" Width="400"/>
             </StackPanel>
             <ProgressBar Name="pgBar" Grid.Row="1" Height="35" Foreground="#2E7D32" Background="#E0E0E0" BorderThickness="0"/>
-            <TextBlock Name="lblSize" Grid.Row="2" Text="Đã tải: 0 MB / 0 MB (0%)" HorizontalAlignment="Center" Margin="0,5,0,0" Foreground="#333333" FontWeight="SemiBold"/>
+            <TextBlock Name="lblSize" Grid.Row="2" Text="Tự động nhận diện định dạng file" HorizontalAlignment="Center" Margin="0,5,0,0" Foreground="#333333" FontWeight="SemiBold"/>
         </Grid>
 
         <Grid Grid.Row="4" Margin="0,0,0,15">
-            <Button Name="btnCancel" Content="⏹️ DỪNG LỆNH TẢI HIỆN TẠI" Height="45" Background="#FFEBEE" Foreground="#B71C1C" BorderBrush="#EF9A9A" Cursor="Hand" FontWeight="Bold"/>
+            <Button Name="btnCancel" Content="⏹️ DỪNG TIẾN TRÌNH" Height="45" Background="#FFEBEE" Foreground="#B71C1C" BorderBrush="#EF9A9A" Cursor="Hand" FontWeight="Bold"/>
         </Grid>
 
         <Grid Grid.Row="5">
             <Grid.ColumnDefinitions><ColumnDefinition Width="1*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="2.5*"/></Grid.ColumnDefinitions>
             <Button Name="btnSync" Grid.Column="0" Content="🔄 LÀM MỚI" Height="65" Background="#455A64" Foreground="White" Cursor="Hand" FontWeight="Bold"/>
-            <Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI NGAY" Height="65" Background="#007ACC" Foreground="White" FontSize="20" FontWeight="Bold" Cursor="Hand"/>
+            <Button Name="btnDownload" Grid.Column="2" Content="🚀 BẮT ĐẦU TẢI" Height="65" Background="#007ACC" Foreground="White" FontSize="20" FontWeight="Bold" Cursor="Hand"/>
         </Grid>
     </Grid>
 </Window>
@@ -96,7 +106,7 @@ $LogicIsoClientV143 = {
 
     function Load-List {
         try {
-            $lblStatus.Text = "🔄 Đang lấy danh sách file..."
+            $lblStatus.Text = "🔄 Đang lấy danh sách..."
             &$CapNhatUI
             $csv = Invoke-WebRequest -Uri ($RawUrl + "?t=" + (Get-Date -UFormat %s)) -UseBasicParsing | ConvertFrom-Csv
             $Global:DanhSachDuLieu.Clear()
@@ -105,7 +115,7 @@ $LogicIsoClientV143 = {
                     $Global:DanhSachDuLieu.Add([PSCustomObject]@{ Check=$false; Name=$r.Name; FileID=$r.FileID; Status="Sẵn sàng"; StatusColor="#666666" })
                 } 
             }
-            $lblStatus.Text = "✅ Danh sách đã sẵn sàng."
+            $lblStatus.Text = "✅ Đã nạp $($Global:DanhSachDuLieu.Count) mục."
         } catch { $lblStatus.Text = "❌ Lỗi kết nối GitHub!" }
     }
 
@@ -116,91 +126,95 @@ $LogicIsoClientV143 = {
 
     $btnDownload.Add_Click({
         $DaChon = @($Global:DanhSachDuLieu | Where-Object { $_.Check -eq $true })
-        if ($DaChon.Count -eq 0) {
-            [System.Windows.Forms.MessageBox]::Show("Bạn chưa chọn file nào!", "Thông báo")
-            return
-        }
+        if ($DaChon.Count -eq 0) { return }
 
         $btnDownload.IsEnabled = $false; $script:CancelDL = $false
         $HttpClient = New-Object System.Net.Http.HttpClient
         
         foreach ($item in $DaChon) {
             if ($script:CancelDL) { break }
-            $pgBar.Value = 0
-            try {
-                $item.Status = "🌐 Đang kết nối..."; $item.StatusColor = "#1565C0"
-                $BangISO.Items.Refresh(); &$CapNhatUI
+            
+            $RetryWithNextKey = $true
 
-                $url = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?alt=media&key=$($Global:DriveApiKey)&acknowledgeAbuse=true"
-                $dest = Join-Path $txtPath.Text ($item.Name.Replace(" ", "_") + ".iso")
-                if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory -Force | Out-Null }
+            while ($RetryWithNextKey) {
+                try {
+                    $CurrentApiKey = Get-NextApiKey
+                    $item.Status = "🌐 Đang kết nối..."; $item.StatusColor = "#1565C0"
+                    $BangISO.Items.Refresh(); &$CapNhatUI
 
-                $responseTask = $HttpClient.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead)
-                while (-not $responseTask.IsCompleted) { &$CapNhatUI; Start-Sleep -Milliseconds 50 }
-                
-                $response = $responseTask.Result
-                if (-not $response.IsSuccessStatusCode) {
-                    $item.Status = "❌ Lỗi Drive"; $item.StatusColor = "#D32F2F"
-                    continue
-                }
+                    $url = "https://www.googleapis.com/drive/v3/files/$($item.FileID)?alt=media&key=$CurrentApiKey&acknowledgeAbuse=true"
+                    
+                    # --- DÒNG ĐÃ SỬA: SỬ DỤNG TÊN FILE GỐC TỪ CSV ---
+                    $SafeFileName = $item.Name.Replace(" ", "_")
+                    $dest = Join-Path $txtPath.Text $SafeFileName
+                    
+                    if (-not (Test-Path $txtPath.Text)) { New-Item $txtPath.Text -ItemType Directory -Force | Out-Null }
 
-                $totalBytes = $response.Content.Headers.ContentLength
-                $totalMB = [Math]::Round($totalBytes / 1MB, 2)
-                $stream = $response.Content.ReadAsStreamAsync().Result
-                $fileStream = [System.IO.File]::Create($dest)
-                $buffer = New-Object byte[] 262144 # 256KB buffer
-                $totalRead = 0
-                
-                $sw_speed = [System.Diagnostics.Stopwatch]::StartNew()
-                $sw_ui = [System.Diagnostics.Stopwatch]::StartNew()
-                $bytesInInterval = 0
+                    $responseTask = $HttpClient.GetAsync($url, [System.Net.Http.HttpCompletionOption]::ResponseHeadersRead)
+                    while (-not $responseTask.IsCompleted) { &$CapNhatUI; Start-Sleep -Milliseconds 50 }
+                    $response = $responseTask.Result
 
-                while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
-                    if ($script:CancelDL) { break }
-                    $fileStream.Write($buffer, 0, $bytesRead)
-                    $totalRead += $bytesRead
-                    $bytesInInterval += $bytesRead
-
-                    # Cập nhật UI mỗi 400ms để tránh giật lag
-                    if ($sw_ui.ElapsedMilliseconds -ge 400) {
-                        $phanTram = [int](($totalRead / $totalBytes) * 100)
-                        $sec = $sw_speed.Elapsed.TotalSeconds
-                        $speed = if ($sec -gt 0) { ($bytesInInterval / $sec) / 1MB } else { 0 }
-                        
-                        $pgBar.Value = $phanTram
-                        $lblStatus.Text = "🚀 Đang tải: $($item.Name)"
-                        $lblSpeed.Text = "Tốc độ: $([Math]::Round($speed, 2)) MB/s"
-                        $lblSize.Text = "Đã tải: $([Math]::Round($totalRead/1MB, 1)) MB / $totalMB MB ($phanTram%)"
-                        
-                        $item.Status = "📥 $phanTram %"; $BangISO.Items.Refresh()
-                        
-                        # Reset để tính tốc độ cho interval tiếp theo
-                        $bytesInInterval = 0
-                        $sw_speed.Restart()
-                        $sw_ui.Restart()
-                        &$CapNhatUI
+                    if (-not $response.IsSuccessStatusCode) {
+                        $statusCode = [int]$response.StatusCode
+                        if ($statusCode -eq 403 -or $statusCode -eq 429) {
+                            if ($Global:CurrentKeyIndex -lt ($Global:B64_Key_Pool.Count - 1)) {
+                                $Global:CurrentKeyIndex++
+                                $lblStatus.Text = "⚠️ Đang đổi sang Key dự phòng #$($Global:CurrentKeyIndex + 1)..."
+                                &$CapNhatUI; Start-Sleep -Seconds 1; continue 
+                            } else {
+                                $item.Status = "⚠️ Chuyển Web"; $item.StatusColor = "#F57C00"
+                                $lblStatus.Text = "❌ API lỗi. Đang mở trình duyệt..."
+                                Start-Process "https://drive.google.com/uc?id=$($item.FileID)&export=download"
+                                $RetryWithNextKey = $false; continue
+                            }
+                        } else {
+                            $item.Status = "❌ Lỗi HTTP $statusCode"; $RetryWithNextKey = $false; continue
+                        }
                     }
+
+                    $RetryWithNextKey = $false
+                    $totalBytes = $response.Content.Headers.ContentLength
+                    $totalMB = [Math]::Round($totalBytes / 1MB, 2)
+                    $stream = $response.Content.ReadAsStreamAsync().Result
+                    $fileStream = [System.IO.File]::Create($dest)
+                    $buffer = New-Object byte[] 262144
+                    $totalRead = 0
+                    $sw_speed = [System.Diagnostics.Stopwatch]::StartNew(); $sw_ui = [System.Diagnostics.Stopwatch]::StartNew()
+                    $bytesInInterval = 0
+
+                    while (($bytesRead = $stream.Read($buffer, 0, $buffer.Length)) -gt 0) {
+                        if ($script:CancelDL) { break }
+                        $fileStream.Write($buffer, 0, $bytesRead)
+                        $totalRead += $bytesRead; $bytesInInterval += $bytesRead
+
+                        if ($sw_ui.ElapsedMilliseconds -ge 500) {
+                            $phanTram = [int](($totalRead / $totalBytes) * 100)
+                            $speed = ($bytesInInterval / $sw_speed.Elapsed.TotalSeconds) / 1MB
+                            $pgBar.Value = $phanTram
+                            $lblStatus.Text = "🚀 Đang tải: $SafeFileName"
+                            $lblSpeed.Text = "$([Math]::Round($speed, 2)) MB/s"
+                            $lblSize.Text = "API #$($Global:CurrentKeyIndex + 1) | $phanTram %"
+                            $item.Status = "📥 $phanTram %"; $BangISO.Items.Refresh()
+                            $bytesInInterval = 0; $sw_speed.Restart(); $sw_ui.Restart(); &$CapNhatUI
+                        }
+                    }
+                    $fileStream.Close(); $fileStream.Dispose(); $stream.Dispose()
+                    $item.Status = if ($script:CancelDL) { "🛑 Đã hủy" } else { "✅ Hoàn tất" }
+                    $item.StatusColor = if ($script:CancelDL) { "#D32F2F" } else { "#2E7D32" }
+
+                } catch {
+                    $item.Status = "❌ Lỗi hệ thống"; $RetryWithNextKey = $false
                 }
-                $fileStream.Close(); $fileStream.Dispose(); $stream.Dispose()
-                
-                if ($script:CancelDL) {
-                    $item.Status = "🛑 Đã hủy"; $item.StatusColor = "#D32F2F"
-                    if (Test-Path $dest) { Remove-Item $dest -Force }
-                } else {
-                    $item.Status = "✅ Hoàn tất"; $item.StatusColor = "#2E7D32"
-                }
-            } catch {
-                $item.Status = "❌ Lỗi hệ thống"; $item.StatusColor = "#D32F2F"
             }
-            $lblSpeed.Text = "Tốc độ: 0 MB/s"
+            $lblSpeed.Text = "0 MB/s"
             $BangISO.Items.Refresh()
         }
         $HttpClient.Dispose()
         $btnDownload.IsEnabled = $true
-        $lblStatus.Text = "✅ ĐÃ KẾT THÚC QUÁ TRÌNH."
+        $lblStatus.Text = "✅ TIẾN TRÌNH KẾT THÚC."
     })
 
     $CuaSo.ShowDialog() | Out-Null
 }
 
-&$LogicIsoClientV143
+&$LogicIsoClientV148
