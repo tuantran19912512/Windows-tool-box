@@ -102,7 +102,7 @@ if (-not ("EngineGG" -as [type])) { Add-Type -TypeDefinition $MaCSharp -Referenc
 $Global:DongBo = [hashtable]::Synchronized(@{ TrangThai = "Sẵn sàng"; NhatKy = ""; Lenh = "CHỜ" })
 $Global:TrangThaiApp = [hashtable]::Synchronized(@{})
 $Global:DuLieuOffice = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
-$Global:TuKhoaAPI = @("QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR", "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v", "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv", "QUl6YVN5Q2IzaE1LUVNOamt2bFNKbUlhTGtYcVNybFpWaFNSTThR")
+$Global:TuKhoaAPI = @("QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0","QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR", "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v", "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv", "QUl6YVN5Q2IzaE1LUVNOamt2bFNKbUlhTGtYcVNybFpWaFNSTThR")
 $Global:TienTrinhNgam = $null
 $Global:DongHoHuy = New-Object System.Windows.Threading.DispatcherTimer; $Global:DongHoHuy.Interval = [TimeSpan]::FromSeconds(1)
 $Global:DemNguoc = 3; $Global:CacBanDangTai = @()
