@@ -1,210 +1,383 @@
 ﻿# ==============================================================================
-# BỘ CÀI OFFICE - GOOGLE DRIVE V320 (ĐỘNG CƠ ISO - HTTPCLIENT)
-# Đặc tính: Dùng HttpClient từ bản ISO, Fix lỗi 3KB, Ép xung 15s, Full tính năng
+# BỘ CÀI OFFICE - GOOGLE DRIVE V600 (MASTER EDITION - FULL OPTION)
+# 
 # ==============================================================================
 
-[System.Net.WebRequest]::DefaultWebProxy = $null
-[System.Net.ServicePointManager]::DefaultConnectionLimit = 100
+# [MODULE 1] CẤU HÌNH MẠNG & BĂNG THÔNG
+[System.Net.ServicePointManager]::DefaultConnectionLimit = 1024
 [System.Net.ServicePointManager]::Expect100Continue = $false
-[System.Net.ServicePointManager]::SecurityProtocol = [System.Net.SecurityProtocolType]::Tls12
+[System.Net.ServicePointManager]::UseNagleAlgorithm = $false
+[System.Net.WebRequest]::DefaultWebProxy = $null
+[System.Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$ErrorActionPreference = "SilentlyContinue"
 
-try { if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) { Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit } } catch { exit }
-if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') { Start-Process powershell.exe -ArgumentList "-NoProfile -ApartmentState STA -File `"$PSCommandPath`"" ; exit }
-
+# [MODULE 2] QUYỀN ADMIN & LUỒNG STA
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
+}
+if ([System.Threading.Thread]::CurrentThread.GetApartmentState() -ne 'STA') {
+    Start-Process powershell.exe -ArgumentList "-NoProfile -ApartmentState STA -File `"$PSCommandPath`"" ; exit
+}
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-# --- ĐỘNG CƠ C# V320 (BÊ NGUYÊN TỪ BẢN ISO SANG) ---
+# [MODULE 3] ĐỘNG CƠ C# (AUTO RESUME, QUẢN LÝ 403 QUOTA)
 $MaCSharp = @"
-using System;
-using System.Net.Http;
-using System.IO;
-using System.Threading.Tasks;
-
-public class EngineGG {
-    public static int Progress = 0;
-    public static string Speed = "0 MB/s";
-    public static string Info = "0/0 MB";
-    public static bool IsCanceled = false;
-
-    public static void Reset() { Progress = 0; Speed = "0 MB/s"; Info = "0/0 MB"; IsCanceled = false; }
+using System; using System.Net.Http; using System.Net.Http.Headers; using System.IO; using System.Threading.Tasks; using System.Threading;
+public class DongCoTai {
+    public static int PhanTram = 0; public static string TocDo = "0 MB/s"; public static string ThongTin = "0/0 MB"; public static string ThoiGian = "--:--";
+    public static CancellationTokenSource CTS;
     
-    public static void Cancel() { IsCanceled = true; }
+    public static void Reset() { PhanTram = 0; TocDo = "0 MB/s"; ThongTin = "0/0 MB"; ThoiGian = "--:--"; CTS = new CancellationTokenSource(); }
+    public static void HuyTai() { if (CTS != null) { CTS.Cancel(); } }
+    
+    public static async Task<int> TaiFile(string link, string duongDan) {
+        int soLanThu = 5; 
+        for (int lan = 1; lan <= soLanThu; lan++) {
+            try {
+                if (CTS != null && CTS.Token.IsCancellationRequested) return -1;
+                long dungLuongCu = 0;
+                if (File.Exists(duongDan)) { dungLuongCu = new FileInfo(duongDan).Length; }
 
-    public static async Task<int> DownloadFile(string url, string path) {
-        IsCanceled = false;
-        try {
-            using (HttpClient client = new HttpClient()) {
-                client.Timeout = TimeSpan.FromHours(5);
-                using (var response = await client.GetAsync(url, HttpCompletionOption.ResponseHeadersRead)) {
-                    if (!response.IsSuccessStatusCode) return (int)response.StatusCode;
-                    
-                    // Kiểm tra nếu là trang HTML (Virus warning của Google)
-                    if (response.Content.Headers.ContentType.MediaType == "text/html") return 403;
+                using (HttpClient trinhDuyet = new HttpClient()) {
+                    trinhDuyet.Timeout = TimeSpan.FromHours(5);
+                    trinhDuyet.DefaultRequestHeaders.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/120.0.0.0 Safari/537.36");
+                    HttpRequestMessage yeuCau = new HttpRequestMessage(HttpMethod.Get, link);
+                    if (dungLuongCu > 0) { yeuCau.Headers.Range = new RangeHeaderValue(dungLuongCu, null); }
 
-                    var totalSize = response.Content.Headers.ContentLength ?? -1L;
-                    using (var stream = await response.Content.ReadAsStreamAsync())
-                    using (var fs = new FileStream(path, FileMode.Create, FileAccess.Write, FileShare.None)) {
-                        var buffer = new byte[1048576];
-                        var totalRead = 0L;
-                        var startTime = DateTime.Now;
-                        int read;
-                        while ((read = await stream.ReadAsync(buffer, 0, buffer.Length)) > 0) {
-                            if (IsCanceled) { fs.Close(); if(File.Exists(path)) File.Delete(path); return -1; }
-                            await fs.WriteAsync(buffer, 0, read);
-                            totalRead += read;
-                            if (totalSize != -1) {
-                                Progress = (int)((totalRead * 100) / totalSize);
-                                double elapsed = (DateTime.Now - startTime).TotalSeconds;
-                                if (elapsed > 0) {
-                                    Speed = string.Format("{0:F2} MB/s", (totalRead / 1024.0 / 1024.0) / elapsed);
-                                    Info = string.Format("{0:F1} / {1:F1} MB", totalRead / 1024.0 / 1024.0, totalSize / 1024.0 / 1024.0);
+                    using (var phanHoi = await trinhDuyet.SendAsync(yeuCau, HttpCompletionOption.ResponseHeadersRead, CTS.Token)) {
+                        // Nhận diện lỗi 403 (Hết Quota Google Drive) để xoay vòng API Key
+                        if (phanHoi.StatusCode == System.Net.HttpStatusCode.Forbidden || (phanHoi.Content.Headers.ContentType != null && phanHoi.Content.Headers.ContentType.MediaType == "text/html")) return 403;
+                        if (phanHoi.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable) { File.Delete(duongDan); continue; }
+                        
+                        phanHoi.EnsureSuccessStatusCode();
+                        long tongDungLuong = phanHoi.Content.Headers.ContentLength ?? -1L;
+                        if (tongDungLuong > 0 && dungLuongCu > 0) { tongDungLuong += dungLuongCu; }
+                        else if (tongDungLuong <= 0) { tongDungLuong = -1; }
+
+                        FileMode cheDo = (dungLuongCu > 0 && phanHoi.StatusCode == System.Net.HttpStatusCode.PartialContent) ? FileMode.Append : FileMode.Create;
+                        if (cheDo == FileMode.Create) { dungLuongCu = 0; }
+
+                        using (var luongMang = await phanHoi.Content.ReadAsStreamAsync())
+                        using (var luongFile = new FileStream(duongDan, cheDo, FileAccess.Write, FileShare.ReadWrite)) {
+                            byte[] boNhoDem = new byte[4194304]; // Buffer 4MB max speed
+                            int docDuoc; DateTime thoiGianBatDau = DateTime.Now;
+                            while ((docDuoc = await luongMang.ReadAsync(boNhoDem, 0, boNhoDem.Length, CTS.Token)) > 0) {
+                                await luongFile.WriteAsync(boNhoDem, 0, docDuoc, CTS.Token);
+                                long daTai = luongFile.Length;
+                                if (tongDungLuong > 0) {
+                                    PhanTram = (int)((daTai * 100) / tongDungLuong);
+                                    double thoiGianQua = (DateTime.Now - thoiGianBatDau).TotalSeconds;
+                                    if (thoiGianQua > 0) {
+                                        double byteTrenGiay = (daTai - dungLuongCu) / thoiGianQua;
+                                        if (byteTrenGiay > 0) {
+                                            TocDo = string.Format("{0:F2} MB/s", byteTrenGiay / 1048576.0);
+                                            ThongTin = string.Format("{0:F2} / {1:F2} MB", daTai / 1048576.0, tongDungLuong / 1048576.0);
+                                            double giayConLai = (tongDungLuong - daTai) / byteTrenGiay;
+                                            TimeSpan ts = TimeSpan.FromSeconds(giayConLai);
+                                            ThoiGian = string.Format("{0:D2}:{1:D2}", ts.Minutes, ts.Seconds);
+                                        }
+                                    }
                                 }
                             }
                         }
-                    }
+                    } return 200; 
                 }
-                return 200;
+            } 
+            catch (OperationCanceledException) { 
+                try { if (File.Exists(duongDan)) File.Delete(duongDan); } catch {} 
+                return -1; 
             }
-        } catch { return 500; }
+            catch (Exception) {
+                if (CTS != null && CTS.Token.IsCancellationRequested) return -1;
+                Thread.Sleep(3000); 
+            }
+        } return 500; 
     }
 }
 "@
-if (-not ("EngineGG" -as [type])) { Add-Type -TypeDefinition $MaCSharp -ReferencedAssemblies "System.Net.Http", "System.Runtime" }
+if (-not ("DongCoTai" -as [type])) { Add-Type -TypeDefinition $MaCSharp -ReferencedAssemblies "System.Net.Http", "System.Runtime" }
 
-# --- BIẾN ĐỒNG BỘ ---
-$Global:DongBo = [hashtable]::Synchronized(@{ TrangThai = "Sẵn sàng"; NhatKy = ""; Lenh = "CHỜ"; ThuMucLuu = "" })
+# [MODULE 4] BIẾN ĐỒNG BỘ TOÀN CỤC
+$Global:DongBo = [hashtable]::Synchronized(@{ NhatKy = ""; TrangThai = "Đang nạp..."; Lenh = "CHO"; FileHienTai = ""; ThuMucLuu = ""; ThuMucGiaiNen = "" })
 $Global:TrangThaiApp = [hashtable]::Synchronized(@{})
 $Global:DuLieuOffice = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
 $Global:TuKhoaAPI = @("QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0","QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR", "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v")
-$Global:TienTrinhNgam = $null
-$Global:DongHoHuy = New-Object System.Windows.Threading.DispatcherTimer; $Global:DongHoHuy.Interval = [TimeSpan]::FromSeconds(1)
-$Global:DemNguoc = 3; $Global:CacBanDangTai = @()
 
-# --- GIAO DIỆN (GIỮ NGUYÊN) ---
+# [MODULE 5] GIAO DIỆN WPF
 $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="OFFICE DEPLOY - ISO ENGINE V320" Width="820" Height="700" WindowStartupLocation="CenterScreen" Background="#E3F2FD">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="OFFICE DEPLOY - GOOGLE DRIVE V600" Width="950" Height="750" Background="#F4F6F8" WindowStartupLocation="CenterScreen">
     <Grid Margin="15">
-        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="120"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-        <StackPanel Grid.Row="0" Margin="0,0,0,10"><TextBlock Text="MÁY CHỦ GOOGLE DRIVE" FontSize="22" FontWeight="Bold" Foreground="#1565C0"/><TextBlock Text="☁ Động cơ ISO (HttpClient) - Ép xung 15s - Dọn rác tức thì" Foreground="#0277BD" FontWeight="Bold"/></StackPanel>
-        <ListView Name="DanhSach" Grid.Row="1" SelectionMode="Extended" Background="White"><ListView.View><GridView><GridViewColumn Header="DANH SÁCH OFFICE" DisplayMemberBinding="{Binding Ten}" Width="480"/><GridViewColumn Header="TRẠNG THÁI" DisplayMemberBinding="{Binding TrangThai}" Width="180"/></GridView></ListView.View></ListView>
-        <GroupBox Grid.Row="2" Header="NHẬT KÝ HOẠT ĐỘNG" Margin="0,5"><TextBox Name="HopNhatKy" IsReadOnly="True" Background="#1E1E1E" Foreground="#00E676" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" FontSize="11" TextWrapping="Wrap"/></GroupBox>
-        <Grid Grid.Row="3" Margin="0,5"><Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="80"/><ColumnDefinition Width="80"/></Grid.ColumnDefinitions>
-            <TextBlock Text="LƯU TẠI: " VerticalAlignment="Center" FontWeight="Bold"/><TextBox Name="HopThuMuc" Grid.Column="1" IsReadOnly="True" VerticalContentAlignment="Center"/><Button Name="NutChon" Grid.Column="2" Content="CHỌN" Margin="5,0"/><Button Name="NutMo" Grid.Column="3" Content="MỞ" Background="#FFF59D"/></Grid>
-        <UniformGrid Grid.Row="4" Rows="1" Columns="2" Margin="0,5"><CheckBox Name="HopThuoc" Content="+ Bẻ Khóa" IsChecked="True"/><CheckBox Name="HopGiuFile" Content="Giữ file nguồn" IsChecked="True"/></UniformGrid>
-        <Grid Grid.Row="5" Margin="0,5">
-            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="95"/><ColumnDefinition Width="65"/><ColumnDefinition Width="85"/><ColumnDefinition Width="140"/></Grid.ColumnDefinitions>
-            <StackPanel><Grid><TextBlock Name="TxtTrangThai" Text="Đang chờ..." FontWeight="Bold"/><TextBlock Name="TxtPhanTram" Text="0%" HorizontalAlignment="Right" FontWeight="Bold" Foreground="#2E7D32"/></Grid><ProgressBar Name="ThanhTienDo" Height="15" Margin="0,5" Foreground="#1565C0"/></StackPanel>
-            <StackPanel Grid.Column="1" VerticalAlignment="Center"><TextBlock Name="TxtTocDo" Text="-- MB/s" HorizontalAlignment="Center" FontWeight="Bold" Foreground="#D84315"/><TextBlock Name="TxtThongTin" Text="0/0 MB" HorizontalAlignment="Center" FontSize="10" Foreground="#666666"/></StackPanel>
-            <Button Name="NutHuy" Grid.Column="2" Content="🛑 HỦY" Margin="3,0" IsEnabled="False" Background="#EF9A9A"/>
-            <Button Name="NutWeb" Grid.Column="3" Content="🌐 WEB" Margin="3,0" Background="#90CAF9" FontWeight="Bold"/>
-            <Button Name="NutBatDau" Grid.Column="4" Content="🚀 BẮT ĐẦU" Background="#1565C0" Foreground="White" FontWeight="Bold" FontSize="14" Margin="3,0"/>
+        <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="130"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+        
+        <StackPanel Grid.Row="0" Margin="0,0,0,15">
+            <TextBlock Text="MÁY CHỦ GOOGLE DRIVE - V600 MASTER" FontSize="24" FontWeight="Bold" Foreground="#0277BD"/>
+            <TextBlock Text="☁ Xoay API Key | Tự Giải Nén (Admin@2512) | Ohook Silent | Dọn Rác Sạch" Foreground="#555555" FontWeight="Medium" FontSize="14"/>
+        </StackPanel>
+
+        <ListView Name="DanhSach" Grid.Row="1" Background="White" BorderBrush="#CCCCCC" BorderThickness="1">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Header="BẢN CÀI OFFICE (GOOGLE DRIVE)" DisplayMemberBinding="{Binding Ten}" Width="450"/>
+                    <GridViewColumn Header="TRẠNG THÁI" DisplayMemberBinding="{Binding TrangThai}" Width="140"/>
+                    <GridViewColumn Header="TIẾN ĐỘ" DisplayMemberBinding="{Binding PhanTram}" Width="70"/>
+                    <GridViewColumn Header="TỐC ĐỘ" DisplayMemberBinding="{Binding TocDo}" Width="90"/>
+                    <GridViewColumn Header="DUNG LƯỢNG" DisplayMemberBinding="{Binding DungLuong}" Width="120"/>
+                </GridView>
+            </ListView.View>
+        </ListView>
+
+        <GroupBox Grid.Row="2" Header="NHẬT KÝ HỆ THỐNG" Margin="0,10,0,10" FontWeight="Bold">
+            <TextBox Name="HopNhatKy" IsReadOnly="True" Background="#1E1E1E" Foreground="#00E676" FontFamily="Consolas" VerticalScrollBarVisibility="Auto" FontSize="12" TextWrapping="Wrap" FontWeight="Normal"/>
+        </GroupBox>
+
+        <Grid Grid.Row="3" Margin="0,5">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+            <TextBox Name="HopThuMuc" IsReadOnly="True" VerticalContentAlignment="Center" Background="#FFFFFF" FontSize="14"/>
+            <Button Name="NutChon" Grid.Column="1" Content="📂 CHỌN" Margin="5,0" FontWeight="Bold"/>
+            <Button Name="NutMo" Grid.Column="2" Content="MỞ FOLDER" Background="#E3F2FD" FontWeight="Bold"/>
+        </Grid>
+
+        <UniformGrid Grid.Row="4" Rows="1" Columns="3" Margin="0,15">
+            <CheckBox Name="HopThuoc" Content="💊 Kích hoạt Ohook (Gist Silent)" IsChecked="True" FontWeight="Bold" Foreground="#D84315" FontSize="14"/>
+            <CheckBox Name="HopLoiTat" Content="📌 Đưa Shortcut ra Desktop" IsChecked="True" FontWeight="Bold" Foreground="#1565C0" FontSize="14"/>
+            <CheckBox Name="HopGiuFile" Content="💾 Giữ lại file nén (.zip) sau khi cài" IsChecked="False" FontWeight="Bold" FontSize="14"/>
+        </UniformGrid>
+
+        <Grid Grid.Row="5" Background="#E3F2FD" Margin="-15,0,-15,-15">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="220"/><ColumnDefinition Width="120"/><ColumnDefinition Width="150"/></Grid.ColumnDefinitions>
+            <StackPanel Margin="15,10,10,10">
+                <Grid><TextBlock Name="TxtTrangThai" Text="Sẵn sàng..." FontWeight="Bold" Foreground="#0277BD"/><TextBlock Name="TxtThongTin" Text="0/0 MB" HorizontalAlignment="Right" Foreground="#666666"/></Grid>
+                <ProgressBar Name="ThanhTienDo" Height="22" Margin="0,5" Foreground="#0288D1" Background="#FFFFFF"/>
+            </StackPanel>
+            <StackPanel Grid.Column="1" VerticalAlignment="Center" Orientation="Horizontal" HorizontalAlignment="Center">
+                <TextBlock Text="Tốc độ: " Foreground="#555" FontSize="13"/>
+                <TextBlock Name="TxtTocDo" Text="0 MB/s" FontWeight="Bold" Foreground="#D84315" Width="75" FontSize="13"/>
+                <TextBlock Text="ETA: " Foreground="#555" FontSize="13"/>
+                <TextBlock Name="TxtThoiGian" Text="--:--" FontWeight="Bold" Foreground="#2E7D32" FontSize="13"/>
+            </StackPanel>
+            <Button Name="NutHuy" Grid.Column="2" Content="🛑 HỦY BỎ" Margin="5,10" IsEnabled="False" Background="#FFCDD2" FontWeight="Bold" Foreground="#C62828" FontSize="14"/>
+            <Button Name="NutBatDau" Grid.Column="3" Content="🚀 BẮT ĐẦU" Background="#0277BD" Foreground="White" FontWeight="Bold" FontSize="16" Margin="5,10,15,10"/>
         </Grid>
     </Grid>
 </Window>
 "@
-$CuaSo = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::Create((New-Object System.IO.StringReader($MaGiaoDien))))
-$DanhSach = $CuaSo.FindName("DanhSach"); $HopNhatKy = $CuaSo.FindName("HopNhatKy"); $HopThuMuc = $CuaSo.FindName("HopThuMuc")
-$TxtTrangThai = $CuaSo.FindName("TxtTrangThai"); $ThanhTienDo = $CuaSo.FindName("ThanhTienDo"); $TxtTocDo = $CuaSo.FindName("TxtTocDo"); $TxtPhanTram = $CuaSo.FindName("TxtPhanTram"); $TxtThongTin = $CuaSo.FindName("TxtThongTin")
-$NutHuy = $CuaSo.FindName("NutHuy"); $NutMo = $CuaSo.FindName("NutMo"); $NutChon = $CuaSo.FindName("NutChon"); $NutWeb = $CuaSo.FindName("NutWeb"); $HopThuoc = $CuaSo.FindName("HopThuoc"); $HopGiuFile = $CuaSo.FindName("HopGiuFile"); $NutBatDau = $CuaSo.FindName("NutBatDau")
+$CuaSo = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::Create([System.IO.StringReader]::new($MaGiaoDien)))
+$DanhSach = $CuaSo.FindName("DanhSach"); $HopNhatKy = $CuaSo.FindName("HopNhatKy"); $HopThuMuc = $CuaSo.FindName("HopThuMuc"); $NutChon = $CuaSo.FindName("NutChon"); $NutMo = $CuaSo.FindName("NutMo")
+$HopThuoc = $CuaSo.FindName("HopThuoc"); $HopGiuFile = $CuaSo.FindName("HopGiuFile"); $HopLoiTat = $CuaSo.FindName("HopLoiTat"); $TxtTrangThai = $CuaSo.FindName("TxtTrangThai"); $TxtThongTin = $CuaSo.FindName("TxtThongTin")
+$ThanhTienDo = $CuaSo.FindName("ThanhTienDo"); $TxtTocDo = $CuaSo.FindName("TxtTocDo"); $TxtThoiGian = $CuaSo.FindName("TxtThoiGian"); $NutBatDau = $CuaSo.FindName("NutBatDau"); $NutHuy = $CuaSo.FindName("NutHuy")
 $DanhSach.ItemsSource = $Global:DuLieuOffice
 
-# --- LUỒNG XỬ LÝ (SỬ DỤNG HTTPCLIENT ASYNC) ---
+# [MODULE 6] LUỒNG XỬ LÝ (GOOGLE DRIVE & 7-ZIP)
 $KichBanXuLy = {
-    param($GiaoTiep, $TrangThaiTungUngDung, $DanhSachChon, $TuKhoa, $CoThuoc, $CoGiuFile)
-    function Them-NhatKy($tinNhan) { $GiaoTiep.NhatKy += "[$((Get-Date).ToString('HH:mm:ss'))] $tinNhan`r`n" }
-    function Lay-TuKhoa($mang, $chiSo) { return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($mang[$chiSo])) }
+    param($GiaoTiep, $TrangThaiApp, $DanhSachChon, $KhoaAPI, $CoThuoc, $CoGiuFile, $CoLoiTat)
+    function ThemNhatKy($m) { $GiaoTiep.NhatKy += "[$((Get-Date).ToString('HH:mm:ss'))] $m`r`n" }
+    function GiaiMaKhoa($mang, $chiSo) { return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($mang[$chiSo])) }
     
+    function Tao-LoiTatDesktop {
+        ThemNhatKy "📌 Đang tìm và đưa Shortcut ra Desktop..."
+        $ManHinh = [Environment]::GetFolderPath("Desktop"); $WShell = New-Object -ComObject WScript.Shell
+        $KhuVuc = @("${env:ProgramFiles}\Microsoft Office\root\Office16", "${env:ProgramFiles(x86)}\Microsoft Office\root\Office16")
+        $CacUngDung = @{ "WINWORD.EXE"="Word"; "EXCEL.EXE"="Excel"; "POWERPNT.EXE"="PowerPoint"; "MSACCESS.EXE"="Access"; "OUTLOOK.EXE"="Outlook" }
+        $DaTao = 0
+        foreach ($ThuMuc in $KhuVuc) {
+            if (Test-Path $ThuMuc) {
+                foreach ($FileExe in $CacUngDung.Keys) {
+                    $MucTieu = Join-Path $ThuMuc $FileExe
+                    if (Test-Path $MucTieu) { 
+                        $Lnk = $WShell.CreateShortcut((Join-Path $ManHinh "$($CacUngDung[$FileExe]).lnk")); $Lnk.TargetPath = $MucTieu; $Lnk.Save()
+                        $DaTao++
+                    }
+                } if ($DaTao -gt 0) { break }
+            }
+        }
+    }
+
     try {
+        # Kiểm tra 7-Zip để giải nén file từ Drive
         $MayGiaiNen = @("${env:ProgramFiles}\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
-        $KIdx = 0
+        if (-not $MayGiaiNen) {
+            ThemNhatKy "📦 Máy chưa có 7-Zip. Đang tải và cài đặt 7-Zip..."
+            $7zLuu = Join-Path $env:TEMP "7z_setup.exe"
+            if ([DongCoTai]::TaiFile("https://www.7-zip.org/a/7z2408-x64.exe", $7zLuu).GetAwaiter().GetResult() -eq 200) {
+                Start-Process $7zLuu -ArgumentList "/S" -Wait
+                $MayGiaiNen = @("${env:ProgramFiles}\7-Zip\7z.exe", "${env:ProgramFiles(x86)}\7-Zip\7z.exe") | Where-Object { Test-Path $_ } | Select-Object -First 1
+            }
+        }
+
+        $ChiSoKhoa = 0
         foreach ($phanTu in $DanhSachChon) {
             if ($GiaoTiep.Lenh -eq "DUNG") { break }
             $DuoiFile = if ($phanTu.ID -match "\.img$|\.iso$") { [System.IO.Path]::GetExtension($phanTu.ID) } else { ".zip" }
-            # Sử dụng acknowledgeAbuse để vượt virus scan
-            $DuongDanMang = "https://www.googleapis.com/drive/v3/files/$($phanTu.ID)?alt=media&key=$(Lay-TuKhoa $TuKhoa $KIdx)&acknowledgeAbuse=true" 
-            $DuongDanLuuMay = Join-Path $GiaoTiep.ThuMucLuu (($phanTu.Ten -replace '\W','_') + $DuoiFile)
-
-            $TrangThaiTungUngDung[$phanTu.ID] = "🚀 Đang tải..."
-            Them-NhatKy "📡 [GOOGLE DRIVE]: $($phanTu.Ten)"
+            $FileLuu = Join-Path $GiaoTiep.ThuMucLuu (($phanTu.Ten -replace '\W','_') + $DuoiFile)
+            $GiaoTiep.FileHienTai = $FileLuu
             
-            # Chạy Task Download và lấy kết quả (.Result)
-            $KetQua = [EngineGG]::DownloadFile($DuongDanMang, $DuongDanLuuMay).Result
+            $TrangThaiApp[$phanTu.ID] = @{ STT="🚀 Đang tải"; PCT="0%"; SPD="--"; ETA="--"; DL="--" }
+            ThemNhatKy "📡 [GOOGLE DRIVE]: $($phanTu.Ten)"
+            
+            # Vòng lặp chống lỗi 403 (Xoay API Key)
+            $ThanhCong = $false
+            $SoLanThu = 0
+            while (-not $ThanhCong -and $SoLanThu -lt $KhoaAPI.Count -and $GiaoTiep.Lenh -ne "DUNG") {
+                $DuongDanMang = "https://www.googleapis.com/drive/v3/files/$($phanTu.ID)?alt=media&key=$(GiaiMaKhoa $KhoaAPI $ChiSoKhoa)&acknowledgeAbuse=true"
+                $KetQuaTai = [DongCoTai]::TaiFile($DuongDanMang, $FileLuu).GetAwaiter().GetResult()
+                
+                if ($KetQuaTai -eq 200) { $ThanhCong = $true }
+                elseif ($KetQuaTai -eq 403) {
+                    $ChiSoKhoa = ($ChiSoKhoa + 1) % $KhoaAPI.Count
+                    ThemNhatKy "⚠️ Bị giới hạn tải! Đang đổi sang API Key dự phòng số $($ChiSoKhoa + 1)..."
+                    $SoLanThu++
+                } else { break }
+            }
 
-            if ($KetQua -eq 200) {
-                $TrangThaiTungUngDung[$phanTu.ID] = "📦 Đang cài..."
-                $ThuMucGiaiNen = $DuongDanLuuMay + "_GiaiNen"
-                $tienTrinh = Start-Process $MayGiaiNen -ArgumentList "x `"$DuongDanLuuMay`" -o`"$ThuMucGiaiNen`" -y" -WindowStyle Hidden -PassThru; while (-not $tienTrinh.HasExited) { Start-Sleep -Milliseconds 500 }
-                $FileChay = Get-ChildItem $ThuMucGiaiNen -Filter "*.bat" -Recurse | Select-Object -First 1
-                if (-not $FileChay) { $FileChay = Get-ChildItem $ThuMucGiaiNen -Filter "setup.exe" -Recurse | Select-Object -First 1 }
-                if ($FileChay) { Start-Process $FileChay.FullName -WorkingDirectory $FileChay.DirectoryName -Wait }
-                if ($CoThuoc) { try { (New-Object System.Net.WebClient).DownloadFile("https://gist.githubusercontent.com/tuantran19912512/81329d670436ea8492b73bd5889ad444/raw/Ohook.cmd", "$env:TEMP\A.cmd"); Start-Process cmd "/c $env:TEMP\A.cmd /Ohook" -WindowStyle Hidden -Wait } catch {} }
-                if (-not $CoGiuFile) { Remove-Item $DuongDanLuuMay -Force -ErrorAction SilentlyContinue }
-                Remove-Item $ThuMucGiaiNen -Recurse -Force -ErrorAction SilentlyContinue
-                $TrangThaiTungUngDung[$phanTu.ID] = "✅ Xong"; Them-NhatKy "✅ Xong: $($phanTu.Ten)"
-            } elseif ($KetQua -eq 403) {
-                $KIdx = ($KIdx + 1) % $TuKhoa.Count; Them-NhatKy "⚠️ Đổi API Key..."; redo
-            } else { Them-NhatKy "❌ LỖI: $KetQua"; $TrangThaiTungUngDung[$phanTu.ID] = "❌ Lỗi" }
-        }
-    } catch { Them-NhatKy "❌ Lỗi: $($_.Exception.Message)" }
-    $GiaoTiep.TrangThai = "✅ HOÀN TẤT"
-}
+            if ($ThanhCong) {
+                $TrangThaiApp[$phanTu.ID] = @{ STT="📦 Đang cài đặt"; PCT="100%"; SPD="Hoàn thành"; ETA="--"; DL="Hoàn thành" }
+                
+                # 2. GIẢI NÉN & CÀI ĐẶT
+                $ThuMucGiaiNen = $FileLuu + "_GiaiNen"
+                $GiaoTiep.ThuMucGiaiNen = $ThuMucGiaiNen
+                
+                try {
+                    ThemNhatKy "💿 Đang giải nén file..."
+                    $TienTrinhGiaiNen = Start-Process $MayGiaiNen -ArgumentList "x `"$FileLuu`" -o`"$ThuMucGiaiNen`" -p`"Admin@2512`" -y" -WindowStyle Hidden -PassThru
+                    while (-not $TienTrinhGiaiNen.HasExited) {
+                        if ($GiaoTiep.Lenh -eq "DUNG") { $TienTrinhGiaiNen.Kill(); break }
+                        Start-Sleep -Milliseconds 500
+                    }
 
-# --- SỰ KIỆN (GIỮ NGUYÊN) ---
-$Global:DongHoUI = New-Object System.Windows.Threading.DispatcherTimer; $Global:DongHoUI.Interval = [TimeSpan]::FromMilliseconds(300)
-$Global:DongHoUI.Add_Tick({
-    if ($null -ne $CuaSo -and $CuaSo.IsVisible -and $Global:DongBo.Lenh -ne "DUNG") {
-        $ThanhTienDo.Value = [EngineGG]::Progress; $TxtPhanTram.Text = "$([EngineGG]::Progress)%"; $TxtTocDo.Text = [EngineGG]::Speed; $TxtThongTin.Text = [EngineGG]::Info; $TxtTrangThai.Text = $Global:DongBo.TrangThai
-        if ($HopNhatKy.Text -ne $Global:DongBo.NhatKy) { $HopNhatKy.Text = $Global:DongBo.NhatKy; $HopNhatKy.ScrollToEnd() }
-        foreach ($muc in $Global:DuLieuOffice) { if ($Global:TrangThaiApp.ContainsKey($muc.ID)) { $muc.TrangThai = $Global:TrangThaiApp[$muc.ID] } }
-        $DanhSach.Items.Refresh()
-        if ($Global:DongBo.TrangThai -match "✅|🛑") { $NutBatDau.IsEnabled = $true; $NutHuy.IsEnabled = $false; $Global:DongHoUI.Stop() }
-    }
-})
+                    if ($GiaoTiep.Lenh -ne "DUNG") {
+                        $FileChay = Get-ChildItem $ThuMucGiaiNen -Filter "*.bat" -Recurse | Select-Object -First 1
+                        if (-not $FileChay) { $FileChay = Get-ChildItem $ThuMucGiaiNen -Filter "setup.exe" -Recurse | Select-Object -First 1 }
+                        
+                        if ($FileChay) { 
+                            ThemNhatKy "🛠 Chạy bộ cài đặt ngầm..."
+                            $TienTrinhCai = Start-Process $FileChay.FullName -WorkingDirectory $FileChay.DirectoryName -PassThru
+                            while (-not $TienTrinhCai.HasExited) {
+                                if ($GiaoTiep.Lenh -eq "DUNG") { $TienTrinhCai.Kill(); break }
+                                Start-Sleep -Milliseconds 500
+                            }
+                        } else { ThemNhatKy "⚠️ Không tìm thấy file cài đặt trong thư mục giải nén." }
+                    }
+                } catch { ThemNhatKy "⚠️ Lỗi khi giải nén hoặc chạy cài đặt." }
 
-$Global:DongHoHuy.Add_Tick({
-    if ($Global:DemNguoc -gt 0) { $TxtTrangThai.Text = "🛑 Đang nhả bộ nhớ Google... $($Global:DemNguoc)s"; $Global:DemNguoc-- } else {
-        $Global:DongHoHuy.Stop()
-        foreach ($muc in $Global:CacBanDangTai) {
-            $DuoiFile = if ($muc.ID -match "\.img$|\.iso$") { [System.IO.Path]::GetExtension($muc.ID) } else { ".zip" }
-            $FileRac = Join-Path $HopThuMuc.Text (($muc.Ten -replace '\W','_') + $DuoiFile); if (Test-Path $FileRac) { try { Remove-Item $FileRac -Force } catch {} }
-            $Global:TrangThaiApp[$muc.ID] = "Sẵn sàng"
-        }
-        $ThanhTienDo.Value = 0; $TxtPhanTram.Text = "0%"; $TxtTocDo.Text = "0 MB/s"; $TxtThongTin.Text = "0/0 MB"; $TxtTrangThai.Text = "🛑 ĐÃ HỦY VÀ DỌN SẠCH"
-        $HopNhatKy.Text += "[$((Get-Date).ToString('HH:mm:ss'))] 🛑 Đã dọn sạch rác.`r`n"; $NutBatDau.IsEnabled = $true; $NutHuy.IsEnabled = $false
-    }
-})
+                if ($GiaoTiep.Lenh -eq "DUNG") { break }
 
-$NutBatDau.Add_Click({
-    $DanhSachChon = @($DanhSach.SelectedItems); if ($DanhSachChon.Count -eq 0) { return }
-    $Global:CacBanDangTai = $DanhSachChon; [EngineGG]::Reset(); $Global:DongBo.Lenh = "CHAY"; $Global:DongBo.TrangThai = "Đang tải..."
-    $NutBatDau.IsEnabled = $false; $NutHuy.IsEnabled = $true; $Global:DongBo.ThuMucLuu = $HopThuMuc.Text
-    $DanhSachTam = @(); foreach ($muc in $DanhSachChon) { $DanhSachTam += @{ ID = $muc.ID; Ten = $muc.Ten }; $Global:TrangThaiApp[$muc.ID] = "⏳ Chờ..." }
-    $MoiTruong = [runspacefactory]::CreateRunspace(); $MoiTruong.ApartmentState = "STA"; $MoiTruong.Open()
-    $Global:TienTrinhNgam = [powershell]::Create().AddScript($KichBanXuLy).AddArgument($Global:DongBo).AddArgument($Global:TrangThaiApp).AddArgument($DanhSachTam).AddArgument($Global:TuKhoaAPI).AddArgument($HopThuoc.IsChecked).AddArgument($HopGiuFile.IsChecked)
-    $Global:TienTrinhNgam.Runspace = $MoiTruong; $Global:TienTrinhNgam.BeginInvoke(); $Global:DongHoUI.Start()
-})
+                # 3. KÍCH HOẠT OHOOK (GIST CỦA BẠN - NO BOM)
+                if ($CoThuoc) {
+                    ThemNhatKy "=========================================="
+                    ThemNhatKy ">>> KÍCH HOẠT OFFICE OHOOK (CHẠY NGẦM) <<<"
+                    ThemNhatKy "=========================================="
+                    
+                    $UrlGist = "https://gist.githubusercontent.com/tuantran19912512/81329d670436ea8492b73bd5889ad444/raw/Ohook.cmd?t=$((Get-Date).Ticks)"
+                    $TempFile = Join-Path $env:TEMP "Ohook_Activation.cmd"
+                    
+                    ThemNhatKy "-> Kiểm tra Internet (Ping 8.8.8.8)..."
+                    if (Test-Connection -ComputerName 8.8.8.8 -Count 1 -Quiet -ErrorAction SilentlyContinue) {
+                        try {
+                            ThemNhatKy "-> Đang tải file Ohook từ Gist..."
+                            $RawContent = Invoke-RestMethod -Uri $UrlGist -UseBasicParsing
+                            
+                            $RawContent = $RawContent -replace "`r`n", "`n" -replace "`n", "`r`n"
+                            $RawContent += "`r`n`r`n"
+                            $Utf8NoBom = New-Object System.Text.UTF8Encoding $false
+                            [System.IO.File]::WriteAllText($TempFile, $RawContent, $Utf8NoBom)
+                            
+                            ThemNhatKy "-> Chạy Ohook Silent..."
+                            $TienTrinhThuoc = Start-Process cmd.exe -ArgumentList "/c `"$TempFile`" /Ohook" -WindowStyle Hidden -Verb RunAs -PassThru
+                            
+                            while (-not $TienTrinhThuoc.HasExited) {
+                                if ($GiaoTiep.Lenh -eq "DUNG") { $TienTrinhThuoc.Kill(); break }
+                                Start-Sleep -Milliseconds 500
+                            }
+                            if ($GiaoTiep.Lenh -ne "DUNG") { ThemNhatKy "   + Đã kích hoạt bản quyền xong." }
+                        } catch { ThemNhatKy "!!! LỖI: Tải hoặc chạy file Gist thất bại." } 
+                        finally { if (Test-Path $TempFile) { Remove-Item $TempFile -Force -ErrorAction SilentlyContinue } }
+                    } else { ThemNhatKy "!!! LỖI: Mất mạng, không thể kích hoạt." }
+                }
 
-$NutHuy.Add_Click({ 
-    $Global:DongBo.Lenh = "DUNG"; $Global:DongHoUI.Stop(); $NutBatDau.IsEnabled = $false; $NutHuy.IsEnabled = $false
-    [EngineGG]::Cancel(); $Global:DemNguoc = 3; $Global:DongHoHuy.Start()
-})
+                # 4. TẠO LỐI TẮT & DỌN DẸP
+                if ($CoLoiTat -and $GiaoTiep.Lenh -ne "DUNG") { Tao-LoiTatDesktop }
+                if ($GiaoTiep.Lenh -ne "DUNG") {
+                    Remove-Item $ThuMucGiaiNen -Recurse -Force -ErrorAction SilentlyContinue
+                    if (-not $CoGiuFile) { Remove-Item $FileLuu -Force -ErrorAction SilentlyContinue; ThemNhatKy "🧹 Đã xóa file nén nguồn." }
+                }
 
-$NutMo.Add_Click({ if(Test-Path $HopThuMuc.Text) { Start-Process explorer.exe $HopThuMuc.Text } })
-$NutChon.Add_Click({ $CuaSoChon = New-Object System.Windows.Forms.FolderBrowserDialog; if ($CuaSoChon.ShowDialog() -eq "OK") { $HopThuMuc.Text = $CuaSoChon.SelectedPath } })
-
-$CuaSo.Add_Loaded({
-    $HopThuMuc.Text = if(Test-Path "D:\") {"D:\BoCaiOffice"} else {"C:\BoCaiOffice"}
-    if (-not (Test-Path $HopThuMuc.Text)) { New-Item $HopThuMuc.Text -ItemType Directory | Out-Null }
-    try {
-        $LinkCsv = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachOffice.csv?t=$(Get-Date).Ticks"
-        $DuLieuCsv = (Invoke-WebRequest $LinkCsv -UseBasicParsing).Content | ConvertFrom-Csv
-        foreach ($dong in $DuLieuCsv) {
-            if ($dong.ID -match "drive|docs" -or $dong.ID -notmatch "http") {
-                $id = $dong.ID -replace '.*id=([^&]+).*','$1' -replace '.*/d/([^/]+).*','$1'
-                $Global:DuLieuOffice.Add([PSCustomObject]@{ Ten=$dong.Name; TrangThai="Sẵn sàng"; ID=$id })
+                $TrangThaiApp[$phanTu.ID] = @{ STT="✅ Hoàn Tất"; PCT=""; SPD=""; ETA=""; DL="" }
+                ThemNhatKy "🎉 XONG: $($phanTu.Ten)"
+            } else { 
+                # LỖI TẢI HOẶC HỦY
+                if ($GiaoTiep.Lenh -eq "DUNG") {
+                    try { if (Test-Path $FileLuu) { Remove-Item $FileLuu -Force } } catch {}
+                    $TrangThaiApp[$phanTu.ID] = @{ STT="🛑 Đã Hủy"; PCT=""; SPD=""; ETA=""; DL="" }
+                    ThemNhatKy "🛑 Đã hủy và dọn rác."
+                } else {
+                    $TrangThaiApp[$phanTu.ID] = @{ STT="❌ Lỗi Tải"; PCT=""; SPD=""; ETA=""; DL="" }
+                    ThemNhatKy "❌ Tải thất bại. Vui lòng kiểm tra dung lượng Google Drive hoặc Mạng."
+                }
             }
         }
-    } catch {}
+    } catch { ThemNhatKy "❌ LỖI HỆ THỐNG: $($_.Exception.Message)" }
+
+    if ($GiaoTiep.Lenh -eq "DUNG") { $GiaoTiep.TrangThai = "🛑 ĐÃ HỦY VÀ XÓA SẠCH RÁC" }
+    else { $GiaoTiep.TrangThai = "✅ HOÀN TẤT TOÀN BỘ YÊU CẦU" }
+}
+
+# [MODULE 7] ĐỒNG BỘ GIAO DIỆN
+$DongHoUI = New-Object System.Windows.Threading.DispatcherTimer; $DongHoUI.Interval = "0:0:0.3"
+$DongHoUI.Add_Tick({
+    $ThanhTienDo.Value = [DongCoTai]::PhanTram; $TxtTrangThai.Text = $Global:DongBo.TrangThai
+    $TxtTocDo.Text = [DongCoTai]::TocDo; $TxtThongTin.Text = [DongCoTai]::ThongTin; $TxtThoiGian.Text = [DongCoTai]::ThoiGian
+    if ($HopNhatKy.Text -ne $Global:DongBo.NhatKy) { $HopNhatKy.Text = $Global:DongBo.NhatKy; $HopNhatKy.ScrollToEnd() }
+    
+    foreach ($m in $Global:DuLieuOffice) { 
+        if ($Global:TrangThaiApp.ContainsKey($m.ID)) { 
+            $thongso = $Global:TrangThaiApp[$m.ID]
+            $m.TrangThai = $thongso.STT; $m.PhanTram = $thongso.PCT; $m.TocDo = $thongso.SPD; $m.DungLuong = $thongso.DL
+        } 
+    }
+    $DanhSach.Items.Refresh()
+    if ($Global:DongBo.TrangThai -match "HOÀN TẤT|ĐÃ HỦY") { $NutBatDau.IsEnabled = $true; $NutHuy.IsEnabled = $false; $DongHoUI.Stop() }
+})
+
+# [MODULE 8] NÚT BẤM VÀ CẮT CÁP HỦY
+$NutBatDau.Add_Click({
+    $MucChon = @($DanhSach.SelectedItems); if ($MucChon.Count -eq 0) { [Windows.MessageBox]::Show("Vui lòng chọn bản cài Office Google Drive!", "Cảnh báo", 0, 48); return }
+    [DongCoTai]::Reset(); $NutBatDau.IsEnabled = $false; $NutHuy.IsEnabled = $true; $Global:DongBo.TrangThai = "Đang kết nối API Google..."; $Global:DongBo.Lenh = "CHAY"; $Global:DongBo.ThuMucLuu = $HopThuMuc.Text
+    $rs = [runspacefactory]::CreateRunspace(); $rs.ApartmentState = "STA"; $rs.Open()
+    $ps = [powershell]::Create().AddScript($KichBanXuLy).AddArgument($Global:DongBo).AddArgument($Global:TrangThaiApp).AddArgument($MucChon).AddArgument($Global:TuKhoaAPI).AddArgument($HopThuoc.IsChecked).AddArgument($HopGiuFile.IsChecked).AddArgument($HopLoiTat.IsChecked)
+    $ps.Runspace = $rs; $ps.BeginInvoke(); $DongHoUI.Start()
+})
+
+$NutHuy.Add_Click({
+    $NutHuy.IsEnabled = $false; $Global:DongBo.Lenh = "DUNG"; $Global:DongBo.TrangThai = "🛑 Đang cắt mạng & dọn rác..."
+    [DongCoTai]::HuyTai() 
+    Get-Process | Where-Object {$_.ProcessName -match "7z|setup|inst|setu|cmd"} | Stop-Process -Force -ErrorAction SilentlyContinue
+    
+    Start-ThreadJob -ScriptBlock { 
+        param($S) Start-Sleep -Seconds 2
+        try { if ($S.ThuMucGiaiNen -and (Test-Path $S.ThuMucGiaiNen)) { Remove-Item $S.ThuMucGiaiNen -Recurse -Force -ErrorAction SilentlyContinue } } catch {}
+        try { if ($S.FileHienTai -and (Test-Path $S.FileHienTai)) { Remove-Item $S.FileHienTai -Force -ErrorAction SilentlyContinue } } catch {}
+    } -ArgumentList $Global:DongBo
+})
+
+$NutChon.Add_Click({ $d = New-Object Forms.FolderBrowserDialog; if ($d.ShowDialog() -eq "OK") { $HopThuMuc.Text = $d.SelectedPath } })
+$NutMo.Add_Click({ if(Test-Path $HopThuMuc.Text) { Start-Process explorer.exe $HopThuMuc.Text } })
+
+# [MODULE 9] NẠP DỮ LIỆU CSV (LỌC LINK GOOGLE DRIVE)
+$CuaSo.Add_Loaded({
+    $p = if (Test-Path "D:\") {"D:\BoCaiOffice"} else {"C:\BoCaiOffice"}
+    $HopThuMuc.Text = $p; if (-not (Test-Path $p)) { New-Item $p -Type Directory | Out-Null }
+    try {
+        $url = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachOffice.csv?t=$(Get-Date).Ticks"
+        $csv = (Invoke-WebRequest $url -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Csv
+        foreach ($dong in $csv) { 
+            # CHỈ LẤY LINK GOOGLE DRIVE
+            if ($dong.ID -match "drive|docs" -or $dong.ID -notmatch "http") { 
+                $id = $dong.ID -replace '.*id=([^&]+).*','$1' -replace '.*/d/([^/]+).*','$1'
+                $Global:DuLieuOffice.Add([PSCustomObject]@{ Ten=$dong.Name; ID=$id; TrangThai="Sẵn sàng"; PhanTram=""; TocDo=""; DungLuong="" }) 
+            } 
+        }
+        $TxtTrangThai.Text = "Sẵn sàng"
+    } catch { $TxtTrangThai.Text = "❌ Lỗi mạng"; $HopNhatKy.Text += "❌ Lỗi nạp danh sách Google Drive.`r`n" }
 })
 
 $CuaSo.ShowDialog() | Out-Null
