@@ -127,11 +127,24 @@ $btnStart.Add_Click({
         # --- TẢI WIMLIB C/C++ ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.4-windows-x86_64-bin\wimlib-imagex.exe"
+        
         if (!(Test-Path $fileExeWimlib)) {
-            $lblStatus.Text = "Đang tải lõi ép xung C/C++ (Wimlib)..."; $pgBar.Value = 15; LamMoi-GiaoDien
-            New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null
-            Invoke-WebRequest -Uri "https://wimlib.net/downloads/wimlib-1.14.4-windows-x86_64-bin.zip" -OutFile "$bootDir\wimlib.zip" -UseBasicParsing
-            Expand-Archive -Path "$bootDir\wimlib.zip" -DestinationPath $thuMucWimlib -Force
+            $lblStatus.Text = "Đang kết nối máy chủ để tải lõi Wimlib..."; $pgBar.Value = 15; LamMoi-GiaoDien
+            if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
+            
+            try {
+                # Ép sử dụng giao thức TLS 1.2 để không bị kẹt kết nối
+                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+                # Tắt thanh tiến trình ngầm của PowerShell để chống treo giao diện
+                $ProgressPreference = 'SilentlyContinue'
+                
+                Invoke-WebRequest -Uri "https://wimlib.net/downloads/wimlib-1.14.4-windows-x86_64-bin.zip" -OutFile "$bootDir\wimlib.zip" -UseBasicParsing -TimeoutSec 30
+                
+                $lblStatus.Text = "Đang giải nén lõi Wimlib..."; LamMoi-GiaoDien
+                Expand-Archive -Path "$bootDir\wimlib.zip" -DestinationPath $thuMucWimlib -Force
+            } catch {
+                throw "Lỗi tải lõi C/C++: Vui lòng kiểm tra kết nối mạng hoặc tường lửa chặn PowerShell. Chi tiết: $_"
+            }
         }
 
         $duoiFileDauVao = [System.IO.Path]::GetExtension($txtWim.Text).ToLower()
