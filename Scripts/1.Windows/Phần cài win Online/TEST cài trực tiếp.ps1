@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V31 - WINTOHDD CLONE (SMART WIPE & C/C++ WIMLIB)
-# Tính năng: Không cần xả nén ra USB, Dùng trực tiếp ổ C, Không Format cục súc.
+# VIETTOOLBOX V31.1 - FIX LỖI PARAMETER 'FORCE' & LỖI TREO TẢI WIMLIB
+# Tính năng: Xóa rác thông minh, Không cần trống USB, Lõi C/C++ siêu tốc.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -124,27 +124,18 @@ $btnStart.Add_Click({
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
 
-        # --- TẢI WIMLIB C/C++ ---
+        # --- TẢI WIMLIB C/C++ (ĐÃ FIX TLS 1.2 CHỐNG TREO) ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.4-windows-x86_64-bin\wimlib-imagex.exe"
-        
         if (!(Test-Path $fileExeWimlib)) {
-            $lblStatus.Text = "Đang kết nối máy chủ để tải lõi Wimlib..."; $pgBar.Value = 15; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang tải công cụ nhúng siêu tốc (Wimlib)..."; $pgBar.Value = 15; LamMoi-GiaoDien
             if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
-            
             try {
-                # Ép sử dụng giao thức TLS 1.2 để không bị kẹt kết nối
                 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                # Tắt thanh tiến trình ngầm của PowerShell để chống treo giao diện
                 $ProgressPreference = 'SilentlyContinue'
-                
                 Invoke-WebRequest -Uri "https://wimlib.net/downloads/wimlib-1.14.4-windows-x86_64-bin.zip" -OutFile "$bootDir\wimlib.zip" -UseBasicParsing -TimeoutSec 30
-                
-                $lblStatus.Text = "Đang giải nén lõi Wimlib..."; LamMoi-GiaoDien
                 Expand-Archive -Path "$bootDir\wimlib.zip" -DestinationPath $thuMucWimlib -Force
-            } catch {
-                throw "Lỗi tải lõi C/C++: Vui lòng kiểm tra kết nối mạng hoặc tường lửa chặn PowerShell. Chi tiết: $_"
-            }
+            } catch { throw "Lỗi tải Wimlib: $_" }
         }
 
         $duoiFileDauVao = [System.IO.Path]::GetExtension($txtWim.Text).ToLower()
@@ -153,38 +144,35 @@ $btnStart.Add_Click({
 
         # XỬ LÝ ISO: Trích xuất thẳng vào C:\VietBoot, không dùng dung lượng USB
         if ($duoiFileDauVao -eq ".iso") {
-            $lblStatus.Text = "Đang tìm WinRE trên hệ thống cục bộ..."; $pgBar.Value = 30; LamMoi-GiaoDien
-			$timThayRe = $false
-			foreach ($duongDan in @("C:\Windows\System32\Recovery\WinRE.wim", "C:\Recovery\WindowsRE\WinRE.wim")) {
-				# ĐÃ SỬA: Xóa -Force ở Test-Path
-				if (Test-Path $duongDan) { attrib -h -s $duongDan | Out-Null; Copy-Item $duongDan "$bootDir\boot.wim" -Force; $timThayRe = $true; break }
-			}
-
-			if (!$timThayRe) {
-				$lblStatus.Text = "Không có WinRE cục bộ. Đang lấy từ bộ cài..."; LamMoi-GiaoDien
-				$mountGoc = "C:\MountGoc"; New-Item $mountGoc -ItemType Directory -Force | Out-Null
-				$p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Hidden
-				while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
-				
-				# ĐÃ SỬA: Xóa -Force ở Test-Path
-				if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim") { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
-				
-				Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Hidden
-			}
+            $lblStatus.Text = "Đang kéo bộ cài từ ISO vào vùng an toàn (Sẽ mất vài phút)..."; $pgBar.Value = 20; LamMoi-GiaoDien
+            $mountKetQua = Mount-DiskImage -ImagePath $txtWim.Text -PassThru -NoDriveLetter:$false
+            $oDiaAao = ($mountKetQua | Get-Volume).DriveLetter
+            $duongDanWimTrongIso = "$oDiaAao`:\sources\install.wim"
+            $duoiXuat = ".wim"
+            if (!(Test-Path $duongDanWimTrongIso)) { $duongDanWimTrongIso = "$oDiaAao`:\sources\install.esd"; $duoiXuat = ".esd" }
+            
+            $wimFileName = "install_extracted$duoiXuat"
+            $wimPathHost = "$bootDir\$wimFileName"
+            Copy-Item $duongDanWimTrongIso $wimPathHost -Force
+            Dismount-DiskImage -ImagePath $txtWim.Text | Out-Null
         }
         
         $lblStatus.Text = "Đang tìm WinRE trên hệ thống cục bộ..."; $pgBar.Value = 30; LamMoi-GiaoDien
         $timThayRe = $false
         foreach ($duongDan in @("C:\Windows\System32\Recovery\WinRE.wim", "C:\Recovery\WindowsRE\WinRE.wim")) {
-            if (Test-Path $duongDan -Force) { attrib -h -s $duongDan | Out-Null; Copy-Item $duongDan "$bootDir\boot.wim" -Force; $timThayRe = $true; break }
+            # BỎ -FORCE Ở ĐÂY
+            if (Test-Path $duongDan) { attrib -h -s $duongDan | Out-Null; Copy-Item $duongDan "$bootDir\boot.wim" -Force; $timThayRe = $true; break }
         }
 
         if (!$timThayRe) {
             $lblStatus.Text = "Không có WinRE cục bộ. Đang lấy từ bộ cài..."; LamMoi-GiaoDien
-            $mountGoc = "C:\MountGoc"; New-Item $mountGoc -ItemType Directory -Force | Out-Null
+            $mountGoc = "C:\MountGoc"; if (!(Test-Path $mountGoc)) { New-Item $mountGoc -ItemType Directory -Force | Out-Null }
             $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Hidden
             while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
-            if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim" -Force) { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
+            
+            # BỎ -FORCE Ở ĐÂY
+            if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim") { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
+            
             Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Hidden
         }
 
