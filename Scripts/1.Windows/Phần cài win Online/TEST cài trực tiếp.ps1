@@ -153,17 +153,24 @@ $btnStart.Add_Click({
 
         # XỬ LÝ ISO: Trích xuất thẳng vào C:\VietBoot, không dùng dung lượng USB
         if ($duoiFileDauVao -eq ".iso") {
-            $lblStatus.Text = "Đang kéo bộ cài từ ISO vào vùng an toàn (Sẽ mất vài phút)..."; $pgBar.Value = 20; LamMoi-GiaoDien
-            $mountKetQua = Mount-DiskImage -ImagePath $txtWim.Text -PassThru -NoDriveLetter:$false
-            $oDiaAao = ($mountKetQua | Get-Volume).DriveLetter
-            $duongDanWimTrongIso = "$oDiaAao`:\sources\install.wim"
-            $duoiXuat = ".wim"
-            if (!(Test-Path $duongDanWimTrongIso)) { $duongDanWimTrongIso = "$oDiaAao`:\sources\install.esd"; $duoiXuat = ".esd" }
-            
-            $wimFileName = "install_extracted$duoiXuat"
-            $wimPathHost = "$bootDir\$wimFileName"
-            Copy-Item $duongDanWimTrongIso $wimPathHost -Force
-            Dismount-DiskImage -ImagePath $txtWim.Text | Out-Null
+            $lblStatus.Text = "Đang tìm WinRE trên hệ thống cục bộ..."; $pgBar.Value = 30; LamMoi-GiaoDien
+			$timThayRe = $false
+			foreach ($duongDan in @("C:\Windows\System32\Recovery\WinRE.wim", "C:\Recovery\WindowsRE\WinRE.wim")) {
+				# ĐÃ SỬA: Xóa -Force ở Test-Path
+				if (Test-Path $duongDan) { attrib -h -s $duongDan | Out-Null; Copy-Item $duongDan "$bootDir\boot.wim" -Force; $timThayRe = $true; break }
+			}
+
+			if (!$timThayRe) {
+				$lblStatus.Text = "Không có WinRE cục bộ. Đang lấy từ bộ cài..."; LamMoi-GiaoDien
+				$mountGoc = "C:\MountGoc"; New-Item $mountGoc -ItemType Directory -Force | Out-Null
+				$p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Hidden
+				while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
+				
+				# ĐÃ SỬA: Xóa -Force ở Test-Path
+				if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim") { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
+				
+				Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Hidden
+			}
         }
         
         $lblStatus.Text = "Đang tìm WinRE trên hệ thống cục bộ..."; $pgBar.Value = 30; LamMoi-GiaoDien
