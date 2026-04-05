@@ -79,7 +79,7 @@ $MaXAML = @"
 
         <StackPanel Grid.Row="2" Margin="0,15,0,0">
             <ProgressBar Name="pgBar" Height="14" Background="#111" Foreground="#00adb5" BorderThickness="0" Margin="0,0,0,10"/>
-            <TextBlock Name="lblStatus" Text="Trạng thái: Sẵn sàng." Foreground="#666" HorizontalAlignment="Center" FontSize="11" Margin="0,0,0 autorun,10"/>
+            <TextBlock Name="lblStatus" Text="Trạng thái: Sẵn sàng." Foreground="#666" HorizontalAlignment="Center" FontSize="11" Margin="0,0,0,10"/>
             <Button Name="btnStart" Content="KÍCH HOẠT QUY TRÌNH MASTER" Style="{StaticResource ModernBtn}" Height="70" Background="#D32F2F" FontSize="22" IsEnabled="False"/>
         </StackPanel>
     </Grid>
