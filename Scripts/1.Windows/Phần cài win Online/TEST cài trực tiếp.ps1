@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V35 - THE UNSTOPPABLE (FULL AUTOMATION MASTER)
-# Chức năng: Turbo Copy, Kill BitLocker, AnyDesk Call, Bypass TPM/OOBE, Auto Admin.
+# VIETTOOLBOX V35.2 - CLEAN & STABLE (FIX LỖI TYPO "AUTORUN")
+# Chức năng: Full Bypass, Turbo Copy, Auto Admin, AnyDesk Auto-Call, No BitLocker.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -9,11 +9,11 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
-# --- GIAO DIỆN BLACKOUT (CHỐNG LÓA 100%) ---
+# --- GIAO DIỆN BLACKOUT SIÊU TƯƠNG PHẢN (ĐÃ XOÁ SẠCH CHỮ AUTORUN) ---
 $MaXAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox V35 - Unstoppable Master" Height="800" Width="750" 
+        Title="VietToolbox V35.2 - Clean Edition" Height="780" Width="720" 
         WindowStartupLocation="CenterScreen" Background="#000">
     <Window.Resources>
         <Style TargetType="ComboBoxItem"><Setter Property="Background" Value="#111"/><Setter Property="Foreground" Value="White"/><Setter Property="Padding" Value="10"/></Style>
@@ -27,13 +27,13 @@ $MaXAML = @"
     <Grid Margin="15">
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         <StackPanel Grid.Row="0" Margin="0,0,0,15">
-            <TextBlock Text="VIETTOOLBOX V35" FontSize="38" FontWeight="Black" Foreground="#00adb5"/>
-            <TextBlock Text="TỰ ĐỘNG HÓA TẬN RĂNG - BYPASS ALL - ANYDESK AUTO CALL" FontSize="11" Foreground="#666"/>
+            <TextBlock Text="VIETTOOLBOX V35.2" FontSize="38" FontWeight="Black" Foreground="#00adb5"/>
+            <TextBlock Text="PHIÊN BẢN SẠCH LỖI - TURBO COPY - FULL AUTOMATION" FontSize="11" Foreground="#666"/>
         </StackPanel>
 
         <TabControl Grid.Row="1" Background="#050505" BorderBrush="#222">
             <TabItem Header="1. BỘ CÀI &amp; ĐÍCH">
-                <StackPanel Margin="20">
+                <StackPanel Margin="25">
                     <TextBlock Text="Nguồn Windows (.iso, .wim, .esd):" Foreground="#AAA" Margin="0,0,0,5"/>
                     <Grid Margin="0,0,0,15"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions><TextBox Name="txtWim" IsReadOnly="True" Height="38"/><Button Name="btnWim" Grid.Column="1" Content="CHỌN FILE" Style="{StaticResource ModernBtn}" Margin="10,0,0,0"/></Grid>
                     <TextBlock Text="Phiên bản (Index):" Foreground="#AAA" Margin="0,0,0,5"/><ComboBox Name="cmbIndex" Margin="0,0,0,15"/><TextBlock Text="Ổ đĩa đích:" Foreground="#AAA" Margin="0,0,0,5"/><ComboBox Name="cmbDrive"><ComboBoxItem Content="C:\" IsSelected="True"/></ComboBox>
@@ -42,9 +42,9 @@ $MaXAML = @"
             <TabItem Header="2. TỰ ĐỘNG HÓA">
                 <Grid Margin="20"><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                 <StackPanel Grid.Column="0">
-                    <CheckBox Name="chkBitLocker" Content="Diệt BitLocker vĩnh viễn" Foreground="#FFB300" IsChecked="True" FontWeight="Bold" Margin="0,0,0,15"/>
+                    <CheckBox Name="chkBitLocker" Content="Diệt BitLocker sau cài" Foreground="#FFB300" IsChecked="True" FontWeight="Bold" Margin="0,0,0,15"/>
                     <CheckBox Name="chkOOBE" Content="Bypass TPM 2.0 / OOBE / NRO" Foreground="White" IsChecked="True" Margin="0,0,0,15"/>
-                    <CheckBox Name="chkAnydesk" Content="Auto AnyDesk (Tải &amp; Bật)" Foreground="#4CAF50" IsChecked="True" Margin="0,0,0,15"/>
+                    <CheckBox Name="chkAnydesk" Content="Tự cài AnyDesk &amp; Bật" Foreground="#4CAF50" IsChecked="True" Margin="0,0,0,15"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1">
                     <CheckBox Name="chkActive" Content="Auto Active Win/Off" Foreground="#00adb5" IsChecked="True" Margin="0,0,0,15"/>
@@ -57,7 +57,7 @@ $MaXAML = @"
         <StackPanel Grid.Row="2" Margin="0,20,0,0">
             <ProgressBar Name="pgBar" Height="14" Background="#111" Foreground="#00adb5" BorderThickness="0" Margin="0,0,0,15"/>
             <TextBlock Name="lblStatus" Text="Trạng thái: Sẵn sàng." Foreground="#666" HorizontalAlignment="Center" FontSize="11" Margin="0,0,0,15"/>
-            <Button Name="btnStart" Content="BẮT ĐẦU CÀI ĐẶT TỰ ĐỘNG" Style="{StaticResource ModernBtn}" Height="70" Background="#D32F2F" FontSize="22" IsEnabled="False"/>
+            <Button Name="btnStart" Content="BẮT ĐẦU CÀI ĐẶT MASTER" Style="{StaticResource ModernBtn}" Height="70" Background="#D32F2F" FontSize="22" IsEnabled="False"/>
         </StackPanel>
     </Grid>
 </Window>
@@ -73,7 +73,6 @@ $pgBar = $CuaSo.FindName("pgBar"); $lblStatus = $CuaSo.FindName("lblStatus"); $b
 
 function LamMoi-GiaoDien { [System.Windows.Forms.Application]::DoEvents(); [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background) }
 
-# --- FIX LỖI CHỌN FILE ---
 $btnWim.Add_Click({
     $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "Windows Image|*.iso;*.wim;*.esd"
     if ($fd.ShowDialog() -eq "OK") {
@@ -87,15 +86,14 @@ $btnWim.Add_Click({
                 Dismount-DiskImage -ImagePath $path | Out-Null
             } else { (Get-WindowsImage -ImagePath $path) | ForEach-Object { $cmbIndex.Items.Add("$($_.ImageIndex) - $($_.ImageName)") } }
             $txtWim.Text = $path; $cmbIndex.SelectedIndex = 0; $btnStart.IsEnabled = $true; $lblStatus.Text = "Sẵn sàng."
-        } catch { [System.Windows.MessageBox]::Show("Lỗi bộ cài: $_") }
+        } catch { [System.Windows.MessageBox]::Show("Lỗi đọc bộ cài: $_") }
     }
 })
 
-# --- THỰC THI CHÍNH ---
 $btnStart.Add_Click({
     $btnStart.IsEnabled = $false; $bootDir = "C:\VietBoot"; if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
     try {
-        # 1. GIẢI MÃ BITLOCKER HIỆN TẠI (Để có thể Wipe đĩa)
+        # 1. KILL BITLOCKER HIỆN TẠI
         $lblStatus.Text = "Đang giải mã BitLocker máy cũ..."; LamMoi-GiaoDien
         manage-bde -off C: | Out-Null
         while ($true) { $st = manage-bde -status C:; if ($st -like "*Fully Decrypted*" -or $st -like "*None*") { break }; Start-Sleep -Seconds 2 }
@@ -106,8 +104,8 @@ $btnStart.Add_Click({
             $m = Mount-DiskImage -ImagePath $wimPath -PassThru; $dv = ($m | Get-Volume).DriveLetter
             $srcPath = "$dv`:\sources"; $srcFile = "install.wim"; if (!(Test-Path "$srcPath\install.wim")) { $srcFile = "install.esd" }
             $wimName = "install_viet.wim"; $target = "$bootDir\$wimName"; $srcFull = "$srcPath\$srcFile"; $srcSize = (Get-Item $srcFull).Length
-            $lblStatus.Text = "Đang Turbo Copy bộ cài (Robocopy /J)..."; LamMoi-GiaoDien
-            Start-Process robocopy.exe -ArgumentList "`"$srcPath`" `"$bootDir`" $srcFile /J /IS /IT /MT:16 /NJH /NJS" -WindowStyle Hidden
+            $lblStatus.Text = "Đang Turbo Copy (Robocopy /J)..."; LamMoi-GiaoDien
+            Start-Process robocopy.exe -ArgumentList "`"$srcPath`" `"$bootDir`" $srcFile /J /NJH /NJS /MT:16" -WindowStyle Hidden
             while ($true) {
                 if (Test-Path $target) {
                     $curSize = (Get-Item $target).Length; $percent = [math]::Round(($curSize / $srcSize) * 100)
@@ -120,23 +118,24 @@ $btnStart.Add_Click({
             Dismount-DiskImage -ImagePath $wimPath | Out-Null; $wimPath = $target
         }
 
-        # 3. KỊCH BẢN SETUPCOMPLETE (TẮT BITLOCKER HẬU CÀI + ANYDESK)
+        # 3. KỊCH BẢN SETUPCOMPLETE.CMD
         $temp = "$bootDir\Conf"; New-Item $temp -ItemType Directory -Force | Out-Null
         $sc = "@echo off`n"
         if ($chkBitLocker.IsChecked) { $sc += "manage-bde -off C:`n" }
+        # Password Never Expires cho User Admin
         $sc += "powershell -c `"Set-LocalUser -Name 'Admin' -PasswordNeverExpires `$true`"`n"
         if ($chkActive.IsChecked) { $sc += "powershell -c `"irm https://get.activated.win | iex`" /HWID`npowershell -c `"irm https://get.activated.win | iex`" /Ohook`n" }
-        if ($chkApps.IsChecked) { $sc += "winget install --id Google.Chrome --silent`nwinget install --id WinRAR.WinRAR --silent`n" }
+        if ($chkApps.IsChecked) { $sc += "winget install --id Google.Chrome --silent --accept-source-agreements --accept-package-agreements`nwinget install --id WinRAR.WinRAR --silent`n" }
         $sc += "bcdedit /timeout 0`nrd /s /q `"C:\VietBoot`"`ndel `"%~f0`""
         $sc | Out-File "$temp\SetupComplete.cmd" -Encoding ASCII
 
-        # AnyDesk Auto-Call (Đợi mạng + Tải + Bật)
+        # Kịch bản AnyDesk (Tải + Tự bật)
         if ($chkAnydesk.IsChecked) {
             $any = "@echo off`n:check`nping 8.8.8.8 -n 1 >nul`nif errorlevel 1 timeout /t 3 >nul & goto check`ncurl.exe -L -o `"C:\Users\Public\Desktop\AnyDesk.exe`" `"https://download.anydesk.com/AnyDesk.exe`"`nstart `"`" `"C:\Users\Public\Desktop\AnyDesk.exe`"`ndel `"%~f0`""
             $any | Out-File "$temp\Any.cmd" -Encoding ASCII
         }
 
-        # 4. UNATTEND.XML (ADMIN ACCOUNT + OOBE BYPASS)
+        # 4. UNATTEND.XML (ADMIN + OOBE BYPASS)
         $u = @"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -147,30 +146,13 @@ $btnStart.Add_Click({
 "@
         $u | Out-File "$temp\u.xml" -Encoding UTF8
 
-        # 5. STARTNET (LÕI WINPE - WIPE & BYPASS TPM)
+        # 5. STARTNET (LÕI WINPE)
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
-        $sn = @"
-@echo off
-wpeinit
-for %%i in (C D E F G H I J K L M N O P) do (if exist "%%i:\VietBoot\$wimName" set "W=%%i:\VietBoot\$wimName")
-for /d %%a in (C:\*) do if /i not "%%~nxa"=="VietBoot" rd /s /q "%%a"
-del /f /q C:\*.*
-echo [BYPASS] Dang apply Windows Windows 11 (TPM/OOBE Bypass)...
-dism /Apply-Image /ImageFile:"%W%" /Index:$idx /ApplyDir:C:\
-reg load HKLM\O_S C:\Windows\System32\config\SOFTWARE
-reg add HKLM\O_S\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f
-reg add HKLM\O_S\Policies\Microsoft\FVE /v PreventDeviceEncryption /t REG_DWORD /d 1 /f
-reg unload HKLM\O_S
-mkdir C:\Windows\Panther >nul & copy X:\Windows\System32\u.xml C:\Windows\Panther\unattend.xml /Y
-mkdir C:\Windows\Setup\Scripts >nul & copy X:\Windows\System32\SetupComplete.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd /Y
-if exist X:\Windows\System32\Any.cmd (mkdir "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup" >nul & copy X:\Windows\System32\Any.cmd "C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\Any.cmd" /Y)
-bcdboot C:\Windows /s C: /f ALL
-wpeutil reboot
-"@
+        $sn = "@echo off`nwpeinit`nfor %%i in (C D E F G H I J K L M N O P) do (if exist `"%%i:\VietBoot\$wimName`" set `"W=%%i:\VietBoot\$wimName`")`nfor /d %%a in (C:\*) do if /i not `"%%~nxa`"==`"VietBoot`" rd /s /q `"%%a`"`ndel /f /q C:\*.*`ndism /Apply-Image /ImageFile:`"%W%`" /Index:$idx /ApplyDir:C:\`nreg load HKLM\O_S C:\Windows\System32\config\SOFTWARE`nreg add HKLM\O_S\Microsoft\Windows\CurrentVersion\OOBE /v BypassNRO /t REG_DWORD /d 1 /f`nreg add HKLM\O_S\Policies\Microsoft\FVE /v PreventDeviceEncryption /t REG_DWORD /d 1 /f`nreg unload HKLM\O_S`nmkdir C:\Windows\Panther >nul & copy X:\Windows\System32\u.xml C:\Windows\Panther\unattend.xml /Y`nmkdir C:\Windows\Setup\Scripts >nul & copy X:\Windows\System32\SetupComplete.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd /Y`nif exist X:\Windows\System32\Any.cmd (mkdir `"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup`" >nul & copy X:\Windows\System32\Any.cmd `"C:\ProgramData\Microsoft\Windows\Start Menu\Programs\Startup\Any.cmd`" /Y)`nbcdboot C:\Windows /s C: /f ALL`nwpeutil reboot"
         $sn | Out-File "$temp\s.cmd" -Encoding ASCII
 
-        # 6. NHÚNG KỊCH BẢN VÀO WINRE
-        $lblStatus.Text = "Đang nhúng lõi kịch bản Master..."; $pgBar.Value = 90; LamMoi-GiaoDien
+        # 6. NHÚNG KỊCH BẢN (WIMLIB)
+        $lblStatus.Text = "Đang nhúng lõi kịch bản..."; $pgBar.Value = 90; LamMoi-GiaoDien
         Copy-Item "C:\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force
         Copy-Item "C:\Windows\Boot\EFI\boot.sdi" "$bootDir\boot.sdi" -Force
         if (!(Test-Path "$bootDir\wimlib-imagex.exe")) {
@@ -183,7 +165,7 @@ wpeutil reboot
         if ($chkAnydesk.IsChecked) { "add `"$temp\Any.cmd`" `"\Windows\System32\Any.cmd`"" | Out-File $fT -Append -Encoding utf8 }
         Start-Process "$bootDir\wimlib-imagex.exe" "update `"$bootDir\boot.wim`" 1 < `"$fT`"" -Wait -WindowStyle Hidden
 
-        # 7. CẤU HÌNH BOOT & REBOOT
+        # 7. BOOT SETUP & REBOOT
         $ram = "{$( [guid]::NewGuid().ToString() )}"; bcdedit /create $ram /d "VB" /device | Out-Null
         bcdedit /set $ram ramdisksdidevice partition=C: | Out-Null
         bcdedit /set $ram ramdisksdipath "\VietBoot\boot.sdi" | Out-Null
@@ -193,7 +175,7 @@ wpeutil reboot
         bcdedit /set $os path "\windows\system32\boot\winload.efi" | Out-Null
         bcdedit /set $os winpe yes | Out-Null
         bcdedit /displayorder $os /addfirst | Out-Null; bcdedit /default $os | Out-Null; bcdedit /timeout 0 | Out-Null
-        $lblStatus.Text = "HOÀN TẤT! Khởi động lại sau 2s..."; $pgBar.Value = 100; LamMoi-GiaoDien
+        $lblStatus.Text = "XONG! Khởi động lại sau 2s..."; $pgBar.Value = 100; LamMoi-GiaoDien
         Start-Sleep -Seconds 2; Restart-Computer -Force
     } catch { [System.Windows.MessageBox]::Show("Lỗi: $_"); $btnStart.IsEnabled = $true }
 })
