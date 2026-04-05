@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V30 - BẢN ÉP XUNG TỐC ĐỘ (WIMLIB C/C++)
-# Tính năng: Tự tải Wimlib, Inject file siêu tốc 2s, Fix hoàn toàn lỗi Echo.
+# VIETTOOLBOX V31 - WINTOHDD CLONE (SMART WIPE & C/C++ WIMLIB)
+# Tính năng: Không cần xả nén ra USB, Dùng trực tiếp ổ C, Không Format cục súc.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,7 +13,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $MaXAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox V30 - Ép Xung C/C++" Height="680" Width="640" 
+        Title="VietToolbox V31 - Smart Wipe Engine" Height="680" Width="640" 
         WindowStartupLocation="CenterScreen" Background="#0A0A0A">
     <Window.Resources>
         <Style x:Key="ModernBtn" TargetType="Button">
@@ -26,8 +26,8 @@ $MaXAML = @"
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="VIETTOOLBOX V30" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
-            <TextBlock Text="LÕI WIMLIB C/C++ SIÊU TỐC - FULL AUTO GHOST" FontSize="11" Foreground="#555"/>
+            <TextBlock Text="VIETTOOLBOX V31" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
+            <TextBlock Text="XÓA RÁC THÔNG MINH - KHÔNG CẦN TRỐNG USB - LÕI C/C++" FontSize="11" Foreground="#555"/>
         </StackPanel>
         
         <StackPanel Grid.Row="1" Margin="0,0,0,12"><TextBlock Text="Tệp tin Windows (.wim / .esd / .iso):" Foreground="#888"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions><TextBox Name="txtWim" Background="#111" Foreground="White" IsReadOnly="True" Height="32" Padding="8,0"/><Button Name="btnWim" Grid.Column="1" Content="CHỌN FILE" Style="{StaticResource ModernBtn}" Margin="10,0,0,0"/></Grid></StackPanel>
@@ -44,7 +44,7 @@ $MaXAML = @"
             </StackPanel>
         </Grid>
         
-        <StackPanel Grid.Row="4"><ProgressBar Name="pgBar" Height="8" Background="#111" Foreground="#00adb5" BorderThickness="0" Margin="0,0,0,10"/><TextBlock Name="lblStatus" Text="Trạng thái: Sẵn sàng. (Lưu ý: Không để bộ cài ở ổ C)" Foreground="#666" HorizontalAlignment="Center" FontSize="11"/></StackPanel>
+        <StackPanel Grid.Row="4"><ProgressBar Name="pgBar" Height="8" Background="#111" Foreground="#00adb5" BorderThickness="0" Margin="0,0,0,10"/><TextBlock Name="lblStatus" Text="Trạng thái: Sẵn sàng." Foreground="#666" HorizontalAlignment="Center" FontSize="11"/></StackPanel>
         
         <Button Name="btnStart" Grid.Row="6" Content="KÍCH HOẠT CÀI ĐẶT" Style="{StaticResource ModernBtn}" Height="60" Background="#D32F2F" FontSize="18" IsEnabled="False"/>
     </Grid>
@@ -65,10 +65,6 @@ $btnWim.Add_Click({
     $fd = New-Object Microsoft.Win32.OpenFileDialog; $fd.Filter = "Windows Image|*.wim;*.esd;*.swm;*.iso"
     if ($fd.ShowDialog()) {
         $duongDanFile = $fd.FileName
-        if ($duongDanFile.StartsWith("C:\", [System.StringComparison]::OrdinalIgnoreCase)) {
-            [System.Windows.MessageBox]::Show("CẢNH BÁO: Không được để file bộ cài trên ổ C vì ổ C sẽ bị format. Xin chọn ổ khác!", "Cảnh báo", 0, 48)
-            return
-        }
         $duoiFile = [System.IO.Path]::GetExtension($duongDanFile).ToLower()
         $cmbIndex.Items.Clear(); $btnStart.IsEnabled = $false
 
@@ -107,18 +103,19 @@ $btnStart.Add_Click({
             while ($true) { $st = manage-bde -status C:; if ($st -like "*Fully Decrypted*" -or $st -like "*None*") { break }; Start-Sleep -Seconds 2 }
         }
 
-        $thuMucChuaIso = [System.IO.Path]::GetDirectoryName($txtWim.Text)
+        $bootDir = "C:\VietBoot"
+        if (!(Test-Path $bootDir)) { New-Item $bootDir -ItemType Directory -Force | Out-Null }
         
-        # --- LƯU TRỮ CUSTOM DRIVER (NẾU CÓ) ---
+        # --- LƯU TRỮ CUSTOM DRIVER VÀO VÙNG AN TOÀN Ổ C ---
         if (![string]::IsNullOrEmpty($txtDriver.Text)) {
-            $lblStatus.Text = "Đang chép Driver tùy chọn vào bệ phóng..."; LamMoi-GiaoDien
-            Copy-Item -Path "$($txtDriver.Text)\*" -Destination "$thuMucChuaIso\VietBoot_CustomDrivers" -Recurse -Force
+            $lblStatus.Text = "Đang chép Driver tùy chọn vào vùng an toàn..."; LamMoi-GiaoDien
+            Copy-Item -Path "$($txtDriver.Text)\*" -Destination "$bootDir\VietBoot_CustomDrivers" -Recurse -Force
         }
 
-        # --- SAO LƯU WIFI / DRIVER ---
+        # --- SAO LƯU WIFI / DRIVER VÀO VÙNG AN TOÀN Ổ C ---
         if ($chkWifiBackup.IsChecked) {
             $lblStatus.Text = "Đang sao lưu Driver & cấu hình Wi-Fi..."; $pgBar.Value = 10; LamMoi-GiaoDien
-            $thuMucBackup = "$thuMucChuaIso\VietBoot_WifiBackup"
+            $thuMucBackup = "$bootDir\VietBoot_WifiBackup"
             New-Item "$thuMucBackup\Drivers" -ItemType Directory -Force | Out-Null
             New-Item "$thuMucBackup\Profiles" -ItemType Directory -Force | Out-Null
             cmd.exe /c "netsh wlan export profile key=clear folder=`"$thuMucBackup\Profiles`"" | Out-Null
@@ -126,10 +123,8 @@ $btnStart.Add_Click({
         }
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
-        $bootDir = "C:\VietBoot"
-        New-Item $bootDir -ItemType Directory -Force | Out-Null
 
-        # --- TẢI WIMLIB C/C++ (SIÊU TỐC) ---
+        # --- TẢI WIMLIB C/C++ ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.4-windows-x86_64-bin\wimlib-imagex.exe"
         if (!(Test-Path $fileExeWimlib)) {
@@ -143,15 +138,17 @@ $btnStart.Add_Click({
         $wimPathHost = $txtWim.Text
         $wimFileName = [System.IO.Path]::GetFileName($txtWim.Text)
 
+        # XỬ LÝ ISO: Trích xuất thẳng vào C:\VietBoot, không dùng dung lượng USB
         if ($duoiFileDauVao -eq ".iso") {
-            $lblStatus.Text = "Đang trích xuất file bộ cài từ ISO..."; $pgBar.Value = 20; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang kéo bộ cài từ ISO vào vùng an toàn (Sẽ mất vài phút)..."; $pgBar.Value = 20; LamMoi-GiaoDien
             $mountKetQua = Mount-DiskImage -ImagePath $txtWim.Text -PassThru -NoDriveLetter:$false
             $oDiaAao = ($mountKetQua | Get-Volume).DriveLetter
             $duongDanWimTrongIso = "$oDiaAao`:\sources\install.wim"
             $duoiXuat = ".wim"
             if (!(Test-Path $duongDanWimTrongIso)) { $duongDanWimTrongIso = "$oDiaAao`:\sources\install.esd"; $duoiXuat = ".esd" }
+            
             $wimFileName = "install_extracted$duoiXuat"
-            $wimPathHost = "$thuMucChuaIso\$wimFileName"
+            $wimPathHost = "$bootDir\$wimFileName"
             Copy-Item $duongDanWimTrongIso $wimPathHost -Force
             Dismount-DiskImage -ImagePath $txtWim.Text | Out-Null
         }
@@ -171,20 +168,20 @@ $btnStart.Add_Click({
             Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Hidden
         }
 
+        if (!$timThayRe) { throw "Lỗi nghiêm trọng: Không tìm thấy WinRE!" }
+
         $sdiSearchList = @("C:\Windows\Boot\EFI\boot.sdi", "C:\Windows\Boot\PCAT\boot.sdi", "C:\Windows\System32\Recovery\boot.sdi")
         $foundSdi = $false
         foreach ($path in $sdiSearchList) {
             if (Test-Path $path) { takeown /f $path /a | Out-Null; icacls $path /grant Administrators:F | Out-Null; Copy-Item $path "$bootDir\boot.sdi" -Force -ErrorAction SilentlyContinue; $foundSdi = $true; break }
         }
 
-        # --- CHUẨN BỊ FILE CẤU HÌNH CHO WIMLIB ---
+        # --- CHUẨN BỊ FILE CẤU HÌNH ---
         $lblStatus.Text = "Đang chuẩn bị kịch bản tiêm bộ nhớ..."; $pgBar.Value = 40; LamMoi-GiaoDien
         $thuMucTam = "C:\VietBoot\TempConf"; New-Item $thuMucTam -ItemType Directory -Force | Out-Null
         
-        # 1. winpeshl.ini
         "[LaunchApps]`ncmd.exe, /c %SYSTEMROOT%\System32\startnet.cmd" | Out-File "$thuMucTam\winpeshl.ini" -Encoding ASCII
         
-        # 2. unattend.xml
         @"
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend">
@@ -194,7 +191,6 @@ $btnStart.Add_Click({
 <AutoLogon><Enabled>true</Enabled><Username>Admin</Username></AutoLogon></component></settings></unattend>
 "@ | Out-File "$thuMucTam\unattend.xml" -Encoding UTF8
 
-        # 3. SetupComplete.cmd
         @"
 @echo off
 powershell -NoProfile -Command "Set-LocalUser -Name 'Admin' -PasswordNeverExpires `$true"
@@ -207,7 +203,6 @@ rd /s /q "C:\VietBoot"
 del "%~f0"
 "@ | Out-File "$thuMucTam\SetupComplete.cmd" -Encoding ASCII
 
-        # 4. AutoAnyDesk.cmd
         @"
 @echo off
 title Setup AnyDesk
@@ -227,7 +222,6 @@ start "" "C:\Users\Public\Desktop\AnyDesk.exe"
 del "%~f0"
 "@ | Out-File "$thuMucTam\AutoAnyDesk.cmd" -Encoding ASCII
 
-        # 5. startnet.cmd
         $anyDeskLichTrinh = ""
         if ($chkAnydesk.IsChecked) {
             $anyDeskLichTrinh = @"
@@ -238,40 +232,42 @@ if exist X:\Windows\System32\AutoAnyDesk.cmd (
 "@
         }
 
+        # KỊCH BẢN SMART WIPE (Xóa rác thay vì Format)
         @"
 @echo off
 wpeinit
 set "WIM_NAME=$wimFileName"
 set "WIM_PATH="
 echo Dang tim file: %WIM_NAME%...
-for %%i in (D E F G H I J K L M N O P) do (
+for %%i in (C D E F G H I J K L M N O P) do (
     if exist "%%i:\%WIM_NAME%" set "WIM_PATH=%%i:\%WIM_NAME%"
     if exist "%%i:\VietBoot\%WIM_NAME%" set "WIM_PATH=%%i:\VietBoot\%WIM_NAME%"
     if exist "%%i:\*\%WIM_NAME%" for /d %%d in (%%i:\*) do if exist "%%d\%WIM_NAME%" set "WIM_PATH=%%d\%WIM_NAME%"
 )
 if not defined WIM_PATH ( echo [LOI] Khong tim thay file $wimFileName. & pause & exit )
 
-for %%A in ("%WIM_PATH%") do set "WIM_DIR=%%~dpA"
-
-echo Dang format o C...
-format C: /fs:ntfs /q /y >nul
+echo Dang don dep o C (Khong Format - Bao toan vung an toan VietBoot)...
+for /d %%i in (C:\*) do (
+    if /i not "%%~nxi"=="VietBoot" rd /s /q "%%i" >nul 2>&1
+)
+del /f /q /a C:\*.* >nul 2>&1
 
 echo Dang Apply Windows (Index $idx) tu %WIM_PATH%...
 dism /Apply-Image /ImageFile:"%WIM_PATH%" /Index:$idx /ApplyDir:C:\
 
-if exist "%WIM_DIR%VietBoot_CustomDrivers" (
+if exist "C:\VietBoot\VietBoot_CustomDrivers" (
     echo Dang nap Driver tuy chon...
-    dism /Image:C:\ /Add-Driver /Driver:"%WIM_DIR%VietBoot_CustomDrivers" /Recurse >nul
+    dism /Image:C:\ /Add-Driver /Driver:"C:\VietBoot\VietBoot_CustomDrivers" /Recurse >nul
 )
 
-if exist "%WIM_DIR%VietBoot_WifiBackup\Drivers" (
+if exist "C:\VietBoot\VietBoot_WifiBackup\Drivers" (
     echo Dang khoi phuc Driver mang sao luu...
-    dism /Image:C:\ /Add-Driver /Driver:"%WIM_DIR%VietBoot_WifiBackup\Drivers" /Recurse >nul
+    dism /Image:C:\ /Add-Driver /Driver:"C:\VietBoot\VietBoot_WifiBackup\Drivers" /Recurse >nul
 )
 
-if exist "%WIM_DIR%VietBoot_WifiBackup\Profiles\*.xml" (
+if exist "C:\VietBoot\VietBoot_WifiBackup\Profiles\*.xml" (
     mkdir C:\Windows\Setup\Scripts\WifiProfiles >nul 2>nul
-    xcopy "%WIM_DIR%VietBoot_WifiBackup\Profiles\*.xml" "C:\Windows\Setup\Scripts\WifiProfiles\" /Y >nul
+    xcopy "C:\VietBoot\VietBoot_WifiBackup\Profiles\*.xml" "C:\Windows\Setup\Scripts\WifiProfiles\" /Y >nul
 )
 
 echo Dang nhung khao sat Offline Registry de triet tieu Windows 11 25H2+...
