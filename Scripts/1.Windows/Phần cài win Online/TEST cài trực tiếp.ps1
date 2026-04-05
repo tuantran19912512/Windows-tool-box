@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V31.4 - FULL C/C++ ENGINE
-# Tính năng: Dùng Wimlib trích xuất WinRE trong 3 giây (Bỏ qua DISM Mount chậm chạp)
+# VIETTOOLBOX V31.5 - BẢN HIỆN HÌNH (SHOW ALL LOGS)
+# Tính năng: Bật cửa sổ Console cho mọi tiến trình nặng để dễ dàng theo dõi.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -9,10 +9,11 @@ if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]:
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
+# --- GIAO DIỆN WPF MODERN (DARK THEME) ---
 $MaXAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox V31.4 - Full C/C++ Engine" Height="680" Width="640" 
+        Title="VietToolbox V31.5 - Bản Hiện Hình Console" Height="680" Width="640" 
         WindowStartupLocation="CenterScreen" Background="#0A0A0A">
     <Window.Resources>
         <Style x:Key="ModernBtn" TargetType="Button">
@@ -25,8 +26,8 @@ $MaXAML = @"
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="VIETTOOLBOX V31.4" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
-            <TextBlock Text="SMART WIPE - LÕI C/C++ TOÀN DIỆN (TRÍCH XUẤT &amp; NHÚNG SIÊU TỐC)" FontSize="11" Foreground="#555"/>
+            <TextBlock Text="VIETTOOLBOX V31.5" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
+            <TextBlock Text="SMART WIPE - LÕI C/C++ - HIỂN THỊ MỌI TIẾN TRÌNH" FontSize="11" Foreground="#555"/>
         </StackPanel>
         
         <StackPanel Grid.Row="1" Margin="0,0,0,12"><TextBlock Text="Tệp tin Windows (.wim / .esd / .iso):" Foreground="#888"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions><TextBox Name="txtWim" Background="#111" Foreground="White" IsReadOnly="True" Height="32" Padding="8,0"/><Button Name="btnWim" Grid.Column="1" Content="CHỌN FILE" Style="{StaticResource ModernBtn}" Margin="10,0,0,0"/></Grid></StackPanel>
@@ -111,17 +112,18 @@ $btnStart.Add_Click({
         }
 
         if ($chkWifiBackup.IsChecked) {
-            $lblStatus.Text = "Đang sao lưu Driver & cấu hình Wi-Fi..."; $pgBar.Value = 10; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang mở cửa sổ sao lưu Driver & cấu hình Wi-Fi..."; $pgBar.Value = 10; LamMoi-GiaoDien
             $thuMucBackup = "$bootDir\VietBoot_WifiBackup"
             New-Item "$thuMucBackup\Drivers" -ItemType Directory -Force | Out-Null
             New-Item "$thuMucBackup\Profiles" -ItemType Directory -Force | Out-Null
             cmd.exe /c "netsh wlan export profile key=clear folder=`"$thuMucBackup\Profiles`"" | Out-Null
-            Start-Process dism.exe "/online /export-driver /destination:`"$thuMucBackup\Drivers`"" -Wait -WindowStyle Hidden
+            # Chạy DISM ở chế độ Cửa sổ (WindowStyle Normal)
+            Start-Process dism.exe "/online /export-driver /destination:`"$thuMucBackup\Drivers`"" -Wait -WindowStyle Normal
         }
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
 
-        # --- CHUẨN BỊ WIMLIB C/C++ SỚM ĐỂ DÙNG CHO CẢ VIỆC TRÍCH XUẤT ---
+        # --- CHUẨN BỊ WIMLIB C/C++ ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.5-windows-x86_64-bin\wimlib-imagex.exe"
         $fileWimlibLocal = "$PSScriptRoot\wimlib-imagex.exe"
@@ -132,10 +134,11 @@ $btnStart.Add_Click({
             Copy-Item $fileWimlibLocal $fileExeWimlib -Force
         }
         elseif (!(Test-Path $fileExeWimlib)) {
-            $lblStatus.Text = "Đang thử lấy lõi Wimlib 1.14.5 (Sẽ tự bỏ qua nếu lỗi mạng)..."; $pgBar.Value = 15; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang bật cửa sổ tải lõi Wimlib 1.14.5..."; $pgBar.Value = 15; LamMoi-GiaoDien
             if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
             $lenhTai = "powershell -NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://wimlib.net/downloads/wimlib-1.14.5-windows-x86_64-bin.zip' -OutFile 'C:\VietBoot\wimlib.zip' -UseBasicParsing -TimeoutSec 10`"; powershell -NoProfile -Command `"if (Test-Path 'C:\VietBoot\wimlib.zip') { Expand-Archive -Path 'C:\VietBoot\wimlib.zip' -DestinationPath 'C:\VietBoot\wimlib' -Force }`""
-            $tienTrinh = Start-Process cmd.exe -ArgumentList "/c $lenhTai" -PassThru -WindowStyle Hidden
+            # Bật Console tải file (Normal)
+            $tienTrinh = Start-Process cmd.exe -ArgumentList "/c $lenhTai" -PassThru -WindowStyle Normal
             while (!$tienTrinh.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 200 }
         }
 
@@ -167,9 +170,10 @@ $btnStart.Add_Click({
         if (!$timThayRe) {
             # --- TRÍCH XUẤT WINRE SIÊU TỐC BẰNG WIMLIB ---
             if ($suDungWimlib) {
-                $lblStatus.Text = "Không có WinRE. Đang dùng C/C++ kéo WinRE ra (Khoảng 3 giây)..."; LamMoi-GiaoDien
+                $lblStatus.Text = "Đang bật CMD trích xuất WinRE bằng lõi C/C++..."; LamMoi-GiaoDien
                 $lenhExtract = "/c `"`"$fileExeWimlib`" extract `"$wimPathHost`" $idx `"\Windows\System32\Recovery\WinRE.wim`" --dest-dir=`"$bootDir`" --no-acls`""
-                $p = Start-Process cmd.exe -ArgumentList $lenhExtract -PassThru -WindowStyle Hidden
+                # Bật Console Extract (Normal)
+                $p = Start-Process cmd.exe -ArgumentList $lenhExtract -PassThru -WindowStyle Normal
                 while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 200 }
                 
                 if (Test-Path "$bootDir\WinRE.wim") { 
@@ -179,13 +183,15 @@ $btnStart.Add_Click({
             } 
             # --- NẾU WIMLIB XỊT THÌ MỚI QUAY LẠI CÁI MÁNG LỢN DISM ---
             else {
-                $lblStatus.Text = "Không có WinRE. Đang dùng DISM trích xuất (Có thể mất 5-10 phút)..."; LamMoi-GiaoDien
+                $lblStatus.Text = "Đang bật cửa sổ DISM trích xuất (Có thể mất 5-10 phút)..."; LamMoi-GiaoDien
                 $mountGoc = "C:\MountGoc"; if (!(Test-Path $mountGoc)) { New-Item $mountGoc -ItemType Directory -Force | Out-Null }
-                $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Hidden
+                # Bật Console DISM Mount (Normal)
+                $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Normal
                 while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
                 
                 if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim") { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
-                Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Hidden
+                # Bật Console DISM Unmount (Normal)
+                Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Normal
             }
         }
 
@@ -319,7 +325,7 @@ wpeutil reboot
 
         # --- TIÊM DỮ LIỆU ---
         if ($suDungWimlib) {
-            $lblStatus.Text = "Đang tiêm dữ liệu vào WinRE bằng lõi WimLib (Khoảng 2s)..."; $pgBar.Value = 70; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang mở cửa sổ tiêm dữ liệu vào WinRE bằng lõi WimLib..."; $pgBar.Value = 70; LamMoi-GiaoDien
             $lenhUpdate = @(
                 "add `"$thuMucTam\winpeshl.ini`" `"\Windows\System32\winpeshl.ini`"",
                 "add `"$thuMucTam\unattend.xml`" `"\Windows\System32\unattend.xml`"",
@@ -330,13 +336,15 @@ wpeutil reboot
             
             $lenhUpdate -join "`r`n" | Out-File "$thuMucTam\wimlib_update.txt" -Encoding utf8
             $lenhTiem = "/c `"`"$fileExeWimlib`" update `"$bootDir\boot.wim`" 1 < `"$thuMucTam\wimlib_update.txt`"`""
-            Start-Process cmd.exe -ArgumentList $lenhTiem -Wait -WindowStyle Hidden
+            # Bật Console Update (Normal)
+            Start-Process cmd.exe -ArgumentList $lenhTiem -Wait -WindowStyle Normal
         } else {
-            $lblStatus.Text = "Đang chuyển sang lõi DISM Native (Sẽ mất 1-2 phút)..."; $pgBar.Value = 70; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang mở cửa sổ DISM Native để chèn dữ liệu..."; $pgBar.Value = 70; LamMoi-GiaoDien
             $mountTiem = "C:\MountTiem"
             if (!(Test-Path $mountTiem)) { New-Item $mountTiem -ItemType Directory -Force | Out-Null }
             
-            $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$bootDir\boot.wim`" /Index:1 /MountDir:$mountTiem" -PassThru -WindowStyle Hidden
+            # Bật Console DISM Mount (Normal)
+            $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$bootDir\boot.wim`" /Index:1 /MountDir:$mountTiem" -PassThru -WindowStyle Normal
             while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
             
             Copy-Item "$thuMucTam\winpeshl.ini" "$mountTiem\Windows\System32\winpeshl.ini" -Force
@@ -345,8 +353,9 @@ wpeutil reboot
             Copy-Item "$thuMucTam\startnet.cmd" "$mountTiem\Windows\System32\startnet.cmd" -Force
             if ($chkAnydesk.IsChecked) { Copy-Item "$thuMucTam\AutoAnyDesk.cmd" "$mountTiem\Windows\System32\AutoAnyDesk.cmd" -Force }
             
-            $lblStatus.Text = "Đang lưu cấu hình DISM..."; LamMoi-GiaoDien
-            $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mountTiem /Commit" -PassThru -WindowStyle Hidden
+            $lblStatus.Text = "Đang mở cửa sổ lưu cấu hình DISM..."; LamMoi-GiaoDien
+            # Bật Console DISM Commit (Normal)
+            $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mountTiem /Commit" -PassThru -WindowStyle Normal
             while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
         }
 
