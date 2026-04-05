@@ -138,7 +138,7 @@ $MaGiaoDien = @"
         </Grid>
 
         <UniformGrid Grid.Row="4" Rows="1" Columns="3" Margin="0,15">
-            <CheckBox Name="HopThuoc" Content="💊 Kích hoạt Ohook (Gist Silent)" IsChecked="True" FontWeight="Bold" Foreground="#D84315" FontSize="14"/>
+            <CheckBox Name="HopThuoc" Content="💊 Kích hoạt Ohook (Gist Silent)" IsChecked="False" FontWeight="Bold" Foreground="#D84315" FontSize="14"/>
             <CheckBox Name="HopLoiTat" Content="📌 Đưa Shortcut ra Desktop" IsChecked="True" FontWeight="Bold" Foreground="#1565C0" FontSize="14"/>
             <CheckBox Name="HopGiuFile" Content="💾 Giữ lại file nén (.zip) sau khi cài" IsChecked="False" FontWeight="Bold" FontSize="14"/>
         </UniformGrid>
