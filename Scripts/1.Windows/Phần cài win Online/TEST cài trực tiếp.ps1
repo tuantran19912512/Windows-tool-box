@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V31.5 - BẢN HIỆN HÌNH (SHOW ALL LOGS)
-# Tính năng: Bật cửa sổ Console cho mọi tiến trình nặng để dễ dàng theo dõi.
+# VIETTOOLBOX V31.6 - BẢN HOÀN MỸ CUỐI CÙNG (CURL ENGINE)
+# Tính năng: Dùng curl.exe xuyên tường lửa, tải siêu mượt, không văng lỗi tải.
 # ==============================================================================
 
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -13,7 +13,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $MaXAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox V31.5 - Bản Hiện Hình Console" Height="680" Width="640" 
+        Title="VietToolbox V31.6 - Đỉnh Cao Tự Động Hóa" Height="680" Width="640" 
         WindowStartupLocation="CenterScreen" Background="#0A0A0A">
     <Window.Resources>
         <Style x:Key="ModernBtn" TargetType="Button">
@@ -26,8 +26,8 @@ $MaXAML = @"
         <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
         
         <StackPanel Grid.Row="0" Margin="0,0,0,20">
-            <TextBlock Text="VIETTOOLBOX V31.5" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
-            <TextBlock Text="SMART WIPE - LÕI C/C++ - HIỂN THỊ MỌI TIẾN TRÌNH" FontSize="11" Foreground="#555"/>
+            <TextBlock Text="VIETTOOLBOX V31.6" FontSize="28" FontWeight="Black" Foreground="#00adb5"/>
+            <TextBlock Text="SMART WIPE - LÕI C/C++ - VƯỢT TƯỜNG LỬA BẰNG CURL" FontSize="11" Foreground="#555"/>
         </StackPanel>
         
         <StackPanel Grid.Row="1" Margin="0,0,0,12"><TextBlock Text="Tệp tin Windows (.wim / .esd / .iso):" Foreground="#888"/><Grid><Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="90"/></Grid.ColumnDefinitions><TextBox Name="txtWim" Background="#111" Foreground="White" IsReadOnly="True" Height="32" Padding="8,0"/><Button Name="btnWim" Grid.Column="1" Content="CHỌN FILE" Style="{StaticResource ModernBtn}" Margin="10,0,0,0"/></Grid></StackPanel>
@@ -62,7 +62,7 @@ $pgBar = $CuaSo.FindName("pgBar"); $lblStatus = $CuaSo.FindName("lblStatus"); $b
 function LamMoi-GiaoDien { [System.Windows.Forms.Application]::DoEvents(); [System.Windows.Threading.Dispatcher]::CurrentDispatcher.Invoke([Action]{}, [System.Windows.Threading.DispatcherPriority]::Background) }
 
 $btnWim.Add_Click({
-    $fd = New-Object Microsoft.Win32.OpenFileDialog; $fd.Filter = "Windows Image|*.wim;*.esd;*.swm;*.iso"
+    $fd = New-Object Microsoft.Win32.OpenFileDialog; $fd.Filter = "Tệp tin Windows Image|*.wim;*.esd;*.swm;*.iso"
     if ($fd.ShowDialog()) {
         $duongDanFile = $fd.FileName
         $duoiFile = [System.IO.Path]::GetExtension($duongDanFile).ToLower()
@@ -117,13 +117,12 @@ $btnStart.Add_Click({
             New-Item "$thuMucBackup\Drivers" -ItemType Directory -Force | Out-Null
             New-Item "$thuMucBackup\Profiles" -ItemType Directory -Force | Out-Null
             cmd.exe /c "netsh wlan export profile key=clear folder=`"$thuMucBackup\Profiles`"" | Out-Null
-            # Chạy DISM ở chế độ Cửa sổ (WindowStyle Normal)
             Start-Process dism.exe "/online /export-driver /destination:`"$thuMucBackup\Drivers`"" -Wait -WindowStyle Normal
         }
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
 
-        # --- CHUẨN BỊ WIMLIB C/C++ ---
+        # --- TẢI WIMLIB C/C++ BẰNG VŨ KHÍ CURL ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.5-windows-x86_64-bin\wimlib-imagex.exe"
         $fileWimlibLocal = "$PSScriptRoot\wimlib-imagex.exe"
@@ -134,10 +133,14 @@ $btnStart.Add_Click({
             Copy-Item $fileWimlibLocal $fileExeWimlib -Force
         }
         elseif (!(Test-Path $fileExeWimlib)) {
-            $lblStatus.Text = "Đang bật cửa sổ tải lõi Wimlib 1.14.5..."; $pgBar.Value = 15; LamMoi-GiaoDien
+            $lblStatus.Text = "Đang bật cửa sổ tải lõi Wimlib 1.14.5 bằng Curl..."; $pgBar.Value = 15; LamMoi-GiaoDien
             if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
-            $lenhTai = "powershell -NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://wimlib.net/downloads/wimlib-1.14.5-windows-x86_64-bin.zip' -OutFile 'C:\VietBoot\wimlib.zip' -UseBasicParsing -TimeoutSec 10`"; powershell -NoProfile -Command `"if (Test-Path 'C:\VietBoot\wimlib.zip') { Expand-Archive -Path 'C:\VietBoot\wimlib.zip' -DestinationPath 'C:\VietBoot\wimlib' -Force }`""
-            # Bật Console tải file (Normal)
+            
+            # Khai báo cấu trúc lệnh curl kết hợp PowerShell giải nén
+            $matNaChrome = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+            $linkTai = "https://wimlib.net/downloads/wimlib-1.14.5-windows-x86_64-bin.zip"
+            $lenhTai = "curl.exe -L -A `"$matNaChrome`" -o `"C:\VietBoot\wimlib.zip`" `"$linkTai`" && powershell -NoProfile -Command `"if (Test-Path 'C:\VietBoot\wimlib.zip') { Expand-Archive -Path 'C:\VietBoot\wimlib.zip' -DestinationPath 'C:\VietBoot\wimlib' -Force }`""
+            
             $tienTrinh = Start-Process cmd.exe -ArgumentList "/c $lenhTai" -PassThru -WindowStyle Normal
             while (!$tienTrinh.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 200 }
         }
@@ -172,7 +175,6 @@ $btnStart.Add_Click({
             if ($suDungWimlib) {
                 $lblStatus.Text = "Đang bật CMD trích xuất WinRE bằng lõi C/C++..."; LamMoi-GiaoDien
                 $lenhExtract = "/c `"`"$fileExeWimlib`" extract `"$wimPathHost`" $idx `"\Windows\System32\Recovery\WinRE.wim`" --dest-dir=`"$bootDir`" --no-acls`""
-                # Bật Console Extract (Normal)
                 $p = Start-Process cmd.exe -ArgumentList $lenhExtract -PassThru -WindowStyle Normal
                 while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 200 }
                 
@@ -181,16 +183,14 @@ $btnStart.Add_Click({
                     $timThayRe = $true 
                 }
             } 
-            # --- NẾU WIMLIB XỊT THÌ MỚI QUAY LẠI CÁI MÁNG LỢN DISM ---
+            # --- NẾU WIMLIB XỊT THÌ MỚI QUAY LẠI DISM ---
             else {
                 $lblStatus.Text = "Đang bật cửa sổ DISM trích xuất (Có thể mất 5-10 phút)..."; LamMoi-GiaoDien
                 $mountGoc = "C:\MountGoc"; if (!(Test-Path $mountGoc)) { New-Item $mountGoc -ItemType Directory -Force | Out-Null }
-                # Bật Console DISM Mount (Normal)
                 $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$wimPathHost`" /Index:$idx /MountDir:$mountGoc /ReadOnly" -PassThru -WindowStyle Normal
                 while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
                 
                 if (Test-Path "$mountGoc\Windows\System32\Recovery\WinRE.wim") { Copy-Item "$mountGoc\Windows\System32\Recovery\WinRE.wim" "$bootDir\boot.wim" -Force; $timThayRe = $true }
-                # Bật Console DISM Unmount (Normal)
                 Start-Process dism.exe "/Unmount-Image /MountDir:$mountGoc /Discard" -Wait -WindowStyle Normal
             }
         }
@@ -232,7 +232,7 @@ del "%~f0"
 
         @"
 @echo off
-title Setup AnyDesk
+title Cai dat AnyDesk
 color 0B
 echo ===================================================
 echo   DANG KIEM TRA KET NOI MANG...
@@ -244,7 +244,7 @@ cls
 echo ===================================================
 echo   DA CO MANG! DANG TAI ANYDESK VE DESKTOP...
 echo ===================================================
-powershell -NoProfile -Command "Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile 'C:\Users\Public\Desktop\AnyDesk.exe' -UseBasicParsing"
+curl.exe -L -A "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36" -o "C:\Users\Public\Desktop\AnyDesk.exe" "https://download.anydesk.com/AnyDesk.exe"
 start "" "C:\Users\Public\Desktop\AnyDesk.exe"
 del "%~f0"
 "@ | Out-File "$thuMucTam\AutoAnyDesk.cmd" -Encoding ASCII
@@ -336,14 +336,12 @@ wpeutil reboot
             
             $lenhUpdate -join "`r`n" | Out-File "$thuMucTam\wimlib_update.txt" -Encoding utf8
             $lenhTiem = "/c `"`"$fileExeWimlib`" update `"$bootDir\boot.wim`" 1 < `"$thuMucTam\wimlib_update.txt`"`""
-            # Bật Console Update (Normal)
             Start-Process cmd.exe -ArgumentList $lenhTiem -Wait -WindowStyle Normal
         } else {
             $lblStatus.Text = "Đang mở cửa sổ DISM Native để chèn dữ liệu..."; $pgBar.Value = 70; LamMoi-GiaoDien
             $mountTiem = "C:\MountTiem"
             if (!(Test-Path $mountTiem)) { New-Item $mountTiem -ItemType Directory -Force | Out-Null }
             
-            # Bật Console DISM Mount (Normal)
             $p = Start-Process dism.exe "/Mount-Image /ImageFile:`"$bootDir\boot.wim`" /Index:1 /MountDir:$mountTiem" -PassThru -WindowStyle Normal
             while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
             
@@ -354,7 +352,6 @@ wpeutil reboot
             if ($chkAnydesk.IsChecked) { Copy-Item "$thuMucTam\AutoAnyDesk.cmd" "$mountTiem\Windows\System32\AutoAnyDesk.cmd" -Force }
             
             $lblStatus.Text = "Đang mở cửa sổ lưu cấu hình DISM..."; LamMoi-GiaoDien
-            # Bật Console DISM Commit (Normal)
             $p = Start-Process dism.exe "/Unmount-Image /MountDir:$mountTiem /Commit" -PassThru -WindowStyle Normal
             while (!$p.HasExited) { LamMoi-GiaoDien; Start-Sleep -Milliseconds 500 }
         }
@@ -362,11 +359,11 @@ wpeutil reboot
         # --- ĐĂNG KÝ BCD ---
         $lblStatus.Text = "Đang cấu hình phân vùng khởi động..."; $pgBar.Value = 90; LamMoi-GiaoDien
         $ramGuid = "{$( [guid]::NewGuid().ToString() )}"
-        bcdedit /create $ramGuid /d "VietToolbox Options" /device | Out-Null
+        bcdedit /create $ramGuid /d "Tuy chon VietToolbox" /device | Out-Null
         bcdedit /set $ramGuid ramdisksdidevice partition=C: | Out-Null
         bcdedit /set $ramGuid ramdisksdipath "\VietBoot\boot.sdi" | Out-Null
         $bootGuid = "{$( [guid]::NewGuid().ToString() )}"
-        bcdedit /create $bootGuid /d "VietToolbox Ghost Installer" /application osloader | Out-Null
+        bcdedit /create $bootGuid /d "Trinh cai dat tu dong VietToolbox" /application osloader | Out-Null
         bcdedit /set $bootGuid device "ramdisk=[C:]\VietBoot\boot.wim,$ramGuid" | Out-Null
         bcdedit /set $bootGuid osdevice "ramdisk=[C:]\VietBoot\boot.wim,$ramGuid" | Out-Null
         bcdedit /set $bootGuid path "\windows\system32\boot\winload.efi" | Out-Null
