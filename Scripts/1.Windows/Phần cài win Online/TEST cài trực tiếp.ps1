@@ -124,18 +124,36 @@ $btnStart.Add_Click({
 
         $idx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
 
-        # --- TẢI WIMLIB C/C++ (ĐÃ FIX TLS 1.2 CHỐNG TREO) ---
+        # --- TẢI WIMLIB C/C++ (XỬ LÝ TRIỆT ĐỂ TREO GUI & HỖ TRỢ OFFLINE) ---
         $thuMucWimlib = "C:\VietBoot\wimlib"
         $fileExeWimlib = "$thuMucWimlib\wimlib-1.14.4-windows-x86_64-bin\wimlib-imagex.exe"
-        if (!(Test-Path $fileExeWimlib)) {
-            $lblStatus.Text = "Đang tải công cụ nhúng siêu tốc (Wimlib)..."; $pgBar.Value = 15; LamMoi-GiaoDien
+        $fileWimlibLocal = "$PSScriptRoot\wimlib-imagex.exe"
+
+        # 1. Nếu có sẵn file wimlib-imagex.exe ở ngoài thì copy vào xài luôn (OFFLINE)
+        if (Test-Path $fileWimlibLocal) {
+            $lblStatus.Text = "Đã tìm thấy lõi Wimlib Offline, đang nạp..."; LamMoi-GiaoDien
             if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
-            try {
-                [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-                $ProgressPreference = 'SilentlyContinue'
-                Invoke-WebRequest -Uri "https://wimlib.net/downloads/wimlib-1.14.4-windows-x86_64-bin.zip" -OutFile "$bootDir\wimlib.zip" -UseBasicParsing -TimeoutSec 30
-                Expand-Archive -Path "$bootDir\wimlib.zip" -DestinationPath $thuMucWimlib -Force
-            } catch { throw "Lỗi tải Wimlib: $_" }
+            $fileExeWimlib = "$thuMucWimlib\wimlib-imagex.exe"
+            Copy-Item $fileWimlibLocal $fileExeWimlib -Force
+        }
+        # 2. Nếu không có sẵn thì mở luồng CMD phụ để tải (ONLINE)
+        elseif (!(Test-Path $fileExeWimlib)) {
+            $lblStatus.Text = "Đang mở luồng phụ tải Wimlib (Không lo treo máy)..."; $pgBar.Value = 15; LamMoi-GiaoDien
+            if (!(Test-Path $thuMucWimlib)) { New-Item $thuMucWimlib -ItemType Directory -Force | Out-Null }
+            
+            # Gói lệnh tải file và giải nén giao cho CMD xử lý
+            $lenhTai = "powershell -NoProfile -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Write-Host 'DANG TAI WIMLIB TU INTERNET... Vui long doi!'; Invoke-WebRequest -Uri 'https://wimlib.net/downloads/wimlib-1.14.4-windows-x86_64-bin.zip' -OutFile 'C:\VietBoot\wimlib.zip' -UseBasicParsing`"; powershell -NoProfile -Command `"Write-Host 'DANG GIAI NEN...'; Expand-Archive -Path 'C:\VietBoot\wimlib.zip' -DestinationPath 'C:\VietBoot\wimlib' -Force`""
+            
+            # Khởi chạy luồng phụ (hiện cửa sổ CMD để bạn dễ theo dõi mạng)
+            $tienTrinh = Start-Process cmd.exe -ArgumentList "/c $lenhTai" -PassThru -WindowStyle Normal
+            
+            # Vòng lặp này giúp giao diện Tool chính liên tục được làm mới (Không bao giờ bị Not Responding)
+            while (!$tienTrinh.HasExited) { 
+                LamMoi-GiaoDien
+                Start-Sleep -Milliseconds 200 
+            }
+
+            if (!(Test-Path $fileExeWimlib)) { throw "Tải Wimlib thất bại! Vui lòng tự tải file wimlib-imagex.exe ném vào cùng thư mục với Tool để chạy Offline." }
         }
 
         $duoiFileDauVao = [System.IO.Path]::GetExtension($txtWim.Text).ToLower()
