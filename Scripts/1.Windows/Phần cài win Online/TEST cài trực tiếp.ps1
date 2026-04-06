@@ -5,22 +5,42 @@
 $API_KEY = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String("QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR"))
 $csvUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/iso_list.csv"
 
-# --- 2. GIAO DIỆN XAML (Cập nhật thêm TextBlock hiển thị %) ---
+# Tải danh sách
+try {
+    $res = Invoke-WebRequest -Uri $csvUrl -UseBasicParsing
+    $raw = if ($res.Content -is [string]) { $res.Content } else { [System.Text.Encoding]::UTF8.GetString($res.Content) }
+    $ListWin = $raw | ConvertFrom-Csv | Where-Object { $_.Name -match "wim" -or $_.FileID -match "wim" }
+} catch { [System.Windows.MessageBox]::Show("Lỗi lấy danh sách!"); exit }
+
+# --- 2. GIAO DIỆN XAML (FIX CO DÃN) ---
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="WinDeploy Pro" Height="550" Width="420" Background="Transparent" AllowsTransparency="True" WindowStyle="None">
-    <Border CornerRadius="20" Background="#121212" BorderBrush="#00FF7F" BorderThickness="2">
+        Title="WinDeploy Master" SizeToContent="Height" Width="450" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen">
+    <Border CornerRadius="15" Background="#121212" BorderBrush="#00FF7F" BorderThickness="1.5">
         <Grid Margin="25">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
-            <TextBlock Grid.Row="0" Text="WINDOWS AUTO-DEPLOY" Foreground="#00FF7F" FontSize="22" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden"><StackPanel Name="ButtonContainer"/></ScrollViewer>
-            <StackPanel Grid.Row="2" Margin="0,15,0,0">
-                <DockPanel>
-                    <TextBlock Name="lblStatus" Text="Sẵn sàng..." Foreground="#00FF7F" FontSize="12"/>
-                    <TextBlock Name="lblPercent" Text="0%" Foreground="#00FF7F" FontSize="12" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
-                </DockPanel>
-                <ProgressBar Name="progBar" Height="12" Foreground="#00FF7F" Background="#222222" BorderThickness="0" Minimum="0" Maximum="100" Margin="0,5"/>
-                <Button Name="btnExit" Content="THOÁT" Margin="0,10,0,0" Height="30" Width="80" Background="Transparent" Foreground="#FF4D4D" BorderBrush="#FF4D4D" Cursor="Hand"/>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> <RowDefinition Height="Auto"/> </Grid.RowDefinitions>
+
+            <TextBlock Grid.Row="0" Text="WINDOWS AUTO-INSTALLER" Foreground="#00FF7F" FontSize="20" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+            
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" MaxHeight="300" Margin="0,5">
+                <StackPanel Name="ButtonContainer"/>
+            </ScrollViewer>
+
+            <StackPanel Grid.Row="2" Margin="0,10" Background="#1A1A1A" Name="StepPanel" Visibility="Collapsed">
+                <TextBlock Name="step1" Text="○ 1. Chuẩn bị phân vùng (EFI/RE)" Foreground="#888888" Margin="10,4" FontSize="11"/>
+                <TextBlock Name="step2" Text="○ 2. Tải bộ cài WIM từ Cloud" Foreground="#888888" Margin="10,4" FontSize="11"/>
+                <TextBlock Name="step3" Text="○ 3. Tạo kịch bản tự động bung Win" Foreground="#888888" Margin="10,4" FontSize="11"/>
+                <TextBlock Name="step4" Text="○ 4. Cấu hình Boot &amp; Restart" Foreground="#888888" Margin="10,4" FontSize="11"/>
+            </StackPanel>
+
+            <StackPanel Grid.Row="3" Margin="0,10,0,0">
+                <Grid Margin="0,0,0,5">
+                    <TextBlock Name="lblStatus" Text="Sẵn sàng..." Foreground="#00FF7F" FontSize="11"/>
+                    <TextBlock Name="lblPercent" Text="0%" Foreground="#00FF7F" FontSize="11" HorizontalAlignment="Right"/>
+                </Grid>
+                <ProgressBar Name="progBar" Height="8" Minimum="0" Maximum="100" Value="0" Foreground="#00FF7F" Background="#222222" BorderThickness="0"/>
+                <Button Name="btnExit" Content="THOÁT" Margin="0,15,0,0" Height="30" Width="100" Background="Transparent" Foreground="#FF4D4D" BorderBrush="#FF4D4D" Cursor="Hand"/>
             </StackPanel>
         </Grid>
     </Border>
@@ -33,73 +53,59 @@ $container = $window.FindName("ButtonContainer")
 $lblStatus = $window.FindName("lblStatus")
 $lblPercent = $window.FindName("lblPercent")
 $progBar = $window.FindName("progBar")
+$stepPanel = $window.FindName("StepPanel")
 
-# --- 3. HÀM TẢI FILE CÓ TIẾN TRÌNH (%) ---
-function Start-Deployment ($win) {
+# --- 3. HÀM CẬP NHẬT BƯỚC ---
+function Update-Step ($stepNum, $status) {
+    $txt = $window.FindName("step$stepNum")
+    if ($status -eq "Running") { $txt.Foreground = "#00FF7F"; $txt.Text = $txt.Text.Replace("○", "▶") + " (Đang chạy...)" }
+    if ($status -eq "Done") { $txt.Foreground = "#AAAAAA"; $txt.Text = $txt.Text.Split("(")[0].Replace("▶", "✅") }
+}
+
+# --- 4. LOGIC TRIỂN KHAI ---
+function Start-Deploy ($win) {
+    $stepPanel.Visibility = "Visible"
     $container.Children | ForEach-Object { $_.IsEnabled = $false }
-    $progBar.IsIndeterminate = $false
-    $progBar.Value = 0
-
-    # Lấy ổ đĩa chứa file tạm
-    $dataDrive = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Free -gt 10GB } | Select-Object -First 1).Name
+    $dataDrive = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Free -gt 8GB } | Select-Object -First 1).Name
     $wimPath = "$($dataDrive):\install.wim"
     $url = "https://www.googleapis.com/drive/v3/files/$($win.FileID)?alt=media&key=$API_KEY"
 
-    # Chạy tiến trình tải và xử lý đĩa trong Job ngầm
-    $job = Start-Job -ScriptBlock {
-        param($url, $path, $cPartNum)
-        
-        # Hàm tải file và ghi đè để báo tiến trình
-        $client = New-Object System.Net.WebClient
-        $client.DownloadFile($url, $path) # Ghi chú: WebClient bản chuẩn sẽ block, nhưng Job sẽ xử lý
-        
-        # [Sau khi tải xong sẽ thực hiện Diskpart]
-        "select disk 0`nselect partition $cPartNum`nshrink minimum=1124`ncreate partition efi size=100`nformat quick fs=fat32`ncreate partition primary`nformat quick fs=ntfs label='Recovery'`nset id='de94bba4-06d1-4d40-a16a-bfd50179d6ac'" | diskpart
-        return "DONE"
-    } -ArgumentList $url, $wimPath, (Get-Partition -DriveLetter C).PartitionNumber
+    Update-Step 1 "Running"
+    $cPart = Get-Partition -DriveLetter C
+    "select disk 0`nselect partition $($cPart.PartitionNumber)`nshrink minimum=1124`ncreate partition efi size=100`nformat quick fs=fat32 label='System'`nassign letter=S`ncreate partition primary`nformat quick fs=ntfs label='Recovery'`nset id='de94bba4-06d1-4d40-a16a-bfd50179d6ac'" | diskpart
+    Update-Step 1 "Done"
 
-    # Timer kiểm tra dung lượng file để cập nhật % lên UI
+    Update-Step 2 "Running"
+    $job = Start-Job -ScriptBlock { param($url, $path) curl.exe -L -o $path $url } -ArgumentList $url, $wimPath
+    
     $timer = New-Object System.Windows.Threading.DispatcherTimer
     $timer.Interval = [TimeSpan]::FromSeconds(1)
-    
-    # Giả định dung lượng file WIM khoảng 5GB (Tuấn có thể lấy dung lượng thực tế từ API nếu muốn)
-    # Ở đây mình sẽ check dung lượng file đang tăng dần trên ổ đĩa
     $timer.Add_Tick({
         if (Test-Path $wimPath) {
-            $file = Get-Item $wimPath
-            $currentSize = $file.Length / 1MB
-            $totalSize = 5000 # Giả định 5GB, Tuấn có thể điều chỉnh
-            $percent = [math]::Min(99, [math]::Round(($currentSize / $totalSize) * 100))
-            
-            $progBar.Value = $percent
-            $lblPercent.Text = "$percent %"
-            $lblStatus.Text = "Đang tải: $([math]::Round($currentSize)) MB / $totalSize MB"
+            $size = (Get-Item $wimPath).Length / 1MB
+            $p = [math]::Min(99, [math]::Round(($size / 4800) * 100)) # Giả định 4.8GB
+            $progBar.Value = $p; $lblPercent.Text = "$p %"; $lblStatus.Text = "Đang tải: $([math]::Round($size)) MB"
         }
-
-        if ((Get-Job).State -eq "Completed") {
-            $timer.Stop()
-            $progBar.Value = 100
-            $lblPercent.Text = "100%"
-            $lblStatus.Text = "Hoàn tất! Chuẩn bị Restart..."
-            Start-Sleep -Seconds 2
-            # Ghi file kịch bản và Reboot
-            reagentc /boottore
+        if ((Get-Job -Id $job.Id).State -eq "Completed") {
+            $timer.Stop(); Update-Step 2 "Done"
+            Update-Step 3 "Running"
+            $bat = "@echo off`n(echo select disk 0 & echo select partition $($cPart.PartitionNumber) & echo format quick fs=ntfs label='Windows' & echo assign letter=C & echo exit) | diskpart`ndism /Apply-Image /ImageFile:$wimPath /Index:1 /ApplyDir:C:\`nbcdboot C:\Windows /s S: /f UEFI`nwpeutil reboot"
+            $bat | Out-File -FilePath "$($dataDrive):\auto_install.bat" -Encoding ASCII
+            Update-Step 3 "Done"; Update-Step 4 "Running"
+            reagentc /boottore; Update-Step 4 "Done"
+            [System.Windows.MessageBox]::Show("Xong! Máy sẽ Restart sau 5s.")
             shutdown /r /t 5
         }
     })
     $timer.Start()
 }
 
-# --- 4. NẠP DANH SÁCH ---
-$res = Invoke-WebRequest -Uri $csvUrl -UseBasicParsing
-$content = if ($res.Content -is [string]) { $res.Content } else { [System.Text.Encoding]::UTF8.GetString($res.Content) }
-$ListWin = $content | ConvertFrom-Csv | Where-Object { $_.Name -match "wim" }
-
+# --- 5. NẠP NÚT BẤM ---
 foreach ($win in $ListWin) {
     $btn = New-Object System.Windows.Controls.Button
     $btn.Content = "💾  $($win.Name)"
-    $btn.Height = 55; $btn.Margin = "0,5"; $btn.Foreground = "White"; $btn.Background = "#1E1E1E"; $btn.FontWeight = "Bold"
-    $btn.Add_Click({ Start-Deployment $win })
+    $btn.Height = 45; $btn.Margin = "0,3"; $btn.Foreground = "White"; $btn.Background = "#1E1E1E"; $btn.BorderBrush = "#333333"; $btn.Cursor = "Hand"
+    $btn.Add_Click({ Start-Deploy $win })
     $container.Children.Add($btn)
 }
 
