@@ -1,4 +1,4 @@
-﻿Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
+﻿Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 # [1] CẤU HÌNH API & GITHUB
@@ -13,7 +13,7 @@ try {
     if (!$DanhSachWin) { throw "Danh sách trống" }
 } catch { [System.Windows.MessageBox]::Show("Lỗi tải danh sách bộ cài từ GitHub!"); exit }
 
-$Global:DongBo = [hashtable]::Synchronized(@{ TrangThai = "Vui lòng chọn bản cài đặt..."; TienTrinh = "SAN_SANG"; Buoc1 = ""; Buoc2 = ""; Buoc3 = ""; Buoc4 = "" })
+$Global:DongBo = [hashtable]::Synchronized(@{ TrangThai = "Vui lòng chọn cấu hình và bản cài đặt..."; TienTrinh = "SAN_SANG"; Buoc1 = ""; Buoc2 = ""; Buoc3 = ""; Buoc4 = "" })
 
 # [2] ĐỘNG CƠ C# TẢI FILE
 $MaCSharp = @"
@@ -41,7 +41,10 @@ public class DongCoTai {
 
                     using (var phanHoi = await trinhDuyet.SendAsync(yeuCau, HttpCompletionOption.ResponseHeadersRead, CTS.Token)) {
                         if (phanHoi.StatusCode == System.Net.HttpStatusCode.Forbidden || (phanHoi.Content.Headers.ContentType != null && phanHoi.Content.Headers.ContentType.MediaType == "text/html")) return 403;
-                        if (phanHoi.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable) { File.Delete(duongDan); continue; }
+                        if (phanHoi.StatusCode == System.Net.HttpStatusCode.RequestedRangeNotSatisfiable) {
+                            PhanTram = 100; TocDo = "XONG"; ThoiGian = "00:00";
+                            return 200; 
+                        }
                         
                         phanHoi.EnsureSuccessStatusCode();
                         long tongDungLuong = phanHoi.Content.Headers.ContentLength ?? -1L;
@@ -108,24 +111,52 @@ $GiaoDien = @"
     </Window.Resources>
     <Border CornerRadius="10" BorderBrush="#00FF7F" BorderThickness="1.5">
         <Grid Margin="20,20,20,20">
-            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+                <RowDefinition Height="Auto"/>
+            </Grid.RowDefinitions>
 
             <TextBlock Grid.Row="0" Text="WINDOWS CLOUD DEPLOY (TRỰC TIẾP)" Foreground="#00FF7F" FontSize="18" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,15"/>
             
-            <ScrollViewer Grid.Row="1" MaxHeight="220" VerticalScrollBarVisibility="Auto" Margin="0,5">
-                <StackPanel Name="KhungChuaNut"/>
-            </ScrollViewer>
-
-            <Border Grid.Row="2" Margin="0,15,0,10" Background="#1A1A1A" Name="KhungTienTrinh" Visibility="Collapsed" CornerRadius="5" Padding="5">
+            <Border Grid.Row="1" Background="#1A1A1A" CornerRadius="5" Padding="10" Margin="0,0,0,10">
                 <StackPanel>
-                    <TextBlock Name="buoc1" Text="○ 1. Tìm hoặc cắt ổ đĩa an toàn (Chống trùng lặp)" Foreground="#888888" Margin="5,3" FontSize="11"/>
-                    <TextBlock Name="buoc2" Text="○ 2. Tải dữ liệu hệ thống (Chống đứt cáp)" Foreground="#888888" Margin="5,3" FontSize="11"/>
-                    <TextBlock Name="buoc3" Text="○ 3. Tiêm mã kích hoạt vào Lõi Boot (WinRE)" Foreground="#888888" Margin="5,3" FontSize="11"/>
-                    <TextBlock Name="buoc4" Text="○ 4. Nạp kịch bản tự động cài đặt" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Text="CẤU HÌNH TỰ ĐỘNG HÓA:" Foreground="#00FF7F" FontSize="11" FontWeight="Bold" Margin="0,0,0,8"/>
+                    
+                    <Grid Margin="0,0,0,10">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto"/>
+                            <ColumnDefinition Width="*"/>
+                            <ColumnDefinition Width="Auto"/>
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Nạp Driver (.inf):" Foreground="#AAA" VerticalAlignment="Center" FontSize="11" Margin="0,0,8,0"/>
+                        <TextBox Name="DuongDanDriver" Grid.Column="1" Background="#222" Foreground="#00FF7F" BorderBrush="#444" IsReadOnly="True" VerticalContentAlignment="Center" FontSize="11" Height="25"/>
+                        <Button Name="NutChonDriver" Grid.Column="2" Content="..." Width="35" MinHeight="25" Margin="5,0,0,0" Padding="0" Cursor="Hand"/>
+                    </Grid>
+                    
+                    <StackPanel Orientation="Horizontal">
+                        <CheckBox Name="CheckAnyDesk" Content="Cài đặt AnyDesk" Foreground="#AAA" IsChecked="True" Margin="0,0,20,0"/>
+                        <CheckBox Name="CheckUltraViewer" Content="Cài đặt UltraViewer" Foreground="#AAA" IsChecked="False"/>
+                    </StackPanel>
                 </StackPanel>
             </Border>
 
-            <StackPanel Grid.Row="3" Margin="0,5,0,0">
+            <ScrollViewer Grid.Row="2" MaxHeight="180" VerticalScrollBarVisibility="Auto" Margin="0,5">
+                <StackPanel Name="KhungChuaNut"/>
+            </ScrollViewer>
+
+            <Border Grid.Row="3" Margin="0,15,0,10" Background="#1A1A1A" Name="KhungTienTrinh" Visibility="Collapsed" CornerRadius="5" Padding="5">
+                <StackPanel>
+                    <TextBlock Name="buoc1" Text="○ 1. Chuẩn bị tài nguyên (Bao gồm chép Driver)" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc2" Text="○ 2. Tải WIM (Tự động bỏ qua nếu đã tải xong)" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc3" Text="○ 3. Tiêm kịch bản vào Lõi Boot (Chống Treo)" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc4" Text="○ 4. Khởi động môi trường tự động hóa" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                </StackPanel>
+            </Border>
+
+            <StackPanel Grid.Row="4" Margin="0,5,0,0">
                 <Grid Margin="0,0,0,5">
                     <TextBlock Name="TrangThai" Text="Sẵn sàng..." Foreground="#00FF7F" FontSize="12" FontWeight="Bold"/>
                     <TextBlock Name="PhanTram" Text="0%" Foreground="#00FF7F" FontSize="12" HorizontalAlignment="Right" FontWeight="Bold"/>
@@ -150,103 +181,136 @@ $KhungChuaNut = $CuaSo.FindName("KhungChuaNut"); $KhungTienTrinh = $CuaSo.FindNa
 $TrangThai = $CuaSo.FindName("TrangThai"); $PhanTram = $CuaSo.FindName("PhanTram"); $ThanhTienDo = $CuaSo.FindName("ThanhTienDo")
 $TocDo = $CuaSo.FindName("TocDo"); $ThongTin = $CuaSo.FindName("ThongTin"); $ThoiGian = $CuaSo.FindName("ThoiGian")
 
-# [4] LUỒNG XỬ LÝ (CHẠY TRÊN WIN LIVE & TIÊM MÃ RE)
+# SỰ KIỆN CHỌN FOLDER DRIVER
+$CuaSo.FindName("NutChonDriver").Add_Click({
+    $HopThoai = New-Object System.Windows.Forms.FolderBrowserDialog
+    $HopThoai.Description = "CHỌN THƯ MỤC CHỨA DRIVER BUNG WIN (Sẽ tự động quét thư mục con)"
+    if ($HopThoai.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
+        $CuaSo.FindName("DuongDanDriver").Text = $HopThoai.SelectedPath
+    }
+})
+
+# [4] LUỒNG XỬ LÝ 
 $KichBanXuLy = {
-    param($DongBo, $DanhSachKhoa, $Win, $MaCSharp)
+    param($DongBo, $DanhSachKhoa, $Win, $MaCSharp, $ThuMucDriverVao, $CaiAnyDesk, $CaiUltraViewer)
     if (-not ("DongCoTai" -as [type])) { Add-Type -TypeDefinition $MaCSharp -ReferencedAssemblies "System.Net.Http", "System.Runtime" }
     
     $PhanVungC = Get-Partition -DriveLetter C
     $SoODia = $PhanVungC.DiskNumber; $SoPhanVung = $PhanVungC.PartitionNumber
 
-    # BƯỚC 1: TÌM HOẶC CẮT Ổ CHỨA
+    # BƯỚC 1: TÌM Ổ CHỨA & SAO CHÉP DRIVER
     $DongBo.Buoc1 = "DangChay"; $DongBo.TrangThai = "Đang kiểm tra không gian đĩa cứng..."
     
     $ODiaWinSetup = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
-    
     if ($ODiaWinSetup -and $ODiaWinSetup.DriveLetter) {
-        $DongBo.TrangThai = "Đã tìm thấy ổ WinSetup cũ, tái sử dụng..."
         $KyTuODiaDuLieu = $ODiaWinSetup.DriveLetter
     } else {
         $ODiaTrong = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Name -ne "X" -and $_.Free -gt 6GB } | Select-Object -First 1
         if (!$ODiaTrong) {
-            $DongBo.TrangThai = "Đang mượn tạm 6GB từ ổ C..."
+            $DongBo.TrangThai = "Đang tạo ổ lưu trữ 6GB từ ổ C..."
             "select disk $SoODia`nselect partition $SoPhanVung`nshrink minimum=6144`ncreate partition primary`nformat quick fs=ntfs label='WinSetup'`nassign letter=T" | diskpart | Out-Null
             Start-Sleep -Seconds 3
-            
             $ODiaWinSetupMoi = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
             $KyTuODiaDuLieu = if ($ODiaWinSetupMoi -and $ODiaWinSetupMoi.DriveLetter) { $ODiaWinSetupMoi.DriveLetter } else { "T" }
-        } else { 
-            $KyTuODiaDuLieu = $ODiaTrong.Name 
-        }
+        } else { $KyTuODiaDuLieu = $ODiaTrong.Name }
     }
+
+    # Nếu người dùng có chọn Driver, copy sang ổ tạm trước khi khởi động lại
+    if (![string]::IsNullOrWhiteSpace($ThuMucDriverVao) -and (Test-Path $ThuMucDriverVao)) {
+        $DongBo.TrangThai = "Đang trích xuất Driver sang phân vùng bảo vệ..."
+        $DuongDanLuuDriver = "$($KyTuODiaDuLieu):\Drivers_Ngoai"
+        if (-not (Test-Path $DuongDanLuuDriver)) { New-Item -ItemType Directory -Path $DuongDanLuuDriver -Force | Out-Null }
+        Copy-Item -Path "$ThuMucDriverVao\*" -Destination $DuongDanLuuDriver -Recurse -Force
+    }
+
     $DongBo.Buoc1 = "HoanTat"
 
     # BƯỚC 2: TẢI FILE WIM
-    $DongBo.Buoc2 = "DangChay"; $DongBo.TrangThai = "Bắt đầu kết nối máy chủ Cloud..."
+    $DongBo.Buoc2 = "DangChay"; $DongBo.TrangThai = "Đang kiểm tra dữ liệu bộ cài..."
     $DuongDanWim = "$($KyTuODiaDuLieu):\install.wim"
     [DongCoTai]::Reset()
     
     $ThanhCong = $false
-    foreach ($Khoa in $DanhSachKhoa) {
-        if ($DongBo.TienTrinh -eq "DUNG") { break }
-        $LienKet = "https://www.googleapis.com/drive/v3/files/$($Win.FileID)?alt=media&key=$Khoa"
-        $kq = [DongCoTai]::TaiFile($LienKet, $DuongDanWim).GetAwaiter().GetResult()
-        if ($kq -eq 200) { $ThanhCong = $true; break }
-        if ($kq -eq 403) { $DongBo.TrangThai = "Đổi API Key dự phòng..."; continue }
+    if ((Test-Path $DuongDanWim) -and ((Get-Item $DuongDanWim).Length -gt 3GB)) {
+        $DongBo.TrangThai = "Đã có sẵn bộ cài. Bỏ qua tải xuống!"
+        [DongCoTai]::PhanTram = 100; [DongCoTai]::TocDo = "XONG"; [DongCoTai]::ThoiGian = "00:00"
+        $ThanhCong = $true; Start-Sleep -Seconds 2
+    } else {
+        foreach ($Khoa in $DanhSachKhoa) {
+            if ($DongBo.TienTrinh -eq "DUNG") { break }
+            $LienKet = "https://www.googleapis.com/drive/v3/files/$($Win.FileID)?alt=media&key=$Khoa"
+            $kq = [DongCoTai]::TaiFile($LienKet, $DuongDanWim).GetAwaiter().GetResult()
+            if ($kq -eq 200) { $ThanhCong = $true; break }
+            if ($kq -eq 403) { $DongBo.TrangThai = "Đổi API Key dự phòng..."; continue }
+        }
     }
 
-    if ($DongBo.TienTrinh -eq "DUNG") { if (Test-Path $DuongDanWim) { Remove-Item $DuongDanWim -Force }; $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "ĐÃ HỦY!"; return }
-    if (!$ThanhCong -or !(Test-Path $DuongDanWim) -or (Get-Item $DuongDanWim).Length -lt 100MB) { $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "LỖI: Rớt mạng hoặc link Google Drive ngỏm!"; return }
+    if ($DongBo.TienTrinh -eq "DUNG") { $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "ĐÃ HỦY!"; return }
+    if (!$ThanhCong -or !(Test-Path $DuongDanWim) -or (Get-Item $DuongDanWim).Length -lt 100MB) { $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "LỖI: Rớt mạng hoặc Quota chết toàn tập!"; return }
     $DongBo.Buoc2 = "HoanTat"
 
-    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT (WINRE) [ĐÃ NÂNG CẤP CHỐNG TREO]
-    $DongBo.Buoc3 = "DangChay"; $DongBo.TrangThai = "Đang chuẩn bị bẻ khóa Lõi Boot..."
+    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT
+    $DongBo.Buoc3 = "DangChay"; $DongBo.TrangThai = "Đang dọn dẹp hệ thống chuẩn bị bẻ khóa..."
+    Get-Process dism -ErrorAction SilentlyContinue | Stop-Process -Force
+    Start-Process dism.exe -ArgumentList "/Cleanup-Wim" -Wait -WindowStyle Hidden | Out-Null
+    reagentc /disable | Out-Null; Start-Sleep -Seconds 2
     
-    reagentc /disable | Out-Null
-    Start-Sleep -Seconds 2
     $WinREPath = "C:\Windows\System32\Recovery\winre.wim"
+    if (-not (Test-Path $WinREPath)) { $WinREPath = (Get-ChildItem -Path C:\Windows -Filter "winre.wim" -Recurse -Force -ErrorAction SilentlyContinue | Select-Object -First 1).FullName }
     
-    if (Test-Path $WinREPath) {
+    if ($WinREPath -and (Test-Path $WinREPath)) {
         $ThuMucMount = "$($KyTuODiaDuLieu):\MountRE"
+        $FileWimCopy = "$($KyTuODiaDuLieu):\winre_copy.wim"
         
-        # [FIX TREO]: Dọn dẹp ép buộc các bộ nhớ ảo bị kẹt từ lần test trước
-        $DongBo.TrangThai = "Đang dọn dẹp bộ nhớ đệm DISM (Chống treo)..."
-        Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Discard" -Wait -WindowStyle Hidden | Out-Null
-        Start-Process dism.exe -ArgumentList "/Cleanup-Wim" -Wait -WindowStyle Hidden | Out-Null
+        if (Test-Path $ThuMucMount) { Remove-Item $ThuMucMount -Recurse -Force -ErrorAction SilentlyContinue }
+        New-Item -ItemType Directory -Path $ThuMucMount -Force | Out-Null
         
-        if (-not (Test-Path $ThuMucMount)) { New-Item -ItemType Directory -Path $ThuMucMount -Force | Out-Null }
+        $DongBo.TrangThai = "Đang trích xuất Lõi Boot ra ổ an toàn..."
+        attrib -R -S -H $WinREPath -ErrorAction SilentlyContinue
+        Copy-Item -Path $WinREPath -Destination $FileWimCopy -Force
+        attrib -R -S -H $FileWimCopy -ErrorAction SilentlyContinue
         
-        # Lột bỏ khiên bảo vệ Read-Only, System, Hidden của winre.wim
-        attrib -R -S -H $WinREPath
-        
-        $DongBo.TrangThai = "Đang giải nén Lõi Boot (Mất 1-2 phút, xin đừng tắt)..."
-        $TrinhMount = Start-Process dism.exe -ArgumentList "/Mount-Image /ImageFile:`"$WinREPath`" /Index:1 /MountDir:`"$ThuMucMount`"" -Wait -WindowStyle Hidden -PassThru
+        $DongBo.TrangThai = "Đang Mount Lõi Boot..."
+        $TrinhMount = Start-Process dism.exe -ArgumentList "/Mount-Image /ImageFile:`"$FileWimCopy`" /Index:1 /MountDir:`"$ThuMucMount`"" -Wait -WindowStyle Hidden -PassThru
         
         if ($TrinhMount.ExitCode -eq 0) {
-            $DongBo.TrangThai = "Đang tiêm kịch bản tự động vào Lõi..."
+            $DongBo.TrangThai = "Đang tiêm kịch bản..."
             $StartNet = "$ThuMucMount\Windows\System32\startnet.cmd"
             $MaTiem = "`r`nfor %%I in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (if exist `"%%I:\auto_install.bat`" (call `"%%I:\auto_install.bat`" & exit))"
             Add-Content -Path $StartNet -Value $MaTiem -Encoding ASCII
             
-            $DongBo.TrangThai = "Đang đóng gói Lõi Boot (Mất 1-2 phút, xin đừng tắt)..."
+            $DongBo.TrangThai = "Đang ĐÓNG GÓI Lõi Boot (Cam kết không treo)..."
             $TrinhUnmount = Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Commit" -Wait -WindowStyle Hidden -PassThru
             
             if ($TrinhUnmount.ExitCode -eq 0) {
+                Copy-Item -Path $FileWimCopy -Destination $WinREPath -Force
                 reagentc /enable | Out-Null
+                Remove-Item $FileWimCopy -Force -ErrorAction SilentlyContinue
             } else {
-                $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Trình diệt virus chặn đóng gói (Mã: $($TrinhUnmount.ExitCode))!"; return
+                Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Discard" -Wait -WindowStyle Hidden | Out-Null
+                $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Windows Defender chặn đóng gói!"; return
             }
         } else {
-            $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Không thể mở Lõi Boot (Thử chạy Tool bằng Run as Admin)!"; return
+            $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Không thể mở file Lõi Boot!"; return
         }
     } else {
-        $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Máy tính đã bị xóa phân vùng Recovery (WinRE) gốc!"; return
+        $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Không tìm thấy file winre.wim trong máy!"; return
     }
     $DongBo.Buoc3 = "HoanTat"
 
-    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ
-    $DongBo.Buoc4 = "DangChay"; $DongBo.TrangThai = "Đang tạo kịch bản tự động bung Windows..."
+    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ (TRONG MÔI TRƯỜNG WINRE)
+    $DongBo.Buoc4 = "DangChay"; $DongBo.TrangThai = "Đang tạo kịch bản định dạng & bung Win..."
     
+    # Tạo mã cài phần mềm động dựa vào CheckBox
+    $LenhCaiPhanMem = ""
+    if ($CaiAnyDesk) {
+        $LenhCaiPhanMem += "echo curl.exe -L -o C:\AnyDesk.exe https://download.anydesk.com/AnyDesk.exe`r`necho C:\AnyDesk.exe --install `"C:\Program Files\AnyDesk`" --start-with-win --create-shortcuts --create-desktop-icon --silent`r`n"
+    }
+    if ($CaiUltraViewer) {
+        # Dùng link gốc của Ultraviewer bản 6.6
+        $LenhCaiPhanMem += "echo curl.exe -L -o C:\UltraViewer_Setup.exe https://dl2.ultraviewer.net/UltraViewer_Setup_6.6_vi.exe`r`necho C:\UltraViewer_Setup.exe /VERYSILENT /SUPPRESSMSGBOXES /NORESTART`r`necho del C:\UltraViewer_Setup.exe`r`n"
+    }
+
     $KichBanBat = @"
 @echo off
 title TIEN TRINH TU DONG CAI DAT WINDOWS - KHONG DUOC TAT MAY!
@@ -255,21 +319,25 @@ color 0A
 echo [1/4] Dang xac dinh vi tri o đia chua bo cai...
 for %%I in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (if exist "%%I:\install.wim" set SETUP_DRIVE=%%I:)
 
-echo [2/4] Dang xoa va dinh dang lai o C cu...
+echo [2/4] Dang xoa va đinh dang lai o C cu...
 (echo select disk $SoODia & echo select partition $SoPhanVung & echo format quick fs=ntfs label='Windows' & echo assign letter=W & echo exit) | diskpart
 
-echo [3/4] Dang bung he dieu hanh moi... Vui long cho đoi!
+echo [3/4] Dang bung he đieu hanh moi... Vui long cho đoi!
 dism /Apply-Image /ImageFile:%SETUP_DRIVE%\install.wim /Index:1 /ApplyDir:W:\
 
-echo [4/4] Dang nap thiet lap tu đong hoa (Bypass, Anydesk)...
+if exist "%SETUP_DRIVE%\Drivers_Ngoai" (
+    echo [+++] Dang nop them DRIVER vao Windows...
+    dism /Image:W:\ /Add-Driver /Driver:%SETUP_DRIVE%\Drivers_Ngoai /Recurse
+)
+
+echo [4/4] Dang nap thiet lap tu đong hoa (Bypass, Phan mem)...
 md W:\Windows\Setup\Scripts
 (
 echo @echo off
 echo manage-bde -off C:
 echo reg add "HKLM\System\CurrentControlSet\Control\BitLocker" /v "PreventDeviceEncryption" /t REG_DWORD /d "1" /f
 echo net accounts /maxpwage:unlimited
-echo curl.exe -L -o C:\AnyDesk.exe https://download.anydesk.com/AnyDesk.exe
-echo C:\AnyDesk.exe --install "C:\Program Files\AnyDesk" --start-with-win --create-shortcuts --create-desktop-icon --silent
+$LenhCaiPhanMem
 echo del "%%~f0"
 ) > W:\Windows\Setup\Scripts\SetupComplete.cmd
 
@@ -296,17 +364,19 @@ echo ^</unattend^>
 
 bcdboot W:\Windows
 
-echo HOAN TAT! He thong se khoi dong vao Win moi.
+echo HOAN TAT! He thong se khoi đong vao Win moi.
 wpeutil reboot
 "@
     
     $KichBanBat | Out-File -FilePath "$($KyTuODiaDuLieu):\auto_install.bat" -Encoding ASCII
     $DongBo.Buoc4 = "HoanTat"
     
-    $DongBo.TrangThai = "THÀNH CÔNG! Đang khởi động lại hệ thống..."
-    Start-Sleep -Seconds 3
-    reagentc /boottore
-    shutdown /r /t 0
+    $DongBo.TrangThai = "THÀNH CÔNG! Sẽ khởi động lại vào tự động hóa sau 5 giây..."
+    Start-Sleep -Seconds 2
+    
+    Manage-bde -protectors -disable C: -RebootCount 1 -ErrorAction SilentlyContinue | Out-Null
+    reagentc /boottore | Out-Null
+    shutdown /r /t 3
     $DongBo.TienTrinh = "HOAN_TAT"
 }
 
@@ -326,19 +396,33 @@ $DongHoUI.Add_Tick({
     }
 
     if ($Global:DongBo.TienTrinh -match "HOAN_TAT|DUNG") {
-        if ($Global:DongBo.TienTrinh -eq "DUNG") { $KhungChuaNut.Children | ForEach-Object { $_.IsEnabled = $true } }
+        if ($Global:DongBo.TienTrinh -eq "DUNG") { 
+            $KhungChuaNut.Children | ForEach-Object { $_.IsEnabled = $true }
+            $CuaSo.FindName("NutChonDriver").IsEnabled = $true
+            $CuaSo.FindName("CheckAnyDesk").IsEnabled = $true
+            $CuaSo.FindName("CheckUltraViewer").IsEnabled = $true
+        }
         $DongHoUI.Stop()
     }
 })
 
 # [6] KHỞI CHẠY BẰNG RUNSPACE
 function BatDau-TrienKhai ($Win) {
+    # Lấy giá trị từ giao diện
+    $DuongDanDriverChon = $CuaSo.FindName("DuongDanDriver").Text
+    $ChonAnyDesk = [bool]$CuaSo.FindName("CheckAnyDesk").IsChecked
+    $ChonUltraViewer = [bool]$CuaSo.FindName("CheckUltraViewer").IsChecked
+
     $KhungTienTrinh.Visibility = "Visible"
     $KhungChuaNut.Children | ForEach-Object { $_.IsEnabled = $false }
+    $CuaSo.FindName("NutChonDriver").IsEnabled = $false
+    $CuaSo.FindName("CheckAnyDesk").IsEnabled = $false
+    $CuaSo.FindName("CheckUltraViewer").IsEnabled = $false
+    
     $Global:DongBo.TienTrinh = "CHAY"
     
     $rs = [runspacefactory]::CreateRunspace(); $rs.ApartmentState = "STA"; $rs.Open()
-    $ps = [powershell]::Create().AddScript($KichBanXuLy).AddArgument($Global:DongBo).AddArgument($Global:DanhSachAPI).AddArgument($Win).AddArgument($MaCSharp)
+    $ps = [powershell]::Create().AddScript($KichBanXuLy).AddArgument($Global:DongBo).AddArgument($Global:DanhSachAPI).AddArgument($Win).AddArgument($MaCSharp).AddArgument($DuongDanDriverChon).AddArgument($ChonAnyDesk).AddArgument($ChonUltraViewer)
     $ps.Runspace = $rs; $ps.BeginInvoke(); $DongHoUI.Start()
 }
 
