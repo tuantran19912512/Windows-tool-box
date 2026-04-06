@@ -158,10 +158,9 @@ $KichBanXuLy = {
     $PhanVungC = Get-Partition -DriveLetter C
     $SoODia = $PhanVungC.DiskNumber; $SoPhanVung = $PhanVungC.PartitionNumber
 
-    # BƯỚC 1: TÌM HOẶC CẮT Ổ CHỨA (ĐÃ TÍCH HỢP CHỐNG ĐẺ PHÂN VÙNG)
+    # BƯỚC 1: TÌM HOẶC CẮT Ổ CHỨA
     $DongBo.Buoc1 = "DangChay"; $DongBo.TrangThai = "Đang kiểm tra không gian đĩa cứng..."
     
-    # Kiểm tra xem có ổ WinSetup cũ không
     $ODiaWinSetup = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
     
     if ($ODiaWinSetup -and $ODiaWinSetup.DriveLetter) {
@@ -174,7 +173,6 @@ $KichBanXuLy = {
             "select disk $SoODia`nselect partition $SoPhanVung`nshrink minimum=6144`ncreate partition primary`nformat quick fs=ntfs label='WinSetup'`nassign letter=T" | diskpart | Out-Null
             Start-Sleep -Seconds 3
             
-            # Cố gắng lấy lại ký tự ổ vừa cắt
             $ODiaWinSetupMoi = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
             $KyTuODiaDuLieu = if ($ODiaWinSetupMoi -and $ODiaWinSetupMoi.DriveLetter) { $ODiaWinSetupMoi.DriveLetter } else { "T" }
         } else { 
@@ -201,8 +199,8 @@ $KichBanXuLy = {
     if (!$ThanhCong -or !(Test-Path $DuongDanWim) -or (Get-Item $DuongDanWim).Length -lt 100MB) { $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "LỖI: Rớt mạng hoặc link Google Drive ngỏm!"; return }
     $DongBo.Buoc2 = "HoanTat"
 
-    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT (WINRE)
-    $DongBo.Buoc3 = "DangChay"; $DongBo.TrangThai = "Đang bẻ khóa và nhúng tệp lệnh vào Lõi Boot ẩn..."
+    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT (WINRE) [ĐÃ NÂNG CẤP CHỐNG TREO]
+    $DongBo.Buoc3 = "DangChay"; $DongBo.TrangThai = "Đang chuẩn bị bẻ khóa Lõi Boot..."
     
     reagentc /disable | Out-Null
     Start-Sleep -Seconds 2
@@ -210,29 +208,43 @@ $KichBanXuLy = {
     
     if (Test-Path $WinREPath) {
         $ThuMucMount = "$($KyTuODiaDuLieu):\MountRE"
+        
+        # [FIX TREO]: Dọn dẹp ép buộc các bộ nhớ ảo bị kẹt từ lần test trước
+        $DongBo.TrangThai = "Đang dọn dẹp bộ nhớ đệm DISM (Chống treo)..."
+        Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Discard" -Wait -WindowStyle Hidden | Out-Null
+        Start-Process dism.exe -ArgumentList "/Cleanup-Wim" -Wait -WindowStyle Hidden | Out-Null
+        
         if (-not (Test-Path $ThuMucMount)) { New-Item -ItemType Directory -Path $ThuMucMount -Force | Out-Null }
         
-        # Mở khóa file boot
-        $TrinhMount = Start-Process dism.exe -ArgumentList "/Mount-Image /ImageFile:`"$WinREPath`" /Index:1 /MountDir:`"$ThuMucMount`"" -Wait -NoNewWindow -PassThru
+        # Lột bỏ khiên bảo vệ Read-Only, System, Hidden của winre.wim
+        attrib -R -S -H $WinREPath
+        
+        $DongBo.TrangThai = "Đang giải nén Lõi Boot (Mất 1-2 phút, xin đừng tắt)..."
+        $TrinhMount = Start-Process dism.exe -ArgumentList "/Mount-Image /ImageFile:`"$WinREPath`" /Index:1 /MountDir:`"$ThuMucMount`"" -Wait -WindowStyle Hidden -PassThru
         
         if ($TrinhMount.ExitCode -eq 0) {
-            # Tiêm mã tự động quét và chạy auto_install.bat ngay khi vào WinPE
+            $DongBo.TrangThai = "Đang tiêm kịch bản tự động vào Lõi..."
             $StartNet = "$ThuMucMount\Windows\System32\startnet.cmd"
             $MaTiem = "`r`nfor %%I in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (if exist `"%%I:\auto_install.bat`" (call `"%%I:\auto_install.bat`" & exit))"
             Add-Content -Path $StartNet -Value $MaTiem -Encoding ASCII
             
-            # Đóng gói và lưu lại
-            Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Commit" -Wait -NoNewWindow | Out-Null
-            reagentc /enable | Out-Null
+            $DongBo.TrangThai = "Đang đóng gói Lõi Boot (Mất 1-2 phút, xin đừng tắt)..."
+            $TrinhUnmount = Start-Process dism.exe -ArgumentList "/Unmount-Image /MountDir:`"$ThuMucMount`" /Commit" -Wait -WindowStyle Hidden -PassThru
+            
+            if ($TrinhUnmount.ExitCode -eq 0) {
+                reagentc /enable | Out-Null
+            } else {
+                $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Trình diệt virus chặn đóng gói (Mã: $($TrinhUnmount.ExitCode))!"; return
+            }
         } else {
-            $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Không thể can thiệp vào Lõi Boot của máy này!"; return
+            $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Không thể mở Lõi Boot (Thử chạy Tool bằng Run as Admin)!"; return
         }
     } else {
         $DongBo.Buoc3 = "Loi"; $DongBo.TrangThai = "LỖI: Máy tính đã bị xóa phân vùng Recovery (WinRE) gốc!"; return
     }
     $DongBo.Buoc3 = "HoanTat"
 
-    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ (Để WinRE tự động gọi ra)
+    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ
     $DongBo.Buoc4 = "DangChay"; $DongBo.TrangThai = "Đang tạo kịch bản tự động bung Windows..."
     
     $KichBanBat = @"
