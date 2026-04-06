@@ -55,6 +55,36 @@ $inputXML = @"
         Title="VietToolbox Pro" Width="$winW" Height="$winH" 
         Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
     
+    <Window.Resources>
+        <Style x:Key="ScriptButtonStyle" TargetType="Button">
+            <Setter Property="Background" Value="#0F172A"/>
+            <Setter Property="Foreground" Value="#CBD5E1"/>
+            <Setter Property="Height" Value="35"/>
+            <Setter Property="FontSize" Value="13"/>
+            <Setter Property="HorizontalContentAlignment" Value="Left"/>
+            <Setter Property="Padding" Value="10,0,0,0"/>
+            <Setter Property="Margin" Value="0,2,0,2"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border Name="BgBorder" Background="{TemplateBinding Background}" CornerRadius="4">
+                            <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" VerticalAlignment="Center" Margin="{TemplateBinding Padding}"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="BgBorder" Property="Background" Value="#1E293B"/> <Setter Property="Foreground" Value="#38BDF8"/> </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="BgBorder" Property="Background" Value="#334155"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </Window.Resources>
+
     <Viewbox Stretch="Uniform">
         <Border Width="1200" Height="850" CornerRadius="15" BorderBrush="#1E293B" BorderThickness="1" Background="#0F172A">
             <Grid>
@@ -182,7 +212,7 @@ $stringReader = New-Object System.IO.StringReader($inputXML)
 $xmlReader = [System.Xml.XmlReader]::Create($stringReader)
 $window = [Windows.Markup.XamlReader]::Load($xmlReader)
 
-# Ánh xạ các biến XAML (Đã loại bỏ TxtSysInfo)
+# Ánh xạ các biến XAML
 $mainTabControl = $window.FindName("MainTabControl")
 $groupContainer = $window.FindName("GroupContainer")
 $txtLog = $window.FindName("TxtLog")
@@ -254,15 +284,17 @@ function Update-UI {
                     
                     $btn = New-Object System.Windows.Controls.Button
                     $btn.Content = "⚡ " + $_.BaseName 
-                    $btn.Height = 35; $btn.FontSize = 13; $btn.Background = "#0F172A"; $btn.Foreground = "#CBD5E1"; $btn.BorderThickness = 0
-                    $btn.HorizontalContentAlignment = "Left"; $btn.Padding = "10,0,0,0"; $btn.Margin = "0,2,0,2"; $btn.Tag = $_.FullName
-                    $btn.Cursor = [System.Windows.Input.Cursors]::Hand
+                    $btn.Tag = $_.FullName
+                    
+                    # Áp dụng Style đã định nghĩa trong XAML để xử lý lỗi rê chuột trắng xóa
+                    $btn.Style = $window.Resources["ScriptButtonStyle"]
                     
                     $btn.Add_Click({ 
                         param($sender, $e) 
                         $window.Dispatcher.Invoke([action]{ 
                             $mainTabControl.SelectedIndex = 0 
                             $txtLog.Clear() 
+                            $mainTabControl.Focus() | Out-Null
                             Ghi-Log "▶ ĐANG KHỞI CHẠY: $($sender.Content -replace '⚡ ', '')"
                         })
                         &$CapNhatGiaoDien
@@ -345,7 +377,7 @@ $btnSendAI.Add_Click({ Gui-AI })
 $txtInputAI.Add_KeyDown({ if ($_.Key -eq "Enter") { Gui-AI } })
 $window.Add_MouseLeftButtonDown({ $window.DragMove() })
 
-# 11. KHỞI CHẠY (BỎ HÀM TẢI THÔNG TIN MÁY)
+# 11. KHỞI CHẠY
 $window.Add_ContentRendered({
     Update-UI
     Ghi-Log "Hệ thống đã sẵn sàng hoạt động!"
