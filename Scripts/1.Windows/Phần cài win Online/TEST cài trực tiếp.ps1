@@ -9,8 +9,6 @@ $csvUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/r
 try {
     $res = Invoke-WebRequest -Uri $csvUrl -UseBasicParsing -ErrorAction Stop
     $raw = if ($res.Content -is [string]) { $res.Content } else { [System.Text.Encoding]::UTF8.GetString($res.Content) }
-    
-    # --- ĐOẠN FIX LỌC ĐÂY TUẤN ---
     $ListWin = $raw | ConvertFrom-Csv | Where-Object { $_.Name -match "\.wim" }
     
     if ($null -eq $ListWin -or ($ListWin | Measure-Object).Count -eq 0) {
@@ -19,7 +17,7 @@ try {
     }
 } catch { [System.Windows.MessageBox]::Show("Lỗi tải danh sách: $($_.Exception.Message)"); exit }
 
-# --- 2. GIAO DIỆN XAML (CO DÃN + HOVER EFFECT) ---
+# --- 2. GIAO DIỆN XAML (FIX LỖI ĐÈ CHỮ) ---
 $xaml = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="WinDeploy Master" SizeToContent="Height" Width="430" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen">
@@ -27,11 +25,11 @@ $xaml = @"
         <Style TargetType="Button">
             <Setter Property="Background" Value="#1E1E1E"/>
             <Setter Property="Foreground" Value="White"/>
-            <Setter Property="Margin" Value="0,3"/>
+            <Setter Property="Margin" Value="0,4"/>
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="Button">
-                        <Border Background="{TemplateBinding Background}" CornerRadius="5" BorderBrush="#333333" BorderThickness="1" Padding="10">
+                        <Border Background="{TemplateBinding Background}" CornerRadius="5" BorderBrush="#333333" BorderThickness="1" Padding="10,6">
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                     </ControlTemplate>
@@ -46,7 +44,7 @@ $xaml = @"
         </Style>
     </Window.Resources>
     <Border CornerRadius="15" Background="#121212" BorderBrush="#00FF7F" BorderThickness="1.5">
-        <Grid Margin="20">
+        <Grid Margin="20,20,20,25">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto"/>
                 <RowDefinition Height="Auto"/>
@@ -60,19 +58,20 @@ $xaml = @"
                 <StackPanel Name="ButtonContainer"/>
             </ScrollViewer>
 
-            <StackPanel Grid.Row="2" Margin="0,10" Background="#1A1A1A" Name="StepPanel" Visibility="Collapsed">
-                <TextBlock Name="step1" Text="○ 1. Tự động cấu hình Partition" Foreground="#888888" Margin="10,3" FontSize="11"/>
-                <TextBlock Name="step2" Text="○ 2. Tải WIM từ Cloud (%)" Foreground="#888888" Margin="10,3" FontSize="11"/>
-                <TextBlock Name="step3" Text="○ 3. Tạo kịch bản &amp; Reboot" Foreground="#888888" Margin="10,3" FontSize="11"/>
+            <StackPanel Grid.Row="2" Margin="0,15,0,0" Background="#1A1A1A" Name="StepPanel" Visibility="Collapsed">
+                <TextBlock Name="step1" Text="○ 1. Tự động cấu hình Partition" Foreground="#888888" Margin="10,5" FontSize="11"/>
+                <TextBlock Name="step2" Text="○ 2. Tải WIM từ Cloud (%)" Foreground="#888888" Margin="10,5" FontSize="11"/>
+                <TextBlock Name="step3" Text="○ 3. Tạo kịch bản &amp; Reboot" Foreground="#888888" Margin="10,5" FontSize="11"/>
             </StackPanel>
 
-            <StackPanel Grid.Row="3" Margin="0,10,0,0">
-                <Grid Margin="0,0,0,5">
+            <StackPanel Grid.Row="3" Margin="0,15,0,0">
+                <Grid Margin="0,0,0,8">
                     <TextBlock Name="lblStatus" Text="Chọn bản Win để cài lại..." Foreground="#00FF7F" FontSize="11"/>
                     <TextBlock Name="lblPercent" Text="0%" Foreground="#00FF7F" FontSize="11" HorizontalAlignment="Right"/>
                 </Grid>
                 <ProgressBar Name="progBar" Height="6" Minimum="0" Maximum="100" Value="0" Foreground="#00FF7F" Background="#222222" BorderThickness="0"/>
-                <Button Name="btnExit" Content="THOÁT" Margin="0,15,0,0" Height="30" Width="100" BorderBrush="#FF4D4D" Foreground="#FF4D4D"/>
+                
+                <Button Name="btnExit" Content="THOÁT" Margin="0,20,0,0" MinHeight="35" Width="100" BorderBrush="#FF4D4D" Foreground="#FF4D4D" Padding="0,5"/>
             </StackPanel>
         </Grid>
     </Border>
@@ -99,24 +98,20 @@ function Start-Deploy ($win) {
     $stepPanel.Visibility = "Visible"
     $container.Children | ForEach-Object { $_.IsEnabled = $false }
     
-    # Dò ổ đĩa lưu trữ (D/E)
     $drive = (Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Free -gt 5GB } | Select-Object -First 1)
     if (!$drive) { [System.Windows.MessageBox]::Show("Không tìm thấy ổ phụ đủ chỗ!"); return }
     
     $wimPath = "$($drive.Name):\install.wim"
     $url = "https://www.googleapis.com/drive/v3/files/$($win.FileID)?alt=media&key=$API_KEY"
 
-    # Bước 1: Dò Disk chứa ổ C và Partitioning
     Update-Step 1 "Running"
     $cPart = Get-Partition -DriveLetter C
     $diskNum = $cPart.DiskNumber
     $partNum = $cPart.PartitionNumber
     
-    # Lệnh Diskpart tự động nhắm đúng Disk của Win
     "select disk $diskNum`nselect partition $partNum`nshrink minimum=1124`ncreate partition efi size=100`nformat quick fs=fat32 label='System'`nassign letter=S`ncreate partition primary`nformat quick fs=ntfs label='Recovery'`nset id='de94bba4-06d1-4d40-a16a-bfd50179d6ac'" | diskpart
     Update-Step 1 "Done"
 
-    # Bước 2: Tải WIM ngầm và Update %
     Update-Step 2 "Running"
     $job = Start-Job -ScriptBlock { param($url, $path) curl.exe -L -o $path $url } -ArgumentList $url, $wimPath
     
@@ -125,13 +120,12 @@ function Start-Deploy ($win) {
     $timer.Add_Tick({
         if (Test-Path $wimPath) {
             $size = (Get-Item $wimPath).Length / 1MB
-            $p = [math]::Min(99, [math]::Round(($size / 4500) * 100)) # Giả định 4.5GB
+            $p = [math]::Min(99, [math]::Round(($size / 4500) * 100))
             $progBar.Value = $p; $lblPercent.Text = "$p %"; $lblStatus.Text = "Đang tải: $([math]::Round($size)) MB"
         }
         if ((Get-Job -Id $job.Id).State -eq "Completed") {
             $timer.Stop(); Update-Step 2 "Done"
             
-            # Bước 3: Tạo kịch bản tự động bung Win
             Update-Step 3 "Running"
             $bat = "@echo off`n(echo select disk $diskNum & echo select partition $partNum & echo format quick fs=ntfs label='Windows' & echo assign letter=C & echo exit) | diskpart`ndism /Apply-Image /ImageFile=$wimPath /Index:1 /ApplyDir:C:\`nbcdboot C:\Windows /s S: /f UEFI`nwpeutil reboot"
             $bat | Out-File -FilePath "$($drive.Name):\auto_install.bat" -Encoding ASCII
