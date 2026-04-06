@@ -118,10 +118,10 @@ $GiaoDien = @"
 
             <Border Grid.Row="2" Margin="0,15,0,10" Background="#1A1A1A" Name="KhungTienTrinh" Visibility="Collapsed" CornerRadius="5" Padding="5">
                 <StackPanel>
-                    <TextBlock Name="buoc1" Text="○ 1. Tìm hoặc cắt ổ đĩa chứa WIM" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc1" Text="○ 1. Tìm hoặc cắt ổ đĩa an toàn (Chống trùng lặp)" Foreground="#888888" Margin="5,3" FontSize="11"/>
                     <TextBlock Name="buoc2" Text="○ 2. Tải dữ liệu hệ thống (Chống đứt cáp)" Foreground="#888888" Margin="5,3" FontSize="11"/>
-                    <TextBlock Name="buoc3" Text="○ 3. Tiêm mã kích hoạt vào Lõi Boot" Foreground="#888888" Margin="5,3" FontSize="11"/>
-                    <TextBlock Name="buoc4" Text="○ 4. Khởi động lại &amp; Tự động cài đặt" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc3" Text="○ 3. Tiêm mã kích hoạt vào Lõi Boot (WinRE)" Foreground="#888888" Margin="5,3" FontSize="11"/>
+                    <TextBlock Name="buoc4" Text="○ 4. Nạp kịch bản tự động cài đặt" Foreground="#888888" Margin="5,3" FontSize="11"/>
                 </StackPanel>
             </Border>
 
@@ -158,15 +158,29 @@ $KichBanXuLy = {
     $PhanVungC = Get-Partition -DriveLetter C
     $SoODia = $PhanVungC.DiskNumber; $SoPhanVung = $PhanVungC.PartitionNumber
 
-    # BƯỚC 1: TÌM/CẮT Ổ CHỨA (Giữ nguyên kỹ thuật cũ)
+    # BƯỚC 1: TÌM HOẶC CẮT Ổ CHỨA (ĐÃ TÍCH HỢP CHỐNG ĐẺ PHÂN VÙNG)
     $DongBo.Buoc1 = "DangChay"; $DongBo.TrangThai = "Đang kiểm tra không gian đĩa cứng..."
-    $ODiaTrong = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Name -ne "X" -and $_.Free -gt 6GB } | Select-Object -First 1
     
-    if (!$ODiaTrong) {
-        $DongBo.TrangThai = "Đang mượn tạm 6GB từ ổ C..."
-        "select disk $SoODia`nselect partition $SoPhanVung`nshrink minimum=6144`ncreate partition primary`nformat quick fs=ntfs label='WinSetup'`nassign letter=T" | diskpart | Out-Null
-        Start-Sleep -Seconds 3; $KyTuODiaDuLieu = "T"
-    } else { $KyTuODiaDuLieu = $ODiaTrong.Name }
+    # Kiểm tra xem có ổ WinSetup cũ không
+    $ODiaWinSetup = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
+    
+    if ($ODiaWinSetup -and $ODiaWinSetup.DriveLetter) {
+        $DongBo.TrangThai = "Đã tìm thấy ổ WinSetup cũ, tái sử dụng..."
+        $KyTuODiaDuLieu = $ODiaWinSetup.DriveLetter
+    } else {
+        $ODiaTrong = Get-PSDrive -PSProvider FileSystem | Where-Object { $_.Name -ne "C" -and $_.Name -ne "X" -and $_.Free -gt 6GB } | Select-Object -First 1
+        if (!$ODiaTrong) {
+            $DongBo.TrangThai = "Đang mượn tạm 6GB từ ổ C..."
+            "select disk $SoODia`nselect partition $SoPhanVung`nshrink minimum=6144`ncreate partition primary`nformat quick fs=ntfs label='WinSetup'`nassign letter=T" | diskpart | Out-Null
+            Start-Sleep -Seconds 3
+            
+            # Cố gắng lấy lại ký tự ổ vừa cắt
+            $ODiaWinSetupMoi = Get-Volume | Where-Object { $_.FileSystemLabel -eq "WinSetup" } | Select-Object -First 1
+            $KyTuODiaDuLieu = if ($ODiaWinSetupMoi -and $ODiaWinSetupMoi.DriveLetter) { $ODiaWinSetupMoi.DriveLetter } else { "T" }
+        } else { 
+            $KyTuODiaDuLieu = $ODiaTrong.Name 
+        }
+    }
     $DongBo.Buoc1 = "HoanTat"
 
     # BƯỚC 2: TẢI FILE WIM
@@ -187,7 +201,7 @@ $KichBanXuLy = {
     if (!$ThanhCong -or !(Test-Path $DuongDanWim) -or (Get-Item $DuongDanWim).Length -lt 100MB) { $DongBo.Buoc2 = "Loi"; $DongBo.TrangThai = "LỖI: Rớt mạng hoặc link Google Drive ngỏm!"; return }
     $DongBo.Buoc2 = "HoanTat"
 
-    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT (TUYỆT CHIÊU CUỐI)
+    # BƯỚC 3: TIÊM MÃ VÀO LÕI BOOT (WINRE)
     $DongBo.Buoc3 = "DangChay"; $DongBo.TrangThai = "Đang bẻ khóa và nhúng tệp lệnh vào Lõi Boot ẩn..."
     
     reagentc /disable | Out-Null
@@ -196,13 +210,13 @@ $KichBanXuLy = {
     
     if (Test-Path $WinREPath) {
         $ThuMucMount = "$($KyTuODiaDuLieu):\MountRE"
-        New-Item -ItemType Directory -Path $ThuMucMount -Force | Out-Null
+        if (-not (Test-Path $ThuMucMount)) { New-Item -ItemType Directory -Path $ThuMucMount -Force | Out-Null }
         
         # Mở khóa file boot
         $TrinhMount = Start-Process dism.exe -ArgumentList "/Mount-Image /ImageFile:`"$WinREPath`" /Index:1 /MountDir:`"$ThuMucMount`"" -Wait -NoNewWindow -PassThru
         
         if ($TrinhMount.ExitCode -eq 0) {
-            # Tiêm mã tự động quét và chạy auto_install.bat
+            # Tiêm mã tự động quét và chạy auto_install.bat ngay khi vào WinPE
             $StartNet = "$ThuMucMount\Windows\System32\startnet.cmd"
             $MaTiem = "`r`nfor %%I in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (if exist `"%%I:\auto_install.bat`" (call `"%%I:\auto_install.bat`" & exit))"
             Add-Content -Path $StartNet -Value $MaTiem -Encoding ASCII
@@ -218,7 +232,7 @@ $KichBanXuLy = {
     }
     $DongBo.Buoc3 = "HoanTat"
 
-    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ (Để WinRE gọi ra)
+    # BƯỚC 4: TẠO FILE KỊCH BẢN CHỜ (Để WinRE tự động gọi ra)
     $DongBo.Buoc4 = "DangChay"; $DongBo.TrangThai = "Đang tạo kịch bản tự động bung Windows..."
     
     $KichBanBat = @"
@@ -270,7 +284,7 @@ echo ^</unattend^>
 
 bcdboot W:\Windows
 
-echo HOAN TAT! Hê thong se khoi đong vao Win moi.
+echo HOAN TAT! He thong se khoi dong vao Win moi.
 wpeutil reboot
 "@
     
