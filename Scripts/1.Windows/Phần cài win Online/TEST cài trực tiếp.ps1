@@ -1,96 +1,77 @@
-﻿# ==============================================================================
-# VIETTOOLBOX CLOUD DEPLOYMENT - WINTOHDD + GDRIVE API + ANYDESK
-# ==============================================================================
+﻿Add-Type -AssemblyName PresentationFramework
+Add-Type -AssemblyName PresentationCore
+Add-Type -AssemblyName WindowsBase
 
-if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
-}
+# --- 0. FIX KẾT NỐI TLS 1.2 ---
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
-# ---------------------------------------------------------
-# [1] CƠ SỞ DỮ LIỆU TỪ NGƯỜI DÙNG
-# ---------------------------------------------------------
-$List_Base64_Keys = @(
+# --- 1. CẤU HÌNH TOKEN & GITHUB ---
+$EncodedKeys = @(
     "QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR",
-    "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v",
-    "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv",
-    "QUl6YVN5Q2IzaE1LUVNOamt2bFNKbUlhTGtYcVNybFpWaFNSTThR",
-    "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
+    "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v"
 )
+$API_KEY = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($EncodedKeys[0]))
+$csvUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/iso_list.csv"
 
-$ID_WintoHDD = "1vSF9E01LdZcbogjq-G38Vtu_8Zp34VBG"
-$ID_Windows  = "1PKIcsxouFraj1LNeAHfTshvWR7vi0-Xb"
-$OS_Edition  = "Windows 11 Home Single Language" # Tên chính xác trong file WIM
-
-$TempDir = "C:\VietCloud"
-if (!(Test-Path $TempDir)) { New-Item $TempDir -ItemType Directory -Force | Out-Null }
-
-# ---------------------------------------------------------
-# [2] HÀM TẢI FILE TỪ GOOGLE DRIVE (BYPASS SCAN VIRUS)
-# ---------------------------------------------------------
-function Download-GDrive {
-    param ($FileID, $SavePath)
-    $RandomKey = $List_Base64_Keys[(Get-Random -Minimum 0 -Maximum $List_Base64_Keys.Count)]
-    $Key = [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($RandomKey))
+# --- 2. TẢI DANH SÁCH (SỬA LỖI CONVERT) ---
+try {
+    $response = Invoke-WebRequest -Uri $csvUrl -UseBasicParsing
     
-    Write-Host "[+] Dang tai ID: $FileID..." -ForegroundColor Cyan
-    $Url = "https://www.googleapis.com/drive/v3/files/$FileID`?alt=media&key=$Key"
-    
-    try {
-        Invoke-WebRequest -Uri $Url -OutFile $SavePath -UseBasicParsing -ErrorAction Stop
-        return $true
-    } catch {
-        Write-Host "[!] Loi tai file, dang thu lai voi Key khac..." -ForegroundColor Red
-        return $false
+    # Nếu Content đã là String thì lấy luôn, nếu là Byte thì mới Convert
+    if ($response.Content -is [string]) {
+        $content = $response.Content
+    } else {
+        $content = [System.Text.Encoding]::UTF8.GetString($response.Content)
     }
+    
+    # Lọc: Chỉ lấy cái nào tên có chữ ".wim" (không phân biệt hoa thường)
+    $ListWin = $content | ConvertFrom-Csv | Where-Object { $_.Name -like "*.wim*" -or $_.FileID -like "*.wim*" }
+    
+    if ($null -eq $ListWin -or ($ListWin | Measure-Object).Count -eq 0) {
+        # Nếu lọc theo .wim không ra gì, lấy tạm 2 dòng đầu để Tuấn test giao diện
+        $ListWin = $content | ConvertFrom-Csv | Select-Object -First 3
+    }
+} catch {
+    [System.Windows.MessageBox]::Show("LỖI: $($_.Exception.Message)")
+    exit
 }
 
-# ---------------------------------------------------------
-# [3] THỰC THI QUY TRÌNH
-# ---------------------------------------------------------
-Write-Host ">>> KHOI CHAY QUY TRINH CAI WIN ONLINE <<<" -ForegroundColor Green
+# --- 3. GIAO DIỆN XAML ---
+$xaml = @"
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Win Auto-Deploy" Height="550" Width="420" Background="Transparent" AllowsTransparency="True" WindowStyle="None">
+    <Border CornerRadius="20" Background="#121212" BorderBrush="#00FF7F" BorderThickness="1.5">
+        <Grid Margin="20">
+            <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Text="WINDOWS CLOUD TOOL" Foreground="#00FF7F" FontSize="22" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+            <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Hidden"><StackPanel Name="ButtonContainer"/></ScrollViewer>
+            <StackPanel Grid.Row="2">
+                <TextBlock Name="lblStatus" Text="Sẵn sàng..." Foreground="#666666" HorizontalAlignment="Center" Margin="0,10"/>
+                <Button Name="btnExit" Content="THOÁT" Height="30" Width="80" Background="Transparent" Foreground="#FF4D4D" BorderBrush="#FF4D4D"/>
+            </StackPanel>
+        </Grid>
+    </Border>
+</Window>
+"@
 
-# 1. Tải WinToHDD
-$WTH_Path = "$TempDir\WintoHDD_Setup.exe"
-if (!(Download-GDrive -FileID $ID_WintoHDD -SavePath $WTH_Path)) { exit }
+$reader = [System.Xml.XmlReader]::Create([System.IO.StringReader] $xaml)
+$window = [System.Windows.Markup.XamlReader]::Load($reader)
+$container = $window.FindName("ButtonContainer")
 
-# 2. Cài đặt WinToHDD ngầm
-Write-Host "[+] Dang cai dat WinToHDD..." -ForegroundColor Yellow
-Start-Process $WTH_Path -ArgumentList "/VERYSILENT /SUPPRESSMSGBOXES" -Wait
+# --- 4. TẠO NÚT BẤM ---
+foreach ($win in $ListWin) {
+    $btn = New-Object System.Windows.Controls.Button
+    $btn.Content = "📦  $($win.Name)"
+    $btn.Height = 55; $btn.Margin = "0,5"; $btn.Foreground = "White"; $btn.Background = "#1E1E1E"; $btn.FontWeight = "Bold"
+    
+    $btn.Add_Click({
+        # Sử dụng đúng tên cột FileID từ CSV của Tuấn
+        [System.Windows.MessageBox]::Show("Đang tải: $($win.Name)`nID: $($win.FileID)")
+    })
+    $container.Children.Add($btn)
+}
 
-# 3. Tải Windows Image
-$WinFile = "$TempDir\install.wim"
-Write-Host "[+] Dang tai Windows 11 HSL (Dung luong lon, vui long doi)..." -ForegroundColor Yellow
-Download-GDrive -FileID $ID_Windows -SavePath $WinFile
-
-# 4. Tạo script AnyDesk tự chạy (SetupComplete)
-$ScriptPath = "$TempDir\SetupComplete.cmd"
-@"
-@echo off
-:net
-ping 8.8.8.8 -n 1 >nul
-if errorlevel 1 (timeout /t 5 >nul & goto net)
-curl -L -o "%public%\Desktop\AnyDesk.exe" "https://download.anydesk.com/AnyDesk.exe"
-start "" "%public%\Desktop\AnyDesk.exe"
-rd /s /q "C:\VietCloud"
-del "%~f0"
-"@ | Out-File $ScriptPath -Encoding ASCII
-
-# 5. Tiêm AnyDesk vào file WIM (Yêu cầu Windows có sẵn DISM)
-Write-Host "[+] Dang inject AnyDesk vao Image..." -ForegroundColor Magenta
-$Mount = "$TempDir\Mount"
-New-Item $Mount -ItemType Directory -Force | Out-Null
-Mount-WindowsImage -ImagePath $WinFile -Index 1 -Path $Mount | Out-Null
-$TargetDir = "$Mount\Windows\Setup\Scripts"
-if (!(Test-Path $TargetDir)) { New-Item $TargetDir -ItemType Directory -Force | Out-Null }
-Copy-Item $ScriptPath -Destination "$TargetDir\SetupComplete.cmd" -Force
-Dismount-WindowsImage -Path $Mount -Save | Out-Null
-
-# 6. Ra lệnh cho WinToHDD cài máy
-Write-Host ">>> MOI THU DA SAN SANG. KHOI DONG WINTOHDD..." -ForegroundColor Green
-$WTH_Exe = "C:\Program Files\Hasleo\WinToHDD\bin\WinToHDD_x64.exe"
-if (!(Test-Path $WTH_Exe)) { $WTH_Exe = "C:\Program Files\Hasleo\WinToHDD\bin\WinToHDD.exe" }
-
-# Lệnh Reinstall: /i (file nguồn), /v (phiên bản), /b (tự động boot), /r (tự khởi động lại)
-Start-Process $WTH_Exe -ArgumentList "/m Reinstall /i `"$WinFile`" /v `"$OS_Edition`" /b /r"
-
-Write-Host "Script ket thuc. May se restart sau giay lat." -ForegroundColor White
+$window.FindName("btnExit").Add_Click({ $window.Close() })
+$window.Add_MouseLeftButtonDown({ $window.DragMove() })
+$window.ShowDialog() | Out-Null
