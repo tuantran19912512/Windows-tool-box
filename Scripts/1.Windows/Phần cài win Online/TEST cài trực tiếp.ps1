@@ -54,7 +54,7 @@ $xaml = @"
                 <RowDefinition Height="Auto"/>
             </Grid.RowDefinitions>
 
-            <TextBlock Grid.Row="0" Text="WINDOWS AUTO-INSTALLER" Foreground="#00FF7F" FontSize="18" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0 autorun,15"/>
+            <TextBlock Grid.Row="0" Text="WINDOWS AUTO-INSTALLER" Foreground="#00FF7F" FontSize="18" FontWeight="Black" HorizontalAlignment="Center" Margin="0,0,0,15"/>
             
             <ScrollViewer Grid.Row="1" MaxHeight="250" VerticalScrollBarVisibility="Auto" Margin="0,5">
                 <StackPanel Name="ButtonContainer"/>
