@@ -1,11 +1,15 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX V37.2 - FAST INJECT (TỐI ƯU TỐC ĐỘ NẠP LÕI)
+# VIETTOOLBOX V37.2 - FAST INJECT (TỐI ƯU TỐC ĐỘ NẠP LÕI - REBUILD)
 # Chức năng: Mount WinRE thay vì Update để tăng tốc, Hiện tiến trình nạp lõi.
 # ==============================================================================
 
+# Yêu cầu quyền Admin
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs; exit
 }
+
+# Ép giao thức mạng TLS 1.2 để tải Wimlib không bị lỗi trên máy cũ
+[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms
 
@@ -53,8 +57,11 @@ $MaXAML = @"
 </Window>
 "@
 
+# Nạp XAML
 $DocXml = [System.Xml.XmlReader]::Create((New-Object System.IO.StringReader($MaXAML)))
 $CuaSo = [Windows.Markup.XamlReader]::Load($DocXml)
+
+# Gán biến UI
 $txtPath = $CuaSo.FindName("txtPath"); $btnBrowse = $CuaSo.FindName("btnBrowse"); $cmbIndex = $CuaSo.FindName("cmbIndex")
 $lblStatus = $CuaSo.FindName("lblStatus"); $pgBar = $CuaSo.FindName("pgBar"); $btnStart = $CuaSo.FindName("btnStart")
 $chkDriver = $CuaSo.FindName("chkDriver"); $chkBitLocker = $CuaSo.FindName("chkBitLocker")
@@ -62,6 +69,7 @@ $chkOOBE = $CuaSo.FindName("chkOOBE"); $chkAnydesk = $CuaSo.FindName("chkAnydesk
 
 function Update-UI { [System.Windows.Forms.Application]::DoEvents() }
 
+# --- SỰ KIỆN NÚT CHỌN FILE ---
 $btnBrowse.Add_Click({
     $fd = New-Object System.Windows.Forms.OpenFileDialog; $fd.Filter = "Windows Image|*.wim;*.iso;*.esd"
     if ($fd.ShowDialog() -eq "OK") {
@@ -73,60 +81,92 @@ $btnBrowse.Add_Click({
                 $w = "$dv`:\sources\install.wim"; if (!(Test-Path $w)) { $w = "$dv`:\sources\install.esd" }
                 (Get-WindowsImage -ImagePath $w) | ForEach-Object { $cmbIndex.Items.Add("$($_.ImageIndex) - $($_.ImageName)") }
                 Dismount-DiskImage -ImagePath $path | Out-Null
-            } else { (Get-WindowsImage -ImagePath $path) | ForEach-Object { $cmbIndex.Items.Add("$($_.ImageIndex) - $($_.ImageName)") } }
+            } else { 
+                (Get-WindowsImage -ImagePath $path) | ForEach-Object { $cmbIndex.Items.Add("$($_.ImageIndex) - $($_.ImageName)") } 
+            }
             $cmbIndex.SelectedIndex = 0; $btnStart.IsEnabled = $true
-        } catch { }
+        } catch { 
+            [System.Windows.MessageBox]::Show("Lỗi khi đọc file Image: $_")
+        }
     }
 })
 
+# --- SỰ KIỆN NÚT BẮT ĐẦU ---
 $btnStart.Add_Click({
-    $btnStart.IsEnabled = $false; $VietBoot = "C:\VietBoot"; if (!(Test-Path $VietBoot)) { New-Item $VietBoot -ItemType Directory -Force | Out-Null }
-    $SelPath = $txtPath.Text; $SelIdx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
+    # Validate dữ liệu
+    if ([string]::IsNullOrWhiteSpace($txtPath.Text) -or $null -eq $cmbIndex.SelectedItem) {
+        [System.Windows.MessageBox]::Show("Vui lòng chọn file cài đặt và phiên bản Windows (Index) trước khi bắt đầu!")
+        return
+    }
+
+    $btnStart.IsEnabled = $false; 
+    $VietBoot = "C:\VietBoot"; 
+    if (!(Test-Path $VietBoot)) { New-Item $VietBoot -ItemType Directory -Force | Out-Null }
+    
+    $SelPath = $txtPath.Text; 
+    $SelIdx = $cmbIndex.SelectedItem.ToString().Split('-')[0].Trim()
 
     try {
-        # [1-4] CÁC BƯỚC CHUẨN BỊ
-        $pgBar.Value = 10; $lblStatus.Text = "Kiểm tra Boot..."; Update-UI
+        # [1] KIỂM TRA PHÂN VÙNG EFI
+        $pgBar.Value = 10; $lblStatus.Text = "Kiểm tra Boot và phân vùng..."; Update-UI
         if (!(Get-Partition | Where-Object { $_.IsSystem })) {
             $disk = Get-Disk | Where-Object { $_.Number -eq 0 }
             "select disk $($disk.Number)`nclean`nconvert gpt`ncreate partition efi size=100`nformat quick fs=fat32 label='System'`nassign letter=S`ncreate partition msr size=16`ncreate partition primary`nformat quick fs=ntfs label='Windows'`nassign letter=C" | diskpart | Out-Null
         }
         
+        # [2] TẮT BITLOCKER
         $pgBar.Value = 20; $lblStatus.Text = "Giải mã BitLocker..."; Update-UI
         manage-bde -off C: | Out-Null
 
+        # [3] COPY BỘ CÀI VÀO VIETBOOT
         $pgBar.Value = 40; $lblStatus.Text = "Nạp bộ cài vào VietBoot..."; Update-UI
         $WimName = [System.IO.Path]::GetFileName($SelPath); $FinalWim = "$VietBoot\$WimName"
         if (!(Test-Path $FinalWim)) { Copy-Item $SelPath $FinalWim -Force }
 
-        # [5-6] NẠP LÕI (FIX ĐỨNG IM)
-        $pgBar.Value = 60; $lblStatus.Text = "Đang nạp lõi cứu hộ (Vui lòng nhìn cửa sổ CMD)..."; Update-UI
-        $BootWim = "$VietBoot\boot.wim"; Copy-Item "C:\Windows\System32\Recovery\WinRE.wim" $BootWim -Force
+        # [4] LẤY WINRE.WIM TỪ HỆ THỐNG
+        $pgBar.Value = 60; $lblStatus.Text = "Đang chuẩn bị lõi cứu hộ WinRE..."; Update-UI
+        $BootWim = "$VietBoot\boot.wim"
         
+        # Tắt ReAgentc để file WinRE.wim hiện hình
+        reagentc /disable | Out-Null
+        if (Test-Path "C:\Windows\System32\Recovery\WinRE.wim") {
+            Copy-Item "C:\Windows\System32\Recovery\WinRE.wim" $BootWim -Force
+        } else {
+            reagentc /enable | Out-Null 
+            throw "Hệ điều hành hiện tại bị thiếu lõi Recovery (WinRE.wim)!"
+        }
+        reagentc /enable | Out-Null
+        
+        # [5] TẠO KỊCH BẢN SETUP & STARTNET
         $Conf = "$VietBoot\Conf"; New-Item $Conf -ItemType Directory -Force | Out-Null
         "@echo off`nmanage-bde -off C:`nnet accounts /maxpwage:unlimited`nbcdedit /timeout 0`nrd /s /q `"C:\VietBoot`"`ndel `"%~f0`"" | Out-File "$Conf\SetupComplete.cmd" -Encoding ASCII
         
-        # Startnet.cmd kịch bản cũ của Tuấn
         $sn = "@echo off`nwpeinit`nfor %%i in (C D E F G H I J K L M N O P) do (if exist `"%%i:\VietBoot\$WimName`" set `"W=%%i:\VietBoot\$WimName`")`nfor /d %%a in (C:\*) do if /i not `"%%~nxa`"==`"VietBoot`" rd /s /q `"%%a`"`ndel /f /q C:\*.*`ndism /Apply-Image /ImageFile:`"%W%`" /Index:$SelIdx /ApplyDir:C:\`nbcdboot C:\Windows /s C: /f ALL`nwpeutil reboot"
         $sn | Out-File "$Conf\s.cmd" -Encoding ASCII
 
-        # SỬ DỤNG WIMLIB VỚI WINDOWSTYLE NORMAL ĐỂ THẤY TIẾN TRÌNH
-        $exeW = "wimlib-imagex.exe" # Đảm bảo file này cùng thư mục script
+        # [6] TẢI VÀ CHUẨN BỊ WIMLIB
+        $pgBar.Value = 75; $lblStatus.Text = "Kiểm tra công cụ Wimlib..."; Update-UI
+        $exeW = "$VietBoot\wimlib-imagex.exe" 
         if (!(Test-Path $exeW)) { 
             Start-BitsTransfer -Source "https://wimlib.net/downloads/wimlib-1.14.5-windows-x86_64-bin.zip" -Destination "$VietBoot\w.zip"
-            powershell -c "Expand-Archive '$VietBoot\w.zip' '$VietBoot\wim' -Force"
-            Copy-Item "$VietBoot\wim\*\wimlib-imagex.exe" "$PSScriptRoot\wimlib-imagex.exe" -Force
-            $exeW = "$PSScriptRoot\wimlib-imagex.exe"
+            Expand-Archive "$VietBoot\w.zip" "$VietBoot\wim" -Force
+            # Lấy cả EXE và DLL
+            Copy-Item "$VietBoot\wim\*\wimlib-imagex.exe" $exeW -Force
+            Copy-Item "$VietBoot\wim\*\libwim-15.dll" "$VietBoot\libwim-15.dll" -Force
         }
         
+        # [7] TIÊM LÕI VÀO BOOT.WIM BẰNG WIMLIB
+        $pgBar.Value = 85; $lblStatus.Text = "Đang tiêm kịch bản vào lõi (Xem cửa sổ CMD)..."; Update-UI
         $T = "$VietBoot\t.txt"
         "add `"$Conf\SetupComplete.cmd`" `"\Windows\System32\SetupComplete.cmd`"`nadd `"$Conf\s.cmd`" `"\Windows\System32\startnet.cmd`"" | Out-File $T -Encoding utf8
         
-        # Chạy công khai cửa sổ CMD để Tuấn theo dõi, không còn đứng im
+        # Chạy cửa sổ Normal để xem tiến trình
         Start-Process $exeW -ArgumentList "update `"$BootWim`" 1 < `"$T`"" -Wait -WindowStyle Normal
 
-        # [7] BOOT & REBOOT
-        $pgBar.Value = 100; $lblStatus.Text = "Xong! Khởi động lại..."; Update-UI
+        # [8] CẤU HÌNH BOOT VÀ KHỞI ĐỘNG LẠI
+        $pgBar.Value = 100; $lblStatus.Text = "Hoàn tất! Hệ thống chuẩn bị khởi động lại..."; Update-UI
         Copy-Item "C:\Windows\Boot\EFI\boot.sdi" "$VietBoot\boot.sdi" -Force
+        
         $ram = "{$( [guid]::NewGuid().ToString() )}"; bcdedit /create $ram /d "VB" /device | Out-Null
         bcdedit /set $ram ramdisksdidevice partition=C: | Out-Null
         bcdedit /set $ram ramdisksdipath "\VietBoot\boot.sdi" | Out-Null
@@ -135,8 +175,15 @@ $btnStart.Add_Click({
         bcdedit /set $os osdevice "ramdisk=[C:]\VietBoot\boot.wim,$ram" | Out-Null
         bcdedit /set $os winpe yes | Out-Null
         bcdedit /displayorder $os /addfirst | Out-Null; bcdedit /default $os | Out-Null; bcdedit /timeout 0 | Out-Null
+        
+        Start-Sleep -Seconds 2
         Restart-Computer -Force
-    } catch { [System.Windows.MessageBox]::Show("Lỗi: $_"); $btnStart.IsEnabled = $true }
+
+    } catch { 
+        [System.Windows.MessageBox]::Show("Có lỗi xảy ra: $_")
+        $btnStart.IsEnabled = $true 
+        $lblStatus.Text = "Lỗi! Đã hủy tác vụ."
+    }
 })
 
 $CuaSo.ShowDialog() | Out-Null
