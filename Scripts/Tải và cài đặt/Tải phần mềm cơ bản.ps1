@@ -95,6 +95,23 @@ function Tim-ExeRadar ($ThuMucGoc, $TenApp) {
     
     return $null
 }
+function Dong-CuaSoBungKem ($TenApp) {
+    try {
+        # Lấy từ khóa là chữ đầu tiên của tên App (VD: "Chi" trong "Chi Dung Fonts")
+        $TuKhoa = ($TenApp.Split(' ')[0]).Trim() 
+        
+        # Dùng Shell Application để tìm đúng cái cửa sổ thư mục vừa bật lên
+        $Shell = New-Object -ComObject Shell.Application
+        foreach ($Win in $Shell.Windows()) {
+            if ($Win.Name -match "Explorer" -and $Win.LocationName -match "(?i)$TuKhoa") {
+                $Win.Quit() # Đóng cái thư mục đó lại nhẹ nhàng
+            }
+        }
+        
+        # Tiện tay đập luôn mấy cái file Readme (Notepad) nếu nó dám tự mở
+        Stop-Process -Name notepad -Force -ErrorAction SilentlyContinue
+    } catch {}
+}
 
 # ------------------------------------------------------------------------------
 # 5. GIAO DIỆN WPF (CO GIÃN & THẨM MỸ)
@@ -307,7 +324,8 @@ function XuLy-MotPhanMem ($App) {
         }
         
         if ($Global:TrangThaiHeThong -eq "DungLai") { return }
-        
+        # --- GỌI SÁT THỦ ĐÓNG CỬA SỔ RÁC (THƯ MỤC / NOTEPAD) ---
+        Dong-CuaSoBungKem -TenApp $App.Ten
         # Săn Shortcut sau cài đặt
         $TuKhoaTimKiem = $App.Ten.Split(' ')[0]; $DanhSachVungQuet = @($env:ProgramFiles, ${env:ProgramFiles(x86)}, $env:LOCALAPPDATA, $env:APPDATA)
         $FileExeChinh = $null
