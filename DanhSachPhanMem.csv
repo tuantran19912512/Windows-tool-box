@@ -1,6 +1,6 @@
 Check,Name,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl
 False,Google Chrome,Google.Chrome,googlechrome,,,https://icon.horse/icon/google.com,https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi
-False,Zalo,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me,https://res-zaloapp-aka.zdn.vn/win/ZaloSetup-25.11.20.exe
+False,Zalo,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me,https://res-download-pc-te-vnso-pt-46.zadn.vn/win/ZaloSetup-26.3.20.exe
 False,Unikey,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn,https://www.unikey.org/assets/release/unikey46RC2-230919-win32.zip
 False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net,https://dl2.ultraviewer.net/UltraViewer_setup_6.6_en.exe
 False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,,https://icon.horse/icon/foxit.com,https://drive.google.com/uc?export=download&id=108qMlDMb_Z6Lx1uIHi-Ftj0EOHN_bQZe&confirm=t
@@ -21,8 +21,10 @@ False,DirectX End-User Runtime Installer,Microsoft.DirectX,directx,,,https://ico
 False,Wechat,Tencent.WeChat,,,,https://icon.horse/icon/wechat.com,https://drive.google.com/uc?export=download&id=1zO_I3HL7wOderBIPFv_c2NH05CUi9ljQ&confirm=t
 False,HP Smart,9WZDNCRFHWLH,,,,https://icon.horse/icon/hpsmart.com,
 False,PDF X edit,9P3CP9G025RM,,,,https://icon.horse/icon/pdfxapp.com,
-False,Zoom,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us,
+False,Zoom,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us,https://cdn.zoom.us/prod/7.0.2.34412/x64/ZoomInstallerFull.exe
 False,Microsoft Visual C++,Microsoft.VCLibs.14,,,,https://icon.horse/icon/microsoft.com,
 False,WhatsApp,9NKSQGP7F2NH,,,,https://icon.horse/icon/whatsapp.com,https://drive.google.com/uc?export=download&id=1zMRyp0fqhclozbDkSHoNg5LWX5NgcMiX&confirm=t
 False,Tiếng Việt Gói trải nghiệm cục bộ,9P0W68X0XZPT,,,,https://icon.horse/icon/apps.microsoft.com,
 False,Anydesk,AnyDesk.AnyDesk,anydesk,,,https://img.icons8.com/?size=100&id=60529&format=png&color=000000,https://download.anydesk.com/AnyDesk.exe
+False,AutoCad 2022,,,1QOR6a4wfDMdMC4i2zRJWNPJNfrUf7G_t,--silent,https://icon.horse/icon/web.autocad.com,https://drive.google.com/uc?export=download&id=1QOR6a4wfDMdMC4i2zRJWNPJNfrUf7G_t&confirm=t
+False,Font VNI TCVN UNICODE Full,,,1swG8Hj-F5vQXIjVcHYrgXZAZwFVzbz4l,/s,https://icon.horse/icon/taimienphi.vn,https://drive.google.com/uc?export=download&id=1swG8Hj-F5vQXIjVcHYrgXZAZwFVzbz4l&confirm=t
