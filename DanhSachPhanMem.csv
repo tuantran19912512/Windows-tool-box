@@ -1,29 +1,29 @@
-Check,Name,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl
-False,Google Chrome,Google.Chrome,googlechrome,,,https://icon.horse/icon/google.com,https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi
-False,Zalo,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me,https://res-download-pc.zadn.vn/win/ZaloSetup-26.3.20.exe
-False,Unikey,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn,https://www.unikey.org/assets/release/unikey46RC2-230919-win32.zip
-False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net,https://dl2.ultraviewer.net/UltraViewer_setup_6.6_en.exe
-False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,,https://icon.horse/icon/foxit.com,https://drive.google.com/uc?export=download&id=108qMlDMb_Z6Lx1uIHi-Ftj0EOHN_bQZe&confirm=t
-False,EVKey,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com,https://github.com/lamquangminh/EVKey/releases/download/Release/EVKey.zip
-False,WPS Office,Kingsoft.WPSOffice,wps-office-free,,,https://icon.horse/icon/vi.wps.com,https://wdl1.pcfg.cache.wpscdn.com/wpsdl/wpsoffice/download/12.2.0.23196/500.1001/WPSOffice_23196.exe
-False,Sogou,Sogou.SogouInput,,,,https://icon.horse/icon/shurufa.sogou.com,https://ime.gtimg.com/pc/build/_sogou_pinyin_16.3.0.3318_0.exe
-False,Notepad++ ,Notepad++.Notepad++,notepadplusplus,,,https://icon.horse/icon/notepad-plus-plus.org,https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.3/npp.8.9.3.Installer.x64.exe
-False,7-Zip,7zip.7zip,7zip,,,https://icon.horse/icon/7-zip.org,https://7-zip.org/a/7z2600-x64.exe
-False,WPS Office CN	,Kingsoft.WPSOffice.CN,,,,https://icon.horse/icon/wps.cn,https://official-package.wpscdn.cn/wps/download/WPS_Setup_25225.exe
-False,K-Lite,CodecGuide.K-LiteCodecPack.Mega,k-litecodecpackbasic,,,https://icon.horse/icon/codecguide.com,https://files2.codecguide.com/K-Lite_Codec_Pack_1966_Mega.exe
-False,VLC media player,VideoLAN.VLC.Nightly,vlc,,,https://icon.horse/icon/videolan.org,https://artifacts.videolan.org/vlc/nightly-win64/20260304-0444/vlc-4.0.0-dev-win64-77d6c93e.msi
-False,Mozilla Firefox,Mozilla.Firefox.vi,firefox,,,https://icon.horse/icon/firefox.com,https://download-installer.cdn.mozilla.net/pub/firefox/releases/149.0/win64/vi/Firefox%20Setup%20149.0.exe
-False,Cốc cốc,CocCoc.CocCoc,,,,https://icon.horse/icon/coccoc.com,https://files1.coccoc.com/browser/x64/120.0.6099.234/0A137B37-5CC3-881A-70E1-86CE2172C8D1/cmVmPXd3dy5nb29nbGUuY29t/coccoc_vi_machine.exe
-False,Java,Oracle.JavaRuntimeEnvironment,javaruntime,,/s REBOOT=0 SPONSORS=0,https://icon.horse/icon/java.com,https://javadl.oracle.com/webapps/download/AutoDL?BundleId=252907_0d06828d282343ea81775b28020a7cd3
-False,C++2015-2022 x64,Microsoft.VCRedist.2015+.x64,,,,https://icon.horse/icon/microsoft.com,https://download.visualstudio.microsoft.com/download/pr/6f02464a-5e9b-486d-a506-c99a17db9a83/8995548DFFFCDE7C49987029C764355612BA6850EE09A7B6F0FDDC85BDC5C280/VC_redist.x64.exe
-False,C++ 2015-2022x86,Microsoft.VCRedist.2015+.x86,,,,https://icon.horse/icon/microsoft.com,https://download.visualstudio.microsoft.com/download/pr/6f02464a-5e9b-486d-a506-c99a17db9a83/E7267C1BDF9237C0B4A28CF027C382B97AA909934F84F1C92D3FB9F04173B33E/VC_redist.x86.exe
-False,DirectX End-User Runtime Installer,Microsoft.DirectX,directx,,,https://icon.horse/icon/microsoft.com,https://download.microsoft.com/download/c/c/2/cc291a37-2ebd-4ac2-ba5f-4c9124733bf1/UAPSignedBinary_Microsoft.DirectX.x64.appx
-False,Wechat,Tencent.WeChat,,,,https://icon.horse/icon/wechat.com,https://drive.google.com/uc?export=download&id=1zO_I3HL7wOderBIPFv_c2NH05CUi9ljQ&confirm=t
-False,HP Smart,9WZDNCRFHWLH,,,,https://icon.horse/icon/hpsmart.com,
-False,PDF X edit,9P3CP9G025RM,,,,https://icon.horse/icon/pdfxapp.com,
-False,Zoom,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us,
-False,Microsoft Visual C++,Microsoft.VCLibs.14,,,,https://icon.horse/icon/microsoft.com,
-False,WhatsApp,9NKSQGP7F2NH,,,,https://icon.horse/icon/whatsapp.com,https://drive.google.com/uc?export=download&id=1zMRyp0fqhclozbDkSHoNg5LWX5NgcMiX&confirm=t
-False,Tiếng Việt Gói trải nghiệm cục bộ,9P0W68X0XZPT,,,,https://icon.horse/icon/apps.microsoft.com,
-False,Anydesk,AnyDesk.AnyDesk,anydesk,,,https://img.icons8.com/?size=100&id=60529&format=png&color=000000,https://download.anydesk.com/AnyDesk.exe
-False,AutoCad 2022,,,1QOR6a4wfDMdMC4i2zRJWNPJNfrUf7G_t,,https://icon.horse/icon/web.autocad.com,https://drive.google.com/uc?export=download&id=1QOR6a4wfDMdMC4i2zRJWNPJNfrUf7G_t&confirm=t
+Check,Name,WingetID,ChocoID,GDriveID,SilentArgs,IconURL
+False,Google Chrome,Google.Chrome,googlechrome,,,https://icon.horse/icon/google.com
+False,Zalo,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me
+False,Unikey,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn
+False,UltraViewer,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net
+False,Foxit PDF Reader,Foxit.FoxitReader,FoxitReader,,,https://icon.horse/icon/foxit.com
+False,EVKey,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com
+False,WPS Office,Kingsoft.WPSOffice,wps-office-free,,,https://icon.horse/icon/vi.wps.com
+False,Sogou,Sogou.SogouInput,,,,https://icon.horse/icon/shurufa.sogou.com
+False,Notepad++ ,Notepad++.Notepad++,notepadplusplus,,,https://icon.horse/icon/notepad-plus-plus.org
+False,7-Zip,7zip.7zip,7zip,,,https://icon.horse/icon/7-zip.org
+False,WPS Office CN	,Kingsoft.WPSOffice.CN,,,,https://icon.horse/icon/wps.cn
+False,K-Lite,CodecGuide.K-LiteCodecPack.Mega,k-litecodecpackbasic,,,https://icon.horse/icon/codecguide.com
+False,VLC media player,VideoLAN.VLC.Nightly,vlc,,,https://icon.horse/icon/videolan.org
+False,Mozilla Firefox,Mozilla.Firefox.vi,firefox,,,https://icon.horse/icon/firefox.com
+False,Cốc cốc,CocCoc.CocCoc,,,,https://icon.horse/icon/coccoc.com
+False,Java,Oracle.JavaRuntimeEnvironment,javaruntime,,/s REBOOT=0 SPONSORS=0,https://icon.horse/icon/java.com
+False,C++2015-2022 x64,Microsoft.VCRedist.2015+.x64,,,,https://icon.horse/icon/microsoft.com
+False,C++ 2015-2022x86,Microsoft.VCRedist.2015+.x86,,,,https://icon.horse/icon/microsoft.com
+False,DirectX End-User Runtime Installer,Microsoft.DirectX,directx,,,https://icon.horse/icon/microsoft.com
+False,Wechat,Tencent.WeChat,,,,https://icon.horse/icon/wechat.com
+False,HP Smart,9WZDNCRFHWLH,,,,https://icon.horse/icon/hpsmart.com
+False,PDF X edit,9P3CP9G025RM,,,,https://icon.horse/icon/pdfxapp.com
+False,Zoom,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us
+False,Microsoft Visual C++,Microsoft.VCLibs.14,,,,https://icon.horse/icon/microsoft.com
+False,WhatsApp,9NKSQGP7F2NH,,,,https://icon.horse/icon/whatsapp.com
+False,Tiếng Việt Gói trải nghiệm cục bộ,9P0W68X0XZPT,,,,https://icon.horse/icon/apps.microsoft.com
+False,Anydesk,AnyDesk.AnyDesk,anydesk,,,https://img.icons8.com/?size=100&id=60529&format=png&color=000000
+False,AutoCad 2022,,,1QOR6a4wfDMdMC4i2zRJWNPJNfrUf7G_t,--silent,https://icon.horse/icon/web.autocad.com
