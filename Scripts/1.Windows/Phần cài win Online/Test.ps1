@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Công cụ hỗ trợ cài đặt Windows tự động (Tích hợp Patch lõi WinRE chạy ngầm)
+    Công cụ hỗ trợ cài đặt Windows tự động (Bản bọc thép Try-Catch chống sập UI)
 #>
 
 # Yêu cầu quyền quản trị
@@ -278,13 +278,10 @@ function Quet-VaCapNhatPhienBanWin {
         $DanhSachPhienBanWin.Items.Clear()
         $DanhSachPhienBanWin.Items.Add("❌ Xảy ra lỗi khi đọc file bộ cài") | Out-Null
     } finally {
-        if ($DaMountIso) {
-            Dismount-DiskImage -ImagePath $DuongDanFile | Out-Null
-        }
+        if ($DaMountIso) { Dismount-DiskImage -ImagePath $DuongDanFile | Out-Null }
     }
 }
 
-# SỰ KIỆN: Người dùng tự chọn file từ máy
 $NutChonFileBoCai.Add_Click({
     $HopThoaiFile = New-Object System.Windows.Forms.OpenFileDialog
     $HopThoaiFile.Title = "Chọn file bộ cài (WIM, ESD, ISO)"
@@ -420,29 +417,37 @@ assign letter=R
 function Nhap-KichBanVaoMoiTruongRE {
     param($DuongDanTapTinWim, $ChiSoIndex, $DuongDanThuMucDriver)
     
-    Ghi-NhatKy "Tắt WinRE tạm thời để kéo file lõi về C:\..."
+    Ghi-NhatKy "Đang đánh thức và ép WinRE nhả file gốc..."
+    
+    # Kỹ thuật ép đẩy file winre.wim về đường dẫn chuẩn (Chống lỗi tìm kiếm tốn thời gian)
+    reagentc.exe /enable | Out-Null
+    Start-Sleep -Seconds 2
     reagentc.exe /disable | Out-Null
-    Start-Sleep -Seconds 3
+    Start-Sleep -Seconds 2
 
     $WinREPath = "C:\Windows\System32\Recovery\winre.wim"
+    
     if (-not (Test-Path $WinREPath)) {
-        # Quét dự phòng nếu winre.wim bị giấu ở chỗ khác
-        Ghi-NhatKy "Đang dò tìm vị trí winre.wim..."
-        $WinREPath = (Get-ChildItem -Path C:\ -Recurse -Filter "winre.wim" -Hidden -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
-        if (-not $WinREPath) { throw "Tuyệt vọng: Không tìm thấy file winre.wim trong hệ thống!" }
+        throw "Lỗi Chí Mạng: Hệ thống của bạn đã bị xoá mất file Recovery gốc (winre.wim). Không thể tạo môi trường cài tự động!"
     }
 
     $ThuMucMount = "C:\MountRE"
-    if (Test-Path $ThuMucMount) { Remove-Item -Path $ThuMucMount -Recurse -Force }
+    if (Test-Path $ThuMucMount) { 
+        dism.exe /Unmount-Image /MountDir:$ThuMucMount /Discard | Out-Null
+        Remove-Item -Path $ThuMucMount -Recurse -Force 
+    }
     New-Item -ItemType Directory -Path $ThuMucMount | Out-Null
 
-    Ghi-NhatKy "Đang Mount (mở bụng) lõi WinRE. Quá trình này mất khoảng 1-2 phút..."
+    Ghi-NhatKy "Đang Mount (mở bụng) lõi WinRE. Xin đợi khoảng 30s - 1 phút..."
     CapNhat-GiaoDien
-    dism.exe /Mount-Image /ImageFile:$WinREPath /Index:1 /MountDir:$ThuMucMount | Out-Null
+    
+    $KetQuaMount = dism.exe /Mount-Image /ImageFile:$WinREPath /Index:1 /MountDir:$ThuMucMount | Out-String
+    if ($KetQuaMount -notmatch "The operation completed successfully") {
+        throw "DISM từ chối Mount file WinRE. Hệ thống có thể đang bị khoá quyền. Chi tiết: $KetQuaMount"
+    }
 
     Ghi-NhatKy "Đang tiêm kịch bản cài đặt tự động vào não WinRE..."
     
-    # 1. Kịch bản xả Driver và tải Anydesk (Lưu thẳng vào WinRE để không bị mất khi format ổ C)
     $NoiDungCaiXong = @"
 @echo off
 echo Tien hanh xa driver vao he thong moi...
@@ -456,7 +461,6 @@ del %0
 "@
     $NoiDungCaiXong | Out-File "$ThuMucMount\Windows\System32\LenhCaiXong_TamThoi.cmd" -Encoding oem
 
-    # 2. Kịch bản Gốc: Chạy bên trong WinRE (Format, Cài Win, Copy lệnh SetupComplete)
     $NoiDungTrongRE = @"
 @echo off
 echo Format o C va trien khai Windows moi...
@@ -474,101 +478,102 @@ wpeutil reboot
 "@
     $NoiDungTrongRE | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
 
-    # 3. Ép WinRE chạy thẳng kịch bản thay vì hiện Menu xanh
     $WinpeshlIni = @"
 [LaunchApps]
 X:\Windows\System32\LenhChayTrongRE.cmd
 "@
     $WinpeshlIni | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
 
-    Ghi-NhatKy "Đang khâu lại vết mổ và đóng gói WinRE..."
+    Ghi-NhatKy "Đang khâu lại vết mổ và đóng gói (Khoảng 30 giây)..."
     CapNhat-GiaoDien
     dism.exe /Unmount-Image /MountDir:$ThuMucMount /Commit | Out-Null
     Remove-Item -Path $ThuMucMount -Force
 
-    Ghi-NhatKy "Đang nạp lại WinRE đã độ vào hệ thống..."
+    Ghi-NhatKy "Đang nạp lại WinRE vào hệ thống..."
     reagentc.exe /enable | Out-Null
 }
 
-# ----------------- NÚT THỰC THI CUỐI -----------------
+# ----------------- NÚT THỰC THI CUỐI (BỌC THÉP TRY-CATCH) -----------------
 $NutBatDauCaiDat.Add_Click({
-    $DuongDanBoCaiThucTe = $HopThoaiFileBoCai.Text
-    $DuongDanDriverTuyetDoi = $HopThoaiThuMucDriver.Text
-    $ChonPhienBanText = $DanhSachPhienBanWin.SelectedItem
+    try {
+        $DuongDanBoCaiThucTe = $HopThoaiFileBoCai.Text
+        $DuongDanDriverTuyetDoi = $HopThoaiThuMucDriver.Text
+        $ChonPhienBanText = $DanhSachPhienBanWin.SelectedItem
 
-    if ([string]::IsNullOrWhiteSpace($DuongDanBoCaiThucTe) -or !(Test-Path $DuongDanBoCaiThucTe)) {
-        [System.Windows.Forms.MessageBox]::Show("Chưa tìm thấy file bộ cài hợp lệ. Vui lòng chọn file hoặc tải từ máy chủ!", "Cảnh Báo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-        return
-    }
-
-    $ChiSoIndexCanCai = $null
-    if ($ChonPhienBanText -match 'Index (\d+):') {
-        $ChiSoIndexCanCai = $matches[1]
-    } else {
-        [System.Windows.Forms.MessageBox]::Show("Vui lòng đợi quét danh sách hoặc chọn phiên bản Win cụ thể trước khi ấn Bắt đầu!", "Lỗi Chọn Bản Win", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-        return
-    }
-
-    $KyTuOChuaBoCai = [System.IO.Path]::GetPathRoot($DuongDanBoCaiThucTe)
-    if ($KyTuOChuaBoCai -match "(?i)^C:") {
-        [System.Windows.Forms.MessageBox]::Show("Tuyệt đối không được để file bộ cài trên ổ C:\ !`nVì quy trình này sẽ format sạch sẽ toàn bộ ổ C. Vui lòng chuyển file sang ổ khác.", "Lỗi Nghiêm Trọng", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-        return
-    }
-
-    $HopThoaiXacNhan = [System.Windows.Forms.MessageBox]::Show("Xác nhận Cài Đặt: $($ChonPhienBanText)`n`nNGUY HIỂM: Quá trình này sẽ format sạch ổ C và nạp lại hệ điều hành. Mọi dữ liệu trên ổ C sẽ bốc hơi.`nTiếp tục tiến trình?", "Cảnh Báo An Toàn", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
-    
-    if ($HopThoaiXacNhan -eq 'Yes') {
-        $NutBatDauCaiDat.IsEnabled = $false
-        
-        if ($DuongDanBoCaiThucTe -match '(?i)\.iso$') {
-            Ghi-NhatKy "Phát hiện file ISO. Đang trích xuất file lõi (Vui lòng đợi 1-2 phút)..."
-            try {
-                $ThongTinMount = Mount-DiskImage -ImagePath $DuongDanBoCaiThucTe -PassThru
-                Start-Sleep -Seconds 1
-                $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanBoCaiThucTe | Get-Volume).DriveLetter
-                if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
-                
-                $DuongDanODiaAo = "$($KyTuODiaAo):\"
-                $DuongDanWimAo = Join-Path $DuongDanODiaAo "sources\install.wim"
-                $DuongDanEsdAo = Join-Path $DuongDanODiaAo "sources\install.esd"
-
-                $FileCanTrichXuat = $null
-                $DuoiFileTrichXuat = ".wim"
-                if (Test-Path $DuongDanWimAo) { $FileCanTrichXuat = $DuongDanWimAo }
-                elseif (Test-Path $DuongDanEsdAo) { $FileCanTrichXuat = $DuongDanEsdAo; $DuoiFileTrichXuat = ".esd" }
-
-                if ($FileCanTrichXuat) {
-                    $ThuMucChuaIso = [System.IO.Path]::GetDirectoryName($DuongDanBoCaiThucTe)
-                    $DuongDanTrichXuatXong = Join-Path $ThuMucChuaIso "install_extracted$DuoiFileTrichXuat"
-                    
-                    Copy-Item -Path $FileCanTrichXuat -Destination $DuongDanTrichXuatXong -Force
-                    $DuongDanBoCaiThucTe = $DuongDanTrichXuatXong 
-                    Ghi-NhatKy "Trích xuất ISO thành công!"
-                } else {
-                    throw "Bản ISO này không chứa file install.wim hay install.esd hợp lệ."
-                }
-            } catch {
-                Ghi-NhatKy "❌ Lỗi trích xuất ISO: $_"
-                Dismount-DiskImage -ImagePath $DuongDanBoCaiThucTe | Out-Null
-                $NutBatDauCaiDat.IsEnabled = $true
-                return
-            }
-            Dismount-DiskImage -ImagePath $DuongDanBoCaiThucTe | Out-Null
+        if ([string]::IsNullOrWhiteSpace($DuongDanBoCaiThucTe) -or !(Test-Path $DuongDanBoCaiThucTe)) {
+            [System.Windows.Forms.MessageBox]::Show("Chưa tìm thấy file bộ cài hợp lệ. Vui lòng chọn file hoặc tải từ máy chủ!", "Cảnh Báo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
+            return
         }
 
-        KiemTra-Va-TaoPhanVungHeThong
+        $ChiSoIndexCanCai = $null
+        if ($ChonPhienBanText -match 'Index (\d+):') {
+            $ChiSoIndexCanCai = $matches[1]
+        } else {
+            [System.Windows.Forms.MessageBox]::Show("Vui lòng đợi quét danh sách hoặc chọn phiên bản Win cụ thể trước khi ấn Bắt đầu!", "Lỗi Chọn Bản Win", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            return
+        }
+
+        $KyTuOChuaBoCai = [System.IO.Path]::GetPathRoot($DuongDanBoCaiThucTe)
+        if ($KyTuOChuaBoCai -match "(?i)^C:") {
+            [System.Windows.Forms.MessageBox]::Show("Tuyệt đối không được để file bộ cài trên ổ C:\ !`nVì quy trình này sẽ format sạch sẽ toàn bộ ổ C. Vui lòng chuyển file sang ổ khác.", "Lỗi Nghiêm Trọng", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+            return
+        }
+
+        $HopThoaiXacNhan = [System.Windows.Forms.MessageBox]::Show("Xác nhận Cài Đặt: $($ChonPhienBanText)`n`nNGUY HIỂM: Quá trình này sẽ format sạch ổ C và nạp lại hệ điều hành. Mọi dữ liệu trên ổ C sẽ bốc hơi.`nTiếp tục tiến trình?", "Cảnh Báo An Toàn", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
         
-        # BƯỚC ĐỘ WINRE
-        Nhap-KichBanVaoMoiTruongRE -DuongDanTapTinWim $DuongDanBoCaiThucTe -ChiSoIndex $ChiSoIndexCanCai -DuongDanThuMucDriver $DuongDanDriverTuyetDoi
-        
-        Ghi-NhatKy "Ép máy tính vào chế độ Recovery ở lần khởi động tới..."
-        reagentc.exe /boottore | Out-Null
-        
-        Ghi-NhatKy "CHUẨN BỊ XONG. MÁY SẼ TỰ RESET TRONG 5 GIÂY NỮA!"
-        Start-Sleep -Seconds 5
-        
-        # MỞ KHÓA DÒNG DƯỚI ĐỂ TỰ ĐỘNG KHỞI ĐỘNG LẠI
-        # Restart-Computer -Force
+        if ($HopThoaiXacNhan -eq 'Yes') {
+            $NutBatDauCaiDat.IsEnabled = $false
+            
+            if ($DuongDanBoCaiThucTe -match '(?i)\.iso$') {
+                Ghi-NhatKy "Phát hiện file ISO. Đang trích xuất file lõi (Vui lòng đợi 1-2 phút)..."
+                try {
+                    $ThongTinMount = Mount-DiskImage -ImagePath $DuongDanBoCaiThucTe -PassThru
+                    Start-Sleep -Seconds 1
+                    $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanBoCaiThucTe | Get-Volume).DriveLetter
+                    if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
+                    
+                    $DuongDanODiaAo = "$($KyTuODiaAo):\"
+                    $DuongDanWimAo = Join-Path $DuongDanODiaAo "sources\install.wim"
+                    $DuongDanEsdAo = Join-Path $DuongDanODiaAo "sources\install.esd"
+
+                    $FileCanTrichXuat = $null
+                    $DuoiFileTrichXuat = ".wim"
+                    if (Test-Path $DuongDanWimAo) { $FileCanTrichXuat = $DuongDanWimAo }
+                    elseif (Test-Path $DuongDanEsdAo) { $FileCanTrichXuat = $DuongDanEsdAo; $DuoiFileTrichXuat = ".esd" }
+
+                    if ($FileCanTrichXuat) {
+                        $ThuMucChuaIso = [System.IO.Path]::GetDirectoryName($DuongDanBoCaiThucTe)
+                        $DuongDanTrichXuatXong = Join-Path $ThuMucChuaIso "install_extracted$DuoiFileTrichXuat"
+                        
+                        Copy-Item -Path $FileCanTrichXuat -Destination $DuongDanTrichXuatXong -Force
+                        $DuongDanBoCaiThucTe = $DuongDanTrichXuatXong 
+                        Ghi-NhatKy "Trích xuất ISO thành công!"
+                    } else {
+                        throw "Bản ISO này không chứa file install.wim hay install.esd hợp lệ."
+                    }
+                } catch {
+                    throw "Lỗi trích xuất ISO: $_"
+                } finally {
+                    Dismount-DiskImage -ImagePath $DuongDanBoCaiThucTe | Out-Null
+                }
+            }
+
+            KiemTra-Va-TaoPhanVungHeThong
+            Nhap-KichBanVaoMoiTruongRE -DuongDanTapTinWim $DuongDanBoCaiThucTe -ChiSoIndex $ChiSoIndexCanCai -DuongDanThuMucDriver $DuongDanDriverTuyetDoi
+            
+            Ghi-NhatKy "Ép máy tính vào chế độ Recovery ở lần khởi động tới..."
+            reagentc.exe /boottore | Out-Null
+            
+            Ghi-NhatKy "CHUẨN BỊ XONG. MÁY SẼ TỰ RESET TRONG 5 GIÂY NỮA!"
+            Start-Sleep -Seconds 5
+            
+            # Restart-Computer -Force
+        }
+    } catch {
+        Ghi-NhatKy "❌ LỖI HỆ THỐNG PHÁT HIỆN ĐƯỢC: $_"
+        [System.Windows.Forms.MessageBox]::Show("Đã xảy ra lỗi trong quá trình xử lý! Lỗi đã được chặn lại để bảo vệ giao diện. Vui lòng kiểm tra màn hình Nhật Ký (màu đen) để xem chi tiết.", "Tiến Trình Bị Hủy", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+    } finally {
+        $NutBatDauCaiDat.IsEnabled = $true
     }
 })
 
