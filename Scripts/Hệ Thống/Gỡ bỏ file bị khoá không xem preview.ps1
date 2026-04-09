@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (UNBLOCK-FILE GUI)
-# Đặc tính: Hỗ trợ đường dẫn mạng, Giao diện duyệt thư mục hiện đại (Explorer Style)
+# Đặc tính: Hỗ trợ mạng UNC, Giao diện duyệt hiện đại, Tự động Fix lỗi "Harmful"
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -12,10 +12,10 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# 2. XÂY DỰNG GIAO DIỆN XAML
+# 2. XÂY DỰNG GIAO DIỆN XAML (Đã thêm Checkbox)
 $GiaoDienXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-        Title="Cong Cu Go Phong An" Width="600" Height="380" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
+        Title="Cong Cu Go Phong An" Width="600" Height="410" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
     
     <Border CornerRadius="15" BorderBrush="#334155" BorderThickness="2" Background="#0F172A">
         <Grid>
@@ -33,7 +33,7 @@ $GiaoDienXML = @"
             <StackPanel Grid.Row="1" Margin="25">
                 <TextBlock Text="Nhập đường dẫn cục bộ hoặc mạng (VD: D:\ hoặc \\MayChu\ThuMuc):" Foreground="#E2E8F0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                 
-                <Grid Margin="0,0,0,25">
+                <Grid Margin="0,0,0,15">
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="*"/>
                         <ColumnDefinition Width="110"/>
@@ -47,6 +47,8 @@ $GiaoDienXML = @"
                         <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
                     </Button>
                 </Grid>
+
+                <CheckBox Name="HopKiemAnToan" Content="🛡️ Tự động khai báo máy chủ này là mạng nội bộ an toàn (Sửa lỗi báo Harmful)" Foreground="#94A3B8" FontSize="13" Margin="0,0,0,20" IsChecked="True" ToolTip="Giúp khung Preview của Windows không chặn file từ IP/Máy chủ mạng này nữa"/>
 
                 <Button Name="NutThucThi" Content="⚡ MỞ KHÓA TOÀN BỘ TẬP TIN" Height="50" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="16" BorderThickness="0" Cursor="Hand" Margin="0,0,0,20">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
@@ -75,6 +77,7 @@ try {
 $NutDong = $CuaSo.FindName("NutDong")
 $OTimKiem = $CuaSo.FindName("OTimKiem")
 $NutChon = $CuaSo.FindName("NutChon")
+$HopKiemAnToan = $CuaSo.FindName("HopKiemAnToan")
 $NutThucThi = $CuaSo.FindName("NutThucThi")
 $NhanTrangThai = $CuaSo.FindName("NhanTrangThai")
 
@@ -82,20 +85,16 @@ $NhanTrangThai = $CuaSo.FindName("NhanTrangThai")
 $NutDong.Add_Click({ $CuaSo.Close() })
 $CuaSo.Add_MouseLeftButtonDown({ $CuaSo.DragMove() })
 
-# --- SỰ KIỆN: NÚT DUYỆT THƯ MỤC (NÂNG CẤP GIAO DIỆN HIỆN ĐẠI) ---
+# --- SỰ KIỆN: NÚT DUYỆT THƯ MỤC ---
 $NutChon.Add_Click({
-    # Dùng OpenFileDialog kết hợp vô hiệu hóa kiểm tra tập tin để chọn thư mục
     $HopThoai = New-Object System.Windows.Forms.OpenFileDialog
     $HopThoai.Title = "Chọn thư mục cần gỡ phong ấn bảo mật"
     $HopThoai.ValidateNames = $false
     $HopThoai.CheckFileExists = $false
     $HopThoai.CheckPathExists = $true
-    
-    # Đặt một tên ảo để lừa hộp thoại chọn tập tin chuyển thành chọn thư mục
     $HopThoai.FileName = "Chọn_Thư_Mục_Này" 
     
     if ($HopThoai.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-        # Tách lấy phần đường dẫn thư mục, loại bỏ phần tên ảo
         $OTimKiem.Text = [System.IO.Path]::GetDirectoryName($HopThoai.FileName)
     }
 })
@@ -112,7 +111,7 @@ $NutThucThi.Add_Click({
 
     if (-not (Test-Path -LiteralPath $DuongDan)) {
         if ($DuongDan -match "^[A-Za-z]:\\") {
-            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDan'. Nếu đây là ổ đĩa mạng (Z:, X:...), quyền Quản trị viên sẽ không nhìn thấy. Vui lòng nhập trực tiếp đường dẫn gốc (VD: \\\\Dia_Chi_IP\\Thu_Muc)."
+            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDan'. Nếu đây là ổ đĩa mạng, vui lòng nhập trực tiếp đường dẫn gốc (VD: \\\\Dia_Chi_IP\\Thu_Muc)."
         } else {
             $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn '$DuongDan' không tồn tại hoặc không thể truy cập!"
         }
@@ -120,14 +119,32 @@ $NutThucThi.Add_Click({
         return
     }
 
-    $NhanTrangThai.Text = "⏳ Đang quét và gỡ phong ấn, vui lòng không tắt công cụ..."
+    $NhanTrangThai.Text = "⏳ Đang quét và cấu hình, vui lòng chờ..."
     $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#F59E0B")
     $NutThucThi.IsEnabled = $false
     $CuaSo.Dispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Render, [System.Action]{})
 
+    # 1. Xử lý tự động thêm IP/Tên máy chủ vào vùng Local Intranet
+    $TrangThaiMang = ""
+    if ($HopKiemAnToan.IsChecked -and $DuongDan -match "^\\\\\\*([^\\]+)") {
+        $TenMayChu = $matches[1] # Trích xuất IP hoặc Tên máy chủ từ đường dẫn UNC
+        try {
+            $RegPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMapKey"
+            if (-not (Test-Path $RegPath)) {
+                New-Item -Path $RegPath -Force | Out-Null
+            }
+            # Value "1" tương ứng với vùng Local Intranet
+            Set-ItemProperty -Path $RegPath -Name $TenMayChu -Value "1" -Type String -Force
+            $TrangThaiMang = "`n🛡️ Đã cấp quyền tin cậy cho máy chủ: $TenMayChu"
+        } catch {
+            $TrangThaiMang = "`n⚠️ Không thể tự động thêm vùng tin cậy: $_"
+        }
+    }
+
+    # 2. Thực thi gỡ phong ấn (Unblock-File)
     try {
         Get-ChildItem -LiteralPath $DuongDan -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
-        $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn an toàn cho toàn bộ tập tin tại '$DuongDan'."
+        $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn cho toàn bộ tập tin tại '$DuongDan'.$TrangThaiMang"
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#10B981")
     } catch {
         $NhanTrangThai.Text = "❌ LỖI HỆ THỐNG: $_"
