@@ -1,11 +1,14 @@
 ﻿<#
 .SYNOPSIS
-    Công cụ hỗ trợ cài đặt Windows tự động (Bản bọc thép Try-Catch chống sập UI)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - PHIÊN BẢN HOÀN THIỆN TỐI THƯỢNG (Fixed UI)
+    Tác giả: Tuấn & AI Assistant
 #>
 
-# Yêu cầu quyền quản trị
+# ==========================================
+# 0. YÊU CẦU QUYỀN QUẢN TRỊ (ADMINISTRATOR)
+# ==========================================
 if (!([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    Write-Warning "Vui long chay kịch ban nay voi quyen Administrator!"
+    Write-Warning "CẢNH BÁO: Phải chạy script này bằng quyền Run as Administrator!"
     Start-Sleep -Seconds 3
     Exit
 }
@@ -14,7 +17,7 @@ Add-Type -AssemblyName PresentationFramework
 Add-Type -AssemblyName System.Windows.Forms
 
 # ==========================================
-# 1. HÀM GIẢI MÃ API VÀ QUẢN LÝ XOAY VÒNG
+# 1. QUẢN LÝ API GOOGLE DRIVE (VƯỢT GIỚI HẠN)
 # ==========================================
 $DanhSachAPI_Base64 = @(
     "QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR",
@@ -24,9 +27,7 @@ $DanhSachAPI_Base64 = @(
     "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"
 )
 
-function GiaiMa-API ($ChuoiBase64) {
-    return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ChuoiBase64))
-}
+function GiaiMa-API ($ChuoiBase64) { return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ChuoiBase64)) }
 
 $global:ChiSoAPI = 0
 function Lay-API {
@@ -36,7 +37,7 @@ function Lay-API {
 }
 
 # ==========================================
-# HÀM GIAO DIỆN PHỤ VÀ LÀM MƯỚT UI
+# 2. HÀM GIAO DIỆN PHỤ & LÀM MƯỢT UI
 # ==========================================
 function CapNhat-GiaoDien {
     $KhungChayDoi = New-Object System.Windows.Threading.DispatcherFrame
@@ -50,21 +51,18 @@ function Chon-ThuMucHienDai($TieuDe) {
     $HopThoai.ValidateNames = $false
     $HopThoai.CheckFileExists = $false
     $HopThoai.CheckPathExists = $true
-    $HopThoai.FileName = "[Chon_Thu_Muc_Nay]" 
-    
-    if ($HopThoai.ShowDialog() -eq 'OK') {
-        return [System.IO.Path]::GetDirectoryName($HopThoai.FileName)
-    }
+    $HopThoai.FileName = "[Vào_thư_mục_và_bấm_Open]" 
+    if ($HopThoai.ShowDialog() -eq 'OK') { return [System.IO.Path]::GetDirectoryName($HopThoai.FileName) }
     return $null
 }
 
 # ==========================================
-# 2. XÂY DỰNG GIAO DIỆN HIỆN ĐẠI BẰNG WPF
+# 3. XÂY DỰNG GIAO DIỆN WPF (XAML)
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Công Cụ Triển Khai Hệ Thống Tự Động" Height="780" Width="650" Background="#F8FAFC" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
+        Title="Hệ Thống Triển Khai Windows Tự Động (Zero-Touch)" Height="780" Width="680" Background="#F1F5F9" FontFamily="Segoe UI" WindowStartupLocation="CenterScreen">
     <Window.Resources>
         <Style TargetType="Button" x:Key="NutBamHienDai">
             <Setter Property="Background" Value="#3B82F6"/>
@@ -80,12 +78,9 @@ function Chon-ThuMucHienDai($TieuDe) {
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="KhungVien" Property="Background" Value="#2563EB"/>
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="KhungVien" Property="Background" Value="#1D4ED8"/>
-                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="KhungVien" Property="Background" Value="#2563EB"/></Trigger>
+                            <Trigger Property="IsPressed" Value="True"><Setter TargetName="KhungVien" Property="Background" Value="#1D4ED8"/></Trigger>
+                            <Trigger Property="IsEnabled" Value="False"><Setter TargetName="KhungVien" Property="Background" Value="#94A3B8"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -106,9 +101,7 @@ function Chon-ThuMucHienDai($TieuDe) {
                             <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center" Margin="10,0"/>
                         </Border>
                         <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="KhungVien" Property="Background" Value="#059669"/>
-                            </Trigger>
+                            <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="KhungVien" Property="Background" Value="#059669"/></Trigger>
                         </ControlTemplate.Triggers>
                     </ControlTemplate>
                 </Setter.Value>
@@ -138,51 +131,55 @@ function Chon-ThuMucHienDai($TieuDe) {
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="Auto"/>
-            <RowDefinition Height="120"/>
+            <RowDefinition Height="140"/>
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="HỆ THỐNG CÀI ĐẶT WINDOWS" FontSize="22" FontWeight="Bold" Foreground="#1E293B" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+        <TextBlock Grid.Row="0" Text="HỆ THỐNG CÀI ĐẶT WINDOWS TỰ ĐỘNG" FontSize="22" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,20"/>
 
-        <StackPanel Grid.Row="1" Margin="0,0,0,15">
-            <TextBlock Text="1. File bộ cài (WIM / ESD / ISO) và Phiên bản:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,5"/>
-            <Grid Margin="0,0,0,8">
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="100"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="HopThoaiFileBoCai" Grid.Column="0" Margin="0,0,10,0" FontSize="13"/>
-                <Button x:Name="NutChonFileBoCai" Grid.Column="1" Content="Chọn File" Style="{StaticResource NutBamHienDai}" Background="#64748B"/>
-            </Grid>
-            <ComboBox x:Name="DanhSachPhienBanWin" FontSize="13" Padding="6" IsEnabled="False">
-                <ComboBoxItem IsSelected="True">Chưa có bộ cài nào được chọn...</ComboBoxItem>
-            </ComboBox>
-        </StackPanel>
+        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="1. Chọn file bộ cài (WIM / ESD / ISO) và Phiên bản:" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,8"/>
+                <Grid Margin="0,0,0,10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="110"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="HopThoaiFileBoCai" Grid.Column="0" Margin="0,0,10,0" FontSize="13" IsReadOnly="True" Background="#F8FAFC"/>
+                    <Button x:Name="NutChonFileBoCai" Grid.Column="1" Content="Duyệt File" Style="{StaticResource NutBamHienDai}" Background="#475569"/>
+                </Grid>
+                <ComboBox x:Name="DanhSachPhienBanWin" FontSize="13" Padding="8" IsEnabled="False">
+                    <ComboBoxItem IsSelected="True">Chưa có bộ cài nào được nạp...</ComboBoxItem>
+                </ComboBox>
+            </StackPanel>
+        </Border>
 
-        <StackPanel Grid.Row="2" Margin="0,0,0,15">
-            <TextBlock Text="2. Hoặc tải nhanh từ máy chủ hệ thống:" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,5"/>
-            <Border Background="White" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="6" Padding="15" MinHeight="150" MaxHeight="300">
-                <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="2. Hoặc kéo file trực tiếp từ Cloud Server:" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,8"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" Height="120">
                     <WrapPanel x:Name="KhungChuaNutWim" Orientation="Horizontal"/>
                 </ScrollViewer>
-            </Border>
-        </StackPanel>
+            </StackPanel>
+        </Border>
 
-        <StackPanel Grid.Row="3" Margin="0,0,0,15">
-            <TextBlock Text="3. Thư mục chứa Driver (Để xả tự động):" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,5"/>
-            <Grid>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="*"/>
-                    <ColumnDefinition Width="100"/>
-                </Grid.ColumnDefinitions>
-                <TextBox x:Name="HopThoaiThuMucDriver" Grid.Column="0" Margin="0,0,10,0" FontSize="13"/>
-                <Button x:Name="NutChonThuMucDriver" Grid.Column="1" Content="Chọn Thư Mục" Style="{StaticResource NutBamHienDai}" Background="#64748B"/>
-            </Grid>
-        </StackPanel>
+        <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15">
+            <StackPanel>
+                <TextBlock Text="3. Thư mục chứa Driver (Tự động xả sau khi cài):" FontWeight="SemiBold" Foreground="#334155" Margin="0,0,0,8"/>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*"/>
+                        <ColumnDefinition Width="110"/>
+                    </Grid.ColumnDefinitions>
+                    <TextBox x:Name="HopThoaiThuMucDriver" Grid.Column="0" Margin="0,0,10,0" FontSize="13"/>
+                    <Button x:Name="NutChonThuMucDriver" Grid.Column="1" Content="Chọn Thư Mục" Style="{StaticResource NutBamHienDai}" Background="#475569"/>
+                </Grid>
+            </StackPanel>
+        </Border>
 
-        <TextBox x:Name="HopThoaiNhatKy" Grid.Row="4" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#0F172A" Foreground="#38BDF8" FontFamily="Consolas" FontSize="12" Margin="0,0,0,15"/>
+        <TextBox x:Name="HopThoaiNhatKy" Grid.Row="4" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" IsReadOnly="True" Background="#020617" Foreground="#38BDF8" FontFamily="Consolas" FontSize="12" Margin="0,0,0,15"/>
 
-        <Button x:Name="NutBatDauCaiDat" Grid.Row="5" Content="BẮT ĐẦU TỰ ĐỘNG HÓA HỆ THỐNG" Style="{StaticResource NutBamHienDai}" Background="#EF4444" FontSize="16" Height="50"/>
+        <Button x:Name="NutBatDauCaiDat" Grid.Row="5" Content="BẮT ĐẦU TỰ ĐỘNG HÓA HỆ THỐNG" Style="{StaticResource NutBamHienDai}" Background="#E11D48" FontSize="16" Height="55"/>
     </Grid>
 </Window>
 "@
@@ -200,7 +197,7 @@ $HopThoaiNhatKy = $GiaoDien.FindName("HopThoaiNhatKy")
 $NutBatDauCaiDat = $GiaoDien.FindName("NutBatDauCaiDat")
 
 # ==========================================
-# CÁC HÀM XỬ LÝ VÀ NHẬT KÝ
+# 4. HÀM XỬ LÝ LÕI VÀ SỰ KIỆN UI
 # ==========================================
 
 function Ghi-NhatKy($NoiDung) {
@@ -210,17 +207,15 @@ function Ghi-NhatKy($NoiDung) {
     CapNhat-GiaoDien
 }
 
-# ==========================================
-# HÀM QUÉT BỘ CÀI VÀ XUẤT DANH SÁCH RA GIAO DIỆN
-# ==========================================
+# --- HÀM QUÉT INDEX TỪ FILE BỘ CÀI ---
 function Quet-VaCapNhatPhienBanWin {
     $DuongDanFile = $HopThoaiFileBoCai.Text
     if (-not (Test-Path $DuongDanFile)) { return }
 
-    Ghi-NhatKy "Đang quét các phiên bản Windows bên trong lõi..."
+    Ghi-NhatKy "Đang dùng DISM quét lõi bộ cài..."
     $DanhSachPhienBanWin.Items.Clear()
     $DanhSachPhienBanWin.IsEnabled = $false
-    $DanhSachPhienBanWin.Items.Add("⏳ Đang phân tích file bộ cài...") | Out-Null
+    $DanhSachPhienBanWin.Items.Add("⏳ Đang phân tích file...") | Out-Null
     $DanhSachPhienBanWin.SelectedIndex = 0
     CapNhat-GiaoDien
 
@@ -233,9 +228,8 @@ function Quet-VaCapNhatPhienBanWin {
             $ThongTinMount = Mount-DiskImage -ImagePath $DuongDanFile -PassThru
             Start-Sleep -Seconds 1 
             $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanFile | Get-Volume).DriveLetter
-            
             if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
-            if (-not $KyTuODiaAo) { throw "Không nhận dạng được ổ đĩa ảo ISO." }
+            if (-not $KyTuODiaAo) { throw "Không tạo được ổ ảo từ ISO." }
             
             $FileWimCanQuet = "$($KyTuODiaAo):\sources\install.wim"
             if (-not (Test-Path $FileWimCanQuet)) { $FileWimCanQuet = "$($KyTuODiaAo):\sources\install.esd" }
@@ -264,24 +258,24 @@ function Quet-VaCapNhatPhienBanWin {
                 }
                 $DanhSachPhienBanWin.IsEnabled = $true
                 $DanhSachPhienBanWin.SelectedIndex = 0
-                Ghi-NhatKy "✅ Tìm thấy $($CacPhienBan.Count) phiên bản. Đã hiển thị ra danh sách chọn!"
+                Ghi-NhatKy "✅ Tìm thấy $($CacPhienBan.Count) phiên bản hệ điều hành!"
             } else {
-                $DanhSachPhienBanWin.Items.Add("❌ Không đọc được danh sách phiên bản") | Out-Null
+                $DanhSachPhienBanWin.Items.Add("❌ Không đọc được danh sách") | Out-Null
             }
         } else {
             $DanhSachPhienBanWin.Items.Clear()
-            $DanhSachPhienBanWin.Items.Add("❌ Lỗi: ISO không chứa install.wim / install.esd") | Out-Null
-            Ghi-NhatKy "Lỗi: ISO thiếu file lõi."
+            $DanhSachPhienBanWin.Items.Add("❌ Lỗi: ISO không chứa file WIM/ESD") | Out-Null
         }
     } catch {
         Ghi-NhatKy "Lỗi khi quét file: $_"
         $DanhSachPhienBanWin.Items.Clear()
-        $DanhSachPhienBanWin.Items.Add("❌ Xảy ra lỗi khi đọc file bộ cài") | Out-Null
+        $DanhSachPhienBanWin.Items.Add("❌ Xảy ra lỗi khi đọc bộ cài") | Out-Null
     } finally {
         if ($DaMountIso) { Dismount-DiskImage -ImagePath $DuongDanFile | Out-Null }
     }
 }
 
+# --- CÁC NÚT DUYỆT THƯ MỤC/FILE ---
 $NutChonFileBoCai.Add_Click({
     $HopThoaiFile = New-Object System.Windows.Forms.OpenFileDialog
     $HopThoaiFile.Title = "Chọn file bộ cài (WIM, ESD, ISO)"
@@ -293,110 +287,88 @@ $NutChonFileBoCai.Add_Click({
 })
 
 $NutChonThuMucDriver.Add_Click({
-    $KetQua = Chon-ThuMucHienDai "Vào thư mục chứa Driver và bấm OPEN (MỞ)"
+    $KetQua = Chon-ThuMucHienDai "Chọn thư mục chứa Driver cho máy này"
     if ($KetQua) { $HopThoaiThuMucDriver.Text = $KetQua }
 })
 
-# ==========================================
-# BỘ QUÉT CSV VÀ TẠO NÚT TẢI API
-# ==========================================
+# --- KẾT NỐI CLOUD VÀ TẠO NÚT TẢI ---
 $GiaoDien.Add_ContentRendered({
-    Ghi-NhatKy "Đang tải dữ liệu và phân tích cấu trúc CSV..."
-    
-    $DuongDanTrucTuyen = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/iso_list.csv"
-    
+    Ghi-NhatKy "Khởi động hệ thống. Đang tải dữ liệu Cloud..."
     try {
         $MayKhachWeb = New-Object System.Net.WebClient
         $MayKhachWeb.Encoding = [System.Text.Encoding]::UTF8
-        $NoiDungTho = $MayKhachWeb.DownloadString($DuongDanTrucTuyen)
-        $DuLieuCsv = $NoiDungTho | ConvertFrom-Csv
+        $DuLieuCsv = $MayKhachWeb.DownloadString("https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/iso_list.csv") | ConvertFrom-Csv
 
-        $SoLuongNutDaTao = 0
-
-        foreach ($DongDuLieu in $DuLieuCsv) {
-            $TenFile = ""
-            $MaGGDrive = ""
-
-            foreach ($ThuocTinh in $DongDuLieu.psobject.properties) {
-                $TenCot = [string]$ThuocTinh.Name.Trim()
-                $GiaTri = [string]$ThuocTinh.Value.Trim()
-
-                if ($TenCot -match '(?i)^Name$') { $TenFile = $GiaTri }
-                if ($TenCot -match '(?i)^FileID$') { $MaGGDrive = $GiaTri }
+        $Dem = 0
+        foreach ($Dong in $DuLieuCsv) {
+            $TenFile = ""; $MaGGDrive = ""
+            foreach ($ThuocTinh in $Dong.psobject.properties) {
+                if ($ThuocTinh.Name -match '(?i)^Name$') { $TenFile = $ThuocTinh.Value.Trim() }
+                if ($ThuocTinh.Name -match '(?i)^FileID$') { $MaGGDrive = $ThuocTinh.Value.Trim() }
             }
 
-            if ($TenFile -match '(?i)\.wim$' -and -not [string]::IsNullOrWhiteSpace($MaGGDrive)) {
+            if ($TenFile -match '(?i)\.wim$' -and $MaGGDrive) {
+                $NutMoi = New-Object System.Windows.Controls.Button
+                $NutMoi.Content = "⬇ Tải: " + $TenFile
+                $NutMoi.Style = $GiaoDien.FindResource("NutTaiDong")
+                $NutMoi.Tag = $MaGGDrive 
                 
-                $NutBamMoi = New-Object System.Windows.Controls.Button
-                $NutBamMoi.Content = "⬇ Tải: " + $TenFile
-                $NutBamMoi.Style = $GiaoDien.FindResource("NutTaiDong")
-                $NutBamMoi.Tag = $MaGGDrive 
-                
-                $NutBamMoi.Add_Click({
-                    $MaFileHienTai = $this.Tag
-                    $TenHienThiCuaNut = $this.Content -replace "^⬇ Tải: ", ""
+                $NutMoi.Add_Click({
+                    $IDFile = $this.Tag
+                    $TenHienThi = $this.Content -replace "^⬇ Tải: ", ""
 
-                    $KetQuaChonLuu = Chon-ThuMucHienDai "Chọn thư mục lưu bản Win tải về (Lưu ý: Không chọn ổ C)"
-                    if (-not $KetQuaChonLuu) { return }
+                    $NoiLuu = Chon-ThuMucHienDai "Chọn NƠI LƯU bản Win (Không chọn ổ C)"
+                    if (-not $NoiLuu) { return }
                     
-                    $DuongDanLuuFile = Join-Path $KetQuaChonLuu $TenFile
-                    $KhoaApiThucTe = Lay-API
-                    $LinkTaiQuaApi = "https://www.googleapis.com/drive/v3/files/$MaFileHienTai?alt=media&key=$KhoaApiThucTe"
+                    $DuongDanLuu = Join-Path $NoiLuu $TenFile
+                    $APIKey = Lay-API
+                    $LinkTai = "https://www.googleapis.com/drive/v3/files/$IDFile?alt=media&key=$APIKey"
 
-                    Ghi-NhatKy "Đang kéo bản '$TenHienThiCuaNut' qua Google API..."
+                    Ghi-NhatKy "Đang kéo '$TenHienThi' qua Google API..."
                     $GiaoDien.IsEnabled = $false
-                    $this.Content = "⏳ Đang kéo dữ liệu..."
+                    $this.Content = "⏳ Đang tải..."
                     $this.Background = "#F59E0B"
                     
                     try {
-                        $TrinhTaiTaiLieu = New-Object System.Net.WebClient
-                        $TrinhTaiTaiLieu.DownloadFile($LinkTaiQuaApi, $DuongDanLuuFile)
-                        
-                        Ghi-NhatKy "✅ Kéo thành công! Tự động nạp file vào ô số 1."
-                        $HopThoaiFileBoCai.Text = $DuongDanLuuFile
-                        $this.Content = "✅ Đã tải xong"
+                        (New-Object System.Net.WebClient).DownloadFile($LinkTai, $DuongDanLuu)
+                        Ghi-NhatKy "✅ Tải xong! Tự động nạp vào hệ thống."
+                        $HopThoaiFileBoCai.Text = $DuongDanLuu
+                        $this.Content = "✅ Đã tải"
                         $this.Background = "#3B82F6" 
-
                         Quet-VaCapNhatPhienBanWin 
                     } catch {
                         Ghi-NhatKy "❌ Lỗi kéo file: $_"
-                        $this.Content = "❌ Lỗi mạng/API"
+                        $this.Content = "❌ Lỗi mạng"
                         $this.Background = "#EF4444" 
                     }
-                    
                     $GiaoDien.IsEnabled = $true
                 })
 
-                $KhungChuaNutWim.Children.Add($NutBamMoi) | Out-Null
-                $SoLuongNutDaTao++
+                $KhungChuaNutWim.Children.Add($NutMoi) | Out-Null
+                $Dem++
             }
         }
-
-        if ($SoLuongNutDaTao -gt 0) { Ghi-NhatKy "Đã móc được $SoLuongNutDaTao bản WIM thành công." } 
+        if ($Dem -gt 0) { Ghi-NhatKy "✅ Đã kết nối Cloud, bắt được $Dem bản Windows." } 
     } catch {
-        Ghi-NhatKy "Lỗi kết nối máy chủ dữ liệu: $_"
+        Ghi-NhatKy "❌ Lỗi kết nối Cloud: $_"
     }
 })
 
 # ==========================================
-# CÁC HÀM XỬ LÝ LÕI VÀ PHẪU THUẬT WINRE
+# 5. KHỐI LÕI: CAN THIỆP PHÂN VÙNG VÀ WINRE
 # ==========================================
 
-function KiemTra-Va-TaoPhanVungHeThong {
-    Ghi-NhatKy "Đang rà soát lại cấu trúc phân vùng khởi động..."
-    $PhanVungHienTai = Get-Partition -DriveLetter "C"
-    $MaSoODia = $PhanVungHienTai.DiskNumber
-
-    $TonTaiEFI = Get-Partition -DiskNumber $MaSoODia | Where-Object { $_.Type -eq 'System' }
-    $TonTaiRE = Get-Partition -DiskNumber $MaSoODia | Where-Object { $_.Type -eq 'Recovery' }
-
-    if (-not $TonTaiEFI -or -not $TonTaiRE) {
-        Ghi-NhatKy "Hệ thống thiếu phân vùng chuẩn. Tiến hành chia lại ổ đĩa..."
-        $KichThuocMoiCuaC = $PhanVungHienTai.Size - 1GB
-        Resize-Partition -DriveLetter "C" -Size $KichThuocMoiCuaC
+function ChuanBi-PhanVungHeThong {
+    Ghi-NhatKy "Đang kiểm tra cấu trúc EFI & Recovery..."
+    $DiskNum = (Get-Partition -DriveLetter "C").DiskNumber
+    if (-not (Get-Partition -DiskNumber $DiskNum | Where-Object Type -eq 'System') -or 
+        -not (Get-Partition -DiskNumber $DiskNum | Where-Object Type -eq 'Recovery')) {
         
-        $NoiDungDiskpart = @"
-select disk $MaSoODia
+        Ghi-NhatKy "Hệ thống thiếu phân vùng. Đang chia lại ổ C (1GB)..."
+        Resize-Partition -DriveLetter "C" -Size ((Get-Partition -DriveLetter "C").Size - 1GB)
+        
+        @"
+select disk $DiskNum
 create partition efi size=260
 format quick fs=fat32 label="System"
 assign letter=S
@@ -405,31 +377,26 @@ format quick fs=ntfs label="Recovery"
 set id="de94bba4-06d1-4d40-a16a-bfd50179d6ac"
 gpt attributes=0x8000000000000001
 assign letter=R
-"@
-        $NoiDungDiskpart | Out-File "$env:TEMP\lenh_diskpart_tam.txt" -Encoding ascii
-        Start-Process -FilePath "diskpart.exe" -ArgumentList "/s $env:TEMP\lenh_diskpart_tam.txt" -Wait -WindowStyle Hidden
-        Ghi-NhatKy "Đã định dạng thành công phân vùng EFI và RE."
-    } else {
-        Ghi-NhatKy "Cấu trúc phân vùng đã đáp ứng đủ tiêu chuẩn."
+"@ | Out-File "$env:TEMP\diskpart_auto.txt" -Encoding ascii
+        Start-Process "diskpart.exe" "/s $env:TEMP\diskpart_auto.txt" -Wait -WindowStyle Hidden
+        Ghi-NhatKy "✅ Đã định dạng xong phân vùng hệ thống."
     }
 }
 
-function Nhap-KichBanVaoMoiTruongRE {
-    param($DuongDanTapTinWim, $ChiSoIndex, $DuongDanThuMucDriver)
+function Do-WinRE_Va_KichNo {
+    param($WimPath, $Index, $DriverPath)
     
-    Ghi-NhatKy "Đang đánh thức và ép WinRE nhả file gốc..."
-    
-    # Kỹ thuật ép đẩy file winre.wim về đường dẫn chuẩn (Chống lỗi tìm kiếm tốn thời gian)
-    reagentc.exe /enable | Out-Null
-    Start-Sleep -Seconds 2
-    reagentc.exe /disable | Out-Null
-    Start-Sleep -Seconds 2
+    Ghi-NhatKy "Đang Reset và mở khóa WinRE..."
+    reagentc.exe /enable | Out-Null; Start-Sleep 2
+    reagentc.exe /disable | Out-Null; Start-Sleep 2
 
-    $WinREPath = "C:\Windows\System32\Recovery\winre.wim"
-    
-    if (-not (Test-Path $WinREPath)) {
-        throw "Lỗi Chí Mạng: Hệ thống của bạn đã bị xoá mất file Recovery gốc (winre.wim). Không thể tạo môi trường cài tự động!"
-    }
+    $WinRE_Goc = "C:\Windows\System32\Recovery\winre.wim"
+    if (-not (Test-Path $WinRE_Goc)) { throw "Lỗi Chí Mạng: Mất file winre.wim gốc!" }
+
+    # [VÁ LỖI CỰC MẠNH] - Xóa sạch tàn dư mount cũ
+    Ghi-NhatKy "Đang dọn dẹp các tiến trình DISM bị kẹt..."
+    dism.exe /Cleanup-Wim | Out-Null
+    CapNhat-GiaoDien
 
     $ThuMucMount = "C:\MountRE"
     if (Test-Path $ThuMucMount) { 
@@ -438,142 +405,124 @@ function Nhap-KichBanVaoMoiTruongRE {
     }
     New-Item -ItemType Directory -Path $ThuMucMount | Out-Null
 
-    Ghi-NhatKy "Đang Mount (mở bụng) lõi WinRE. Xin đợi khoảng 30s - 1 phút..."
+    # [VÁ LỖI QUYỀN] - Lột mặt nạ, bế ra ngoài mổ
+    $ThuMucXuLy = "C:\WinRE_XuLy"
+    if (-not (Test-Path $ThuMucXuLy)) { New-Item -ItemType Directory -Path $ThuMucXuLy | Out-Null }
+    
+    $WinRE_Copy = "$ThuMucXuLy\winre.wim"
+    Copy-Item -Path $WinRE_Goc -Destination $WinRE_Copy -Force
+    Set-ItemProperty -Path $WinRE_Copy -Name IsReadOnly -Value $false
+
+    Ghi-NhatKy "Đang Mount WinRE an toàn (Xin đợi 30s-1p)..."
     CapNhat-GiaoDien
-    
-    $KetQuaMount = dism.exe /Mount-Image /ImageFile:$WinREPath /Index:1 /MountDir:$ThuMucMount | Out-String
-    if ($KetQuaMount -notmatch "The operation completed successfully") {
-        throw "DISM từ chối Mount file WinRE. Hệ thống có thể đang bị khoá quyền. Chi tiết: $KetQuaMount"
-    }
+    $MntRes = dism.exe /Mount-Image /ImageFile:$WinRE_Copy /Index:1 /MountDir:$ThuMucMount | Out-String
+    if ($MntRes -notmatch "completed successfully") { throw "DISM không thể Mount: $MntRes" }
 
-    Ghi-NhatKy "Đang tiêm kịch bản cài đặt tự động vào não WinRE..."
+    Ghi-NhatKy "Đang cấy kịch bản tự động hóa vào não WinRE..."
     
-    $NoiDungCaiXong = @"
+    @"
 @echo off
-echo Tien hanh xa driver vao he thong moi...
-pnputil /add-driver "$DuongDanThuMucDriver\*.inf" /subdirs /install
-
+echo Xa Driver vao he thong...
+pnputil /add-driver "$DriverPath\*.inf" /subdirs /install
 echo Phat hanh Anydesk...
 powershell -Command "Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile 'C:\Users\Public\Desktop\AnyDesk.exe'"
 start "" "C:\Users\Public\Desktop\AnyDesk.exe"
-
 del %0
-"@
-    $NoiDungCaiXong | Out-File "$ThuMucMount\Windows\System32\LenhCaiXong_TamThoi.cmd" -Encoding oem
+"@ | Out-File "$ThuMucMount\Windows\System32\LenhCaiXong_TamThoi.cmd" -Encoding oem
 
-    $NoiDungTrongRE = @"
+    @"
 @echo off
-echo Format o C va trien khai Windows moi...
-echo select volume c > X:\dinhdang_o_c.txt
-echo format quick fs=ntfs >> X:\dinhdang_o_c.txt
-diskpart /s X:\dinhdang_o_c.txt
+echo Format o C va trien khai Windows...
+echo select volume c > X:\dinhdang.txt
+echo format quick fs=ntfs >> X:\dinhdang.txt
+diskpart /s X:\dinhdang.txt
 
-dism /apply-image /imagefile:"$DuongDanTapTinWim" /index:$ChiSoIndex /applydir:C:\
+dism /apply-image /imagefile:"$WimPath" /index:$Index /applydir:C:\
 bcdboot C:\Windows
 
 mkdir C:\Windows\Setup\Scripts
 copy /Y X:\Windows\System32\LenhCaiXong_TamThoi.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd
-
 wpeutil reboot
-"@
-    $NoiDungTrongRE | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
+"@ | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
 
-    $WinpeshlIni = @"
-[LaunchApps]
-X:\Windows\System32\LenhChayTrongRE.cmd
-"@
-    $WinpeshlIni | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
+    "[LaunchApps]`r`nX:\Windows\System32\LenhChayTrongRE.cmd" | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
 
-    Ghi-NhatKy "Đang khâu lại vết mổ và đóng gói (Khoảng 30 giây)..."
+    Ghi-NhatKy "Đang khâu vết mổ và lưu lại WinRE..."
     CapNhat-GiaoDien
-    dism.exe /Unmount-Image /MountDir:$ThuMucMount /Commit | Out-Null
+    $UnmntRes = dism.exe /Unmount-Image /MountDir:$ThuMucMount /Commit | Out-String
+    if ($UnmntRes -notmatch "completed successfully") {
+        dism.exe /Unmount-Image /MountDir:$ThuMucMount /Discard | Out-Null
+        throw "Lỗi lưu WinRE: $UnmntRes"
+    }
     Remove-Item -Path $ThuMucMount -Force
 
-    Ghi-NhatKy "Đang nạp lại WinRE vào hệ thống..."
+    Ghi-NhatKy "Đang nạp WinRE siêu cấp vào lại hệ thống..."
+    Set-ItemProperty -Path $WinRE_Goc -Name IsReadOnly -Value $false
+    Copy-Item -Path $WinRE_Copy -Destination $WinRE_Goc -Force
+    Remove-Item -Path $ThuMucXuLy -Recurse -Force
+
     reagentc.exe /enable | Out-Null
+    Ghi-NhatKy "Ra lệnh chốt hạ: Ép khởi động vào Recovery!"
+    reagentc.exe /boottore | Out-Null
 }
 
-# ----------------- NÚT THỰC THI CUỐI (BỌC THÉP TRY-CATCH) -----------------
+# ==========================================
+# 6. KÍCH NỔ HỆ THỐNG
+# ==========================================
 $NutBatDauCaiDat.Add_Click({
     try {
-        $DuongDanBoCaiThucTe = $HopThoaiFileBoCai.Text
-        $DuongDanDriverTuyetDoi = $HopThoaiThuMucDriver.Text
-        $ChonPhienBanText = $DanhSachPhienBanWin.SelectedItem
+        $FileCai = $HopThoaiFileBoCai.Text
+        $FileDriver = $HopThoaiThuMucDriver.Text
+        $ChonIndex = $DanhSachPhienBanWin.SelectedItem
 
-        if ([string]::IsNullOrWhiteSpace($DuongDanBoCaiThucTe) -or !(Test-Path $DuongDanBoCaiThucTe)) {
-            [System.Windows.Forms.MessageBox]::Show("Chưa tìm thấy file bộ cài hợp lệ. Vui lòng chọn file hoặc tải từ máy chủ!", "Cảnh Báo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
-            return
+        if (-not (Test-Path $FileCai)) { throw "CHẶN: Chưa có file bộ cài hợp lệ!" }
+        if ($ChonIndex -notmatch 'Index (\d+):') { throw "CHẶN: Vui lòng chọn một phiên bản Win!" }
+        $IndexLoi = $matches[1]
+
+        if ([System.IO.Path]::GetPathRoot($FileCai) -match "(?i)^C:") {
+            throw "NGUY HIỂM: File cài nằm trên ổ C:\ ! Hệ thống sẽ format ổ C, file cài sẽ bị xoá. Vui lòng dời sang ổ khác."
         }
 
-        $ChiSoIndexCanCai = $null
-        if ($ChonPhienBanText -match 'Index (\d+):') {
-            $ChiSoIndexCanCai = $matches[1]
-        } else {
-            [System.Windows.Forms.MessageBox]::Show("Vui lòng đợi quét danh sách hoặc chọn phiên bản Win cụ thể trước khi ấn Bắt đầu!", "Lỗi Chọn Bản Win", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            return
+        $XacNhan = [System.Windows.Forms.MessageBox]::Show("BẠN SẮP FORMAT Ổ C VÀ CÀI LẠI WIN.`nPhiên bản: $ChonIndex`n`nDữ liệu ổ C sẽ mất sạch. Khởi chạy?", "ĐIỂM KHÔNG QUAY ĐẦU", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
+        if ($XacNhan -ne 'Yes') { return }
+
+        $NutBatDauCaiDat.IsEnabled = $false
+        $GiaoDien.Cursor = [System.Windows.Input.Cursors]::Wait
+
+        # XỬ LÝ ISO
+        if ($FileCai -match '(?i)\.iso$') {
+            Ghi-NhatKy "Đang xả nén file ruột từ ISO..."
+            $MntIso = Mount-DiskImage -ImagePath $FileCai -PassThru
+            Start-Sleep 1
+            $KyTuIso = (Get-DiskImage -ImagePath $FileCai | Get-Volume).DriveLetter[0]
+            
+            $Wim = "$($KyTuIso):\sources\install.wim"
+            $Esd = "$($KyTuIso):\sources\install.esd"
+            $FileTrich = if (Test-Path $Wim) { $Wim } elseif (Test-Path $Esd) { $Esd } else { $null }
+
+            if (-not $FileTrich) { throw "ISO này không có file install.wim/esd" }
+
+            $FileCai = Join-Path ([System.IO.Path]::GetDirectoryName($FileCai)) ("install_extracted" + [System.IO.Path]::GetExtension($FileTrich))
+            Copy-Item -Path $FileTrich -Destination $FileCai -Force
+            Dismount-DiskImage -ImagePath $HopThoaiFileBoCai.Text | Out-Null
+            Ghi-NhatKy "✅ Trích xuất ruột ISO thành công!"
         }
 
-        $KyTuOChuaBoCai = [System.IO.Path]::GetPathRoot($DuongDanBoCaiThucTe)
-        if ($KyTuOChuaBoCai -match "(?i)^C:") {
-            [System.Windows.Forms.MessageBox]::Show("Tuyệt đối không được để file bộ cài trên ổ C:\ !`nVì quy trình này sẽ format sạch sẽ toàn bộ ổ C. Vui lòng chuyển file sang ổ khác.", "Lỗi Nghiêm Trọng", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
-            return
-        }
-
-        $HopThoaiXacNhan = [System.Windows.Forms.MessageBox]::Show("Xác nhận Cài Đặt: $($ChonPhienBanText)`n`nNGUY HIỂM: Quá trình này sẽ format sạch ổ C và nạp lại hệ điều hành. Mọi dữ liệu trên ổ C sẽ bốc hơi.`nTiếp tục tiến trình?", "Cảnh Báo An Toàn", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
+        ChuanBi-PhanVungHeThong
+        Do-WinRE_Va_KichNo -WimPath $FileCai -Index $IndexLoi -DriverPath $FileDriver
         
-        if ($HopThoaiXacNhan -eq 'Yes') {
-            $NutBatDauCaiDat.IsEnabled = $false
-            
-            if ($DuongDanBoCaiThucTe -match '(?i)\.iso$') {
-                Ghi-NhatKy "Phát hiện file ISO. Đang trích xuất file lõi (Vui lòng đợi 1-2 phút)..."
-                try {
-                    $ThongTinMount = Mount-DiskImage -ImagePath $DuongDanBoCaiThucTe -PassThru
-                    Start-Sleep -Seconds 1
-                    $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanBoCaiThucTe | Get-Volume).DriveLetter
-                    if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
-                    
-                    $DuongDanODiaAo = "$($KyTuODiaAo):\"
-                    $DuongDanWimAo = Join-Path $DuongDanODiaAo "sources\install.wim"
-                    $DuongDanEsdAo = Join-Path $DuongDanODiaAo "sources\install.esd"
-
-                    $FileCanTrichXuat = $null
-                    $DuoiFileTrichXuat = ".wim"
-                    if (Test-Path $DuongDanWimAo) { $FileCanTrichXuat = $DuongDanWimAo }
-                    elseif (Test-Path $DuongDanEsdAo) { $FileCanTrichXuat = $DuongDanEsdAo; $DuoiFileTrichXuat = ".esd" }
-
-                    if ($FileCanTrichXuat) {
-                        $ThuMucChuaIso = [System.IO.Path]::GetDirectoryName($DuongDanBoCaiThucTe)
-                        $DuongDanTrichXuatXong = Join-Path $ThuMucChuaIso "install_extracted$DuoiFileTrichXuat"
-                        
-                        Copy-Item -Path $FileCanTrichXuat -Destination $DuongDanTrichXuatXong -Force
-                        $DuongDanBoCaiThucTe = $DuongDanTrichXuatXong 
-                        Ghi-NhatKy "Trích xuất ISO thành công!"
-                    } else {
-                        throw "Bản ISO này không chứa file install.wim hay install.esd hợp lệ."
-                    }
-                } catch {
-                    throw "Lỗi trích xuất ISO: $_"
-                } finally {
-                    Dismount-DiskImage -ImagePath $DuongDanBoCaiThucTe | Out-Null
-                }
-            }
-
-            KiemTra-Va-TaoPhanVungHeThong
-            Nhap-KichBanVaoMoiTruongRE -DuongDanTapTinWim $DuongDanBoCaiThucTe -ChiSoIndex $ChiSoIndexCanCai -DuongDanThuMucDriver $DuongDanDriverTuyetDoi
-            
-            Ghi-NhatKy "Ép máy tính vào chế độ Recovery ở lần khởi động tới..."
-            reagentc.exe /boottore | Out-Null
-            
-            Ghi-NhatKy "CHUẨN BỊ XONG. MÁY SẼ TỰ RESET TRONG 5 GIÂY NỮA!"
-            Start-Sleep -Seconds 5
-            
-            # Restart-Computer -Force
-        }
+        Ghi-NhatKy "🚀 HOÀN TẤT! HỆ THỐNG SẼ TỰ RESET TRONG 5 GIÂY ĐỂ VÀO QUY TRÌNH ZERO-TOUCH."
+        Start-Sleep -Seconds 5
+        
+        # [MỞ KHÓA KHI ĐEM ĐI SỬ DỤNG THỰC TẾ]
+        # Restart-Computer -Force
     } catch {
-        Ghi-NhatKy "❌ LỖI HỆ THỐNG PHÁT HIỆN ĐƯỢC: $_"
-        [System.Windows.Forms.MessageBox]::Show("Đã xảy ra lỗi trong quá trình xử lý! Lỗi đã được chặn lại để bảo vệ giao diện. Vui lòng kiểm tra màn hình Nhật Ký (màu đen) để xem chi tiết.", "Tiến Trình Bị Hủy", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
+        $Loi = $_.Exception.Message
+        Ghi-NhatKy "❌ LỖI HỆ THỐNG CHẶN ĐƯỢC: $Loi"
+        [System.Windows.Forms.MessageBox]::Show($Loi, "Tiến Trình Bị Hủy Bỏ Tự Động", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Error)
     } finally {
         $NutBatDauCaiDat.IsEnabled = $true
+        $GiaoDien.Cursor = [System.Windows.Input.Cursors]::Arrow
     }
 })
 
