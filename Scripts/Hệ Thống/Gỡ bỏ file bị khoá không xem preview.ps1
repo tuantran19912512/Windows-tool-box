@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (UNBLOCK-FILE GUI)
-# Đặc tính: Giao diện Dark Mode, Nút duyệt thư mục, Cập nhật trạng thái thời gian thực
+# Đặc tính: Hỗ trợ đường dẫn mạng, Giao diện duyệt thư mục hiện đại (Explorer Style)
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -8,14 +8,14 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 
 # 1. KIỂM TRA QUYỀN QUẢN TRỊ
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
-    [System.Windows.MessageBox]::Show("Vui lòng nhấp chuột phải vào file và chọn 'Run as Administrator' để công cụ có quyền can thiệp hệ thống!", "Thiếu quyền quản trị", 0, 48)
+    [System.Windows.MessageBox]::Show("Vui lòng nhấp chuột phải vào tập tin và chọn 'Run as Administrator' để công cụ có quyền can thiệp hệ thống!", "Thiếu quyền quản trị", 0, 48)
     exit
 }
 
 # 2. XÂY DỰNG GIAO DIỆN XAML
 $GiaoDienXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
-        Title="VietToolbox Unblocker" Width="550" Height="360" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
+        Title="Cong Cu Go Phong An" Width="600" Height="380" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
     
     <Border CornerRadius="15" BorderBrush="#334155" BorderThickness="2" Background="#0F172A">
         <Grid>
@@ -25,13 +25,13 @@ $GiaoDienXML = @"
             </Grid.RowDefinitions>
 
             <Grid Grid.Row="0" Background="#1E293B">
-                <Grid.Clip><RectangleGeometry Rect="0,0,550,55" RadiusX="15" RadiusY="15"/></Grid.Clip>
+                <Grid.Clip><RectangleGeometry Rect="0,0,600,55" RadiusX="15" RadiusY="15"/></Grid.Clip>
                 <TextBlock Text="🔓 TRÌNH GỠ PHONG ẤN BẢO MẬT TẬP TIN" Foreground="#38BDF8" FontWeight="Bold" FontSize="16" VerticalAlignment="Center" Margin="20,0,0,0"/>
                 <Button Name="NutDong" Content="✕" Width="55" HorizontalAlignment="Right" Background="Transparent" Foreground="#EF4444" BorderThickness="0" FontSize="18" Cursor="Hand" FontWeight="Bold"/>
             </Grid>
             
             <StackPanel Grid.Row="1" Margin="25">
-                <TextBlock Text="Nhập hoặc Chọn ổ đĩa / thư mục cần mở khóa:" Foreground="#E2E8F0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Text="Nhập đường dẫn cục bộ hoặc mạng (VD: D:\ hoặc \\MayChu\ThuMuc):" Foreground="#E2E8F0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                 
                 <Grid Margin="0,0,0,25">
                     <Grid.ColumnDefinitions>
@@ -40,7 +40,7 @@ $GiaoDienXML = @"
                     </Grid.ColumnDefinitions>
                     
                     <Border Grid.Column="0" CornerRadius="6" BorderBrush="#475569" BorderThickness="1" Background="#1E293B">
-                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (VD: D:\ hoặc C:\Tools)"/>
+                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (Hỗ trợ cả ổ đĩa thường và đường dẫn mạng)"/>
                     </Border>
                     
                     <Button Name="NutChon" Grid.Column="1" Content="📁 Duyệt..." Height="40" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="14" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0">
@@ -52,7 +52,7 @@ $GiaoDienXML = @"
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
                 </Button>
 
-                <Border Background="#1E293B" CornerRadius="8" Padding="15" MinHeight="50">
+                <Border Background="#1E293B" CornerRadius="8" Padding="15" MinHeight="65">
                     <TextBlock Name="NhanTrangThai" Text="Trạng thái: Đang chờ lệnh..." Foreground="#94A3B8" FontSize="14" TextWrapping="Wrap" FontWeight="Medium"/>
                 </Border>
             </StackPanel>
@@ -82,14 +82,21 @@ $NhanTrangThai = $CuaSo.FindName("NhanTrangThai")
 $NutDong.Add_Click({ $CuaSo.Close() })
 $CuaSo.Add_MouseLeftButtonDown({ $CuaSo.DragMove() })
 
-# --- SỰ KIỆN: NÚT DUYỆT THƯ MỤC ---
+# --- SỰ KIỆN: NÚT DUYỆT THƯ MỤC (NÂNG CẤP GIAO DIỆN HIỆN ĐẠI) ---
 $NutChon.Add_Click({
-    $HopThoai = New-Object System.Windows.Forms.FolderBrowserDialog
-    $HopThoai.Description = "Chọn thư mục hoặc ổ đĩa cần gỡ phong ấn bảo mật:"
-    $HopThoai.ShowNewFolderButton = $false
+    # Dùng OpenFileDialog kết hợp vô hiệu hóa kiểm tra tập tin để chọn thư mục
+    $HopThoai = New-Object System.Windows.Forms.OpenFileDialog
+    $HopThoai.Title = "Chọn thư mục cần gỡ phong ấn bảo mật"
+    $HopThoai.ValidateNames = $false
+    $HopThoai.CheckFileExists = $false
+    $HopThoai.CheckPathExists = $true
+    
+    # Đặt một tên ảo để lừa hộp thoại chọn tập tin chuyển thành chọn thư mục
+    $HopThoai.FileName = "Chọn_Thư_Mục_Này" 
     
     if ($HopThoai.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
-        $OTimKiem.Text = $HopThoai.SelectedPath
+        # Tách lấy phần đường dẫn thư mục, loại bỏ phần tên ảo
+        $OTimKiem.Text = [System.IO.Path]::GetDirectoryName($HopThoai.FileName)
     }
 })
 
@@ -103,21 +110,23 @@ $NutThucThi.Add_Click({
         return
     }
 
-    if (-not (Test-Path $DuongDan)) {
-        $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn '$DuongDan' không tồn tại trên hệ thống!"
+    if (-not (Test-Path -LiteralPath $DuongDan)) {
+        if ($DuongDan -match "^[A-Za-z]:\\") {
+            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDan'. Nếu đây là ổ đĩa mạng (Z:, X:...), quyền Quản trị viên sẽ không nhìn thấy. Vui lòng nhập trực tiếp đường dẫn gốc (VD: \\\\Dia_Chi_IP\\Thu_Muc)."
+        } else {
+            $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn '$DuongDan' không tồn tại hoặc không thể truy cập!"
+        }
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
         return
     }
 
-    # Cập nhật UI trước khi chạy tác vụ nặng
     $NhanTrangThai.Text = "⏳ Đang quét và gỡ phong ấn, vui lòng không tắt công cụ..."
     $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#F59E0B")
     $NutThucThi.IsEnabled = $false
     $CuaSo.Dispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Render, [System.Action]{})
 
-    # Thực thi mở khóa
     try {
-        Get-ChildItem -Path $DuongDan -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File
+        Get-ChildItem -LiteralPath $DuongDan -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
         $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn an toàn cho toàn bộ tập tin tại '$DuongDan'."
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#10B981")
     } catch {
