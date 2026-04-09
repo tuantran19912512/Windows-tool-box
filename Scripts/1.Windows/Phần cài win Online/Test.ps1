@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    Công cụ hỗ trợ cài đặt Windows tự động (Quét Index trực tiếp ra UI)
+    Công cụ hỗ trợ cài đặt Windows tự động (Tích hợp Patch lõi WinRE chạy ngầm)
 #>
 
 # Yêu cầu quyền quản trị
@@ -229,10 +229,9 @@ function Quet-VaCapNhatPhienBanWin {
     $KyTuODiaAo = $null
 
     try {
-        # Nếu là ISO, phải mount ảo ra mới đọc được lõi WIM bên trong
         if ($DuongDanFile -match '(?i)\.iso$') {
             $ThongTinMount = Mount-DiskImage -ImagePath $DuongDanFile -PassThru
-            Start-Sleep -Seconds 1 # Đợi Windows nhận diện ổ đĩa ảo
+            Start-Sleep -Seconds 1 
             $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanFile | Get-Volume).DriveLetter
             
             if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
@@ -243,7 +242,6 @@ function Quet-VaCapNhatPhienBanWin {
             $DaMountIso = $true
         }
 
-        # Dùng DISM chọc vào file WIM lấy danh sách Index
         if (Test-Path $FileWimCanQuet) {
             $ThongTinWim = dism.exe /Get-WimInfo /WimFile:$FileWimCanQuet /English
             $CacPhienBan = @()
@@ -293,7 +291,7 @@ $NutChonFileBoCai.Add_Click({
     $HopThoaiFile.Filter = "Windows Setup Files (*.wim;*.esd;*.iso)|*.wim;*.esd;*.iso|All Files (*.*)|*.*"
     if ($HopThoaiFile.ShowDialog() -eq 'OK') { 
         $HopThoaiFileBoCai.Text = $HopThoaiFile.FileName 
-        Quet-VaCapNhatPhienBanWin # Gọi quét danh sách bản Win ngay lập tức
+        Quet-VaCapNhatPhienBanWin
     }
 })
 
@@ -362,7 +360,6 @@ $GiaoDien.Add_ContentRendered({
                         $this.Content = "✅ Đã tải xong"
                         $this.Background = "#3B82F6" 
 
-                        # Tải xong là quét danh sách bản Win ngay và luôn
                         Quet-VaCapNhatPhienBanWin 
                     } catch {
                         Ghi-NhatKy "❌ Lỗi kéo file: $_"
@@ -385,7 +382,7 @@ $GiaoDien.Add_ContentRendered({
 })
 
 # ==========================================
-# CÁC HÀM XỬ LÝ LÕI (PHÂN VÙNG, MÔI TRƯỜNG RE)
+# CÁC HÀM XỬ LÝ LÕI VÀ PHẪU THUẬT WINRE
 # ==========================================
 
 function KiemTra-Va-TaoPhanVungHeThong {
@@ -423,9 +420,29 @@ assign letter=R
 function Nhap-KichBanVaoMoiTruongRE {
     param($DuongDanTapTinWim, $ChiSoIndex, $DuongDanThuMucDriver)
     
-    Ghi-NhatKy "Đang cấu hình tiến trình nạp tự động (Sử dụng Index: $ChiSoIndex)..."
-    reagentc.exe /enable | Out-Null
+    Ghi-NhatKy "Tắt WinRE tạm thời để kéo file lõi về C:\..."
+    reagentc.exe /disable | Out-Null
+    Start-Sleep -Seconds 3
+
+    $WinREPath = "C:\Windows\System32\Recovery\winre.wim"
+    if (-not (Test-Path $WinREPath)) {
+        # Quét dự phòng nếu winre.wim bị giấu ở chỗ khác
+        Ghi-NhatKy "Đang dò tìm vị trí winre.wim..."
+        $WinREPath = (Get-ChildItem -Path C:\ -Recurse -Filter "winre.wim" -Hidden -ErrorAction SilentlyContinue | Select-Object -First 1).FullName
+        if (-not $WinREPath) { throw "Tuyệt vọng: Không tìm thấy file winre.wim trong hệ thống!" }
+    }
+
+    $ThuMucMount = "C:\MountRE"
+    if (Test-Path $ThuMucMount) { Remove-Item -Path $ThuMucMount -Recurse -Force }
+    New-Item -ItemType Directory -Path $ThuMucMount | Out-Null
+
+    Ghi-NhatKy "Đang Mount (mở bụng) lõi WinRE. Quá trình này mất khoảng 1-2 phút..."
+    CapNhat-GiaoDien
+    dism.exe /Mount-Image /ImageFile:$WinREPath /Index:1 /MountDir:$ThuMucMount | Out-Null
+
+    Ghi-NhatKy "Đang tiêm kịch bản cài đặt tự động vào não WinRE..."
     
+    # 1. Kịch bản xả Driver và tải Anydesk (Lưu thẳng vào WinRE để không bị mất khi format ổ C)
     $NoiDungCaiXong = @"
 @echo off
 echo Tien hanh xa driver vao he thong moi...
@@ -437,25 +454,40 @@ start "" "C:\Users\Public\Desktop\AnyDesk.exe"
 
 del %0
 "@
-    $NoiDungCaiXong | Out-File "C:\LenhCaiXong_TamThoi.cmd" -Encoding oem
+    $NoiDungCaiXong | Out-File "$ThuMucMount\Windows\System32\LenhCaiXong_TamThoi.cmd" -Encoding oem
 
+    # 2. Kịch bản Gốc: Chạy bên trong WinRE (Format, Cài Win, Copy lệnh SetupComplete)
     $NoiDungTrongRE = @"
 @echo off
 echo Format o C va trien khai Windows moi...
 echo select volume c > X:\dinhdang_o_c.txt
-echo format quick fs=ntfs label="Windows" >> X:\dinhdang_o_c.txt
+echo format quick fs=ntfs >> X:\dinhdang_o_c.txt
 diskpart /s X:\dinhdang_o_c.txt
 
 dism /apply-image /imagefile:"$DuongDanTapTinWim" /index:$ChiSoIndex /applydir:C:\
 bcdboot C:\Windows
 
 mkdir C:\Windows\Setup\Scripts
-copy /Y D:\LenhCaiXong_TamThoi.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd
+copy /Y X:\Windows\System32\LenhCaiXong_TamThoi.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd
 
 wpeutil reboot
 "@
-    $NoiDungTrongRE | Out-File "C:\LenhChayTrongRE.cmd" -Encoding oem
-    Ghi-NhatKy "Đã hoàn thành nhúng cấu hình tự động."
+    $NoiDungTrongRE | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
+
+    # 3. Ép WinRE chạy thẳng kịch bản thay vì hiện Menu xanh
+    $WinpeshlIni = @"
+[LaunchApps]
+X:\Windows\System32\LenhChayTrongRE.cmd
+"@
+    $WinpeshlIni | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
+
+    Ghi-NhatKy "Đang khâu lại vết mổ và đóng gói WinRE..."
+    CapNhat-GiaoDien
+    dism.exe /Unmount-Image /MountDir:$ThuMucMount /Commit | Out-Null
+    Remove-Item -Path $ThuMucMount -Force
+
+    Ghi-NhatKy "Đang nạp lại WinRE đã độ vào hệ thống..."
+    reagentc.exe /enable | Out-Null
 }
 
 # ----------------- NÚT THỰC THI CUỐI -----------------
@@ -464,13 +496,11 @@ $NutBatDauCaiDat.Add_Click({
     $DuongDanDriverTuyetDoi = $HopThoaiThuMucDriver.Text
     $ChonPhienBanText = $DanhSachPhienBanWin.SelectedItem
 
-    # Bắt lỗi nếu chưa chọn bộ cài
     if ([string]::IsNullOrWhiteSpace($DuongDanBoCaiThucTe) -or !(Test-Path $DuongDanBoCaiThucTe)) {
         [System.Windows.Forms.MessageBox]::Show("Chưa tìm thấy file bộ cài hợp lệ. Vui lòng chọn file hoặc tải từ máy chủ!", "Cảnh Báo", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Warning)
         return
     }
 
-    # Trích xuất số Index từ ComboBox
     $ChiSoIndexCanCai = $null
     if ($ChonPhienBanText -match 'Index (\d+):') {
         $ChiSoIndexCanCai = $matches[1]
@@ -527,6 +557,8 @@ $NutBatDauCaiDat.Add_Click({
         }
 
         KiemTra-Va-TaoPhanVungHeThong
+        
+        # BƯỚC ĐỘ WINRE
         Nhap-KichBanVaoMoiTruongRE -DuongDanTapTinWim $DuongDanBoCaiThucTe -ChiSoIndex $ChiSoIndexCanCai -DuongDanThuMucDriver $DuongDanDriverTuyetDoi
         
         Ghi-NhatKy "Ép máy tính vào chế độ Recovery ở lần khởi động tới..."
@@ -534,7 +566,8 @@ $NutBatDauCaiDat.Add_Click({
         
         Ghi-NhatKy "CHUẨN BỊ XONG. MÁY SẼ TỰ RESET TRONG 5 GIÂY NỮA!"
         Start-Sleep -Seconds 5
-        # Mở khóa dòng lệnh bên dưới để phần mềm tự khởi động lại máy khi ứng dụng vào thực tế
+        
+        # MỞ KHÓA DÒNG DƯỚI ĐỂ TỰ ĐỘNG KHỞI ĐỘNG LẠI
         # Restart-Computer -Force
     }
 })
