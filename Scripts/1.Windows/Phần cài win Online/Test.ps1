@@ -386,6 +386,16 @@ assign letter=R
 function Do-WinRE_Va_KichNo {
     param($WimPath, $Index, $DriverPath)
     
+    Ghi-NhatKy "Đang trích xuất thông tin định tuyến ổ đĩa..."
+    # 1. Lấy số thứ tự chính xác của phân vùng OS hiện tại để vứt vào WinRE
+    $PhanVungOS = Get-Partition -DriveLetter "C"
+    $OsDiskNum = $PhanVungOS.DiskNumber
+    $OsPartNum = $PhanVungOS.PartitionNumber
+
+    # 2. Lấy đường dẫn tương đối của file WIM (bỏ ký tự ổ đĩa gốc)
+    # Ví dụ: "D:\Images\install.wim" -> "Images\install.wim"
+    $DuongDanTuongDoi = $WimPath.Substring(3)
+
     Ghi-NhatKy "Đang Reset và mở khóa WinRE..."
     reagentc.exe /enable | Out-Null; Start-Sleep 2
     reagentc.exe /disable | Out-Null; Start-Sleep 2
@@ -393,7 +403,6 @@ function Do-WinRE_Va_KichNo {
     $WinRE_Goc = "C:\Windows\System32\Recovery\winre.wim"
     if (-not (Test-Path $WinRE_Goc)) { throw "Lỗi Chí Mạng: Mất file winre.wim gốc!" }
 
-    # [VÁ LỖI CỰC MẠNH] - Xóa sạch tàn dư mount cũ
     Ghi-NhatKy "Đang dọn dẹp các tiến trình DISM bị kẹt..."
     dism.exe /Cleanup-Wim | Out-Null
     CapNhat-GiaoDien
@@ -405,7 +414,6 @@ function Do-WinRE_Va_KichNo {
     }
     New-Item -ItemType Directory -Path $ThuMucMount | Out-Null
 
-    # [VÁ LỖI QUYỀN] - Lột mặt nạ, bế ra ngoài mổ
     $ThuMucXuLy = "C:\WinRE_XuLy"
     if (-not (Test-Path $ThuMucXuLy)) { New-Item -ItemType Directory -Path $ThuMucXuLy | Out-Null }
     
@@ -418,8 +426,9 @@ function Do-WinRE_Va_KichNo {
     $MntRes = dism.exe /Mount-Image /ImageFile:$WinRE_Copy /Index:1 /MountDir:$ThuMucMount | Out-String
     if ($MntRes -notmatch "completed successfully") { throw "DISM không thể Mount: $MntRes" }
 
-    Ghi-NhatKy "Đang cấy kịch bản tự động hóa vào não WinRE..."
+    Ghi-NhatKy "Đang cấy kịch bản tự động hóa MỚI vào não WinRE..."
     
+    # Kịch bản SetupComplete (Không đổi)
     @"
 @echo off
 echo Xa Driver vao he thong...
@@ -430,19 +439,71 @@ start "" "C:\Users\Public\Desktop\AnyDesk.exe"
 del %0
 "@ | Out-File "$ThuMucMount\Windows\System32\LenhCaiXong_TamThoi.cmd" -Encoding oem
 
+    # KỊCH BẢN WINRE ĐƯỢC THIẾT KẾ LẠI (TÌM Ổ THÔNG MINH + BREAK LOOP)
     @"
 @echo off
-echo Format o C va trien khai Windows...
-echo select volume c > X:\dinhdang.txt
-echo format quick fs=ntfs >> X:\dinhdang.txt
+echo ==============================================
+echo KHOI DONG HE THONG ZERO-TOUCH DEPLOYMENT
+echo ==============================================
+
+echo 1. Quet tim file bo cai tren tat ca cac o dia...
+set "WIM_THUC_TE="
+for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
+    if exist "%%D:\$DuongDanTuongDoi" (
+        set "WIM_THUC_TE=%%D:\$DuongDanTuongDoi"
+        goto :TimThayWim
+    )
+)
+
+:TimThayWim
+if "%WIM_THUC_TE%"=="" (
+    echo [LOI] Khong tim thay file $DuongDanTuongDoi tren bat ky o dia nao!
+    goto :DungHienTruong
+)
+echo [OK] Phat hien bo cai tai: %WIM_THUC_TE%
+
+echo.
+echo 2. Format dung phan vung he dieu hanh (Disk $OsDiskNum - Part $OsPartNum)...
+echo select disk $OsDiskNum > X:\dinhdang.txt
+echo select partition $OsPartNum >> X:\dinhdang.txt
+echo assign letter=W >> X:\dinhdang.txt
+echo format quick fs=ntfs label="Windows" >> X:\dinhdang.txt
 diskpart /s X:\dinhdang.txt
 
-dism /apply-image /imagefile:"$WimPath" /index:$Index /applydir:C:\
-bcdboot C:\Windows
+echo.
+echo 3. Dang trien khai Windows (DISM) - Vui long doi...
+dism /apply-image /imagefile:"%WIM_THUC_TE%" /index:$Index /applydir:W:\
+if %errorlevel% neq 0 (
+    echo [LOI] DISM ap dung Image that bai. Ma loi: %errorlevel%
+    goto :DungHienTruong
+)
 
-mkdir C:\Windows\Setup\Scripts
-copy /Y X:\Windows\System32\LenhCaiXong_TamThoi.cmd C:\Windows\Setup\Scripts\SetupComplete.cmd
+echo.
+echo 4. Tao boot cho Windows...
+bcdboot W:\Windows
+
+echo.
+echo 5. Dua lenh hau cai dat vao he thong moi...
+mkdir W:\Windows\Setup\Scripts
+copy /Y X:\Windows\System32\LenhCaiXong_TamThoi.cmd W:\Windows\Setup\Scripts\SetupComplete.cmd
+
+echo.
+echo 6. XOA CONFIG WINRE DE PHA VONG LAP KHOI DONG...
+if exist X:\Windows\System32\winpeshl.ini del X:\Windows\System32\winpeshl.ini /F /Q
+
+echo Thanh cong! Khoi dong lai trong 5 giay...
+timeout /t 5
 wpeutil reboot
+exit
+
+:DungHienTruong
+echo ==============================================
+echo [CANH BAO] XAY RA LOI! TIEN TRINH BI DUNG LAI.
+echo Huy bo tu dong reboot de tranh vong lap vo tan.
+if exist X:\Windows\System32\winpeshl.ini del X:\Windows\System32\winpeshl.ini /F /Q
+echo Nhan phim bat ky de mo CMD...
+pause >nul
+cmd.exe
 "@ | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
 
     "[LaunchApps]`r`nX:\Windows\System32\LenhChayTrongRE.cmd" | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
