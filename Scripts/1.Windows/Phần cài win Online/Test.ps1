@@ -360,26 +360,56 @@ $GiaoDien.Add_ContentRendered({
 
 function ChuanBi-PhanVungHeThong {
     Ghi-NhatKy "Đang kiểm tra cấu trúc EFI & Recovery..."
-    $DiskNum = (Get-Partition -DriveLetter "C").DiskNumber
-    if (-not (Get-Partition -DiskNumber $DiskNum | Where-Object Type -eq 'System') -or 
-        -not (Get-Partition -DiskNumber $DiskNum | Where-Object Type -eq 'Recovery')) {
+    
+    try {
+        # 1. Tự động tìm ký tự ổ đĩa chứa Windows (thường là C:)
+        $ChuCaiO_Win = [System.IO.Path]::GetPathRoot($env:windir).Substring(0,1)
         
-        Ghi-NhatKy "Hệ thống thiếu phân vùng. Đang chia lại ổ C (1GB)..."
-        Resize-Partition -DriveLetter "C" -Size ((Get-Partition -DriveLetter "C").Size - 1GB)
-        
-        @"
-select disk $DiskNum
+        # 2. Lấy thông tin phân vùng một cách an toàn
+        $PhanVungOS = Get-Partition -DriveLetter $ChuCaiO_Win -ErrorAction Stop
+        $global:OsDiskNum = $PhanVungOS.DiskNumber
+        $global:OsPartNum = $PhanVungOS.PartitionNumber # Lưu lại để dùng cho bước sau
+
+        Ghi-NhatKy "Xác nhận OS nằm trên Disk: $global:OsDiskNum, Partition: $global:OsPartNum"
+
+        # 3. Kiểm tra xem đã có phân vùng EFI (System) và Recovery chưa
+        $CacPhanVung = Get-Partition -DiskNumber $global:OsDiskNum
+        $CoEFI = $CacPhanVung | Where-Object { $_.GptType -eq '{c12a7328-f81f-11d2-ba4b-00a0c93ec93b}' -or $_.Type -eq 'System' }
+        $CoRec = $CacPhanVung | Where-Object { $_.GptType -eq '{de94bba4-06d1-4d40-a16a-bfd50179d6ac}' -or $_.Type -eq 'Recovery' }
+
+        if (-not $CoEFI -or -not $CoRec) {
+            Ghi-NhatKy "⚠️ Thiếu phân vùng hệ thống. Đang tách 1GB từ ổ $ChuCaiO_Win để tạo..."
+            
+            # Tính toán kích thước mới (Size hiện tại trừ đi 1GB)
+            $KichThuocHienTai = $PhanVungOS.Size
+            $KichThuocMoi = $KichThuocHienTai - 1GB
+            
+            Resize-Partition -DriveLetter $ChuCaiO_Win -Size $KichThuocMoi -ErrorAction Stop
+            
+            # Chạy Diskpart để tạo phân vùng
+            $ScriptDiskpart = @"
+select disk $global:OsDiskNum
 create partition efi size=260
 format quick fs=fat32 label="System"
 assign letter=S
-create partition primary size=750
+create partition primary size=740
 format quick fs=ntfs label="Recovery"
 set id="de94bba4-06d1-4d40-a16a-bfd50179d6ac"
 gpt attributes=0x8000000000000001
 assign letter=R
-"@ | Out-File "$env:TEMP\diskpart_auto.txt" -Encoding ascii
-        Start-Process "diskpart.exe" "/s $env:TEMP\diskpart_auto.txt" -Wait -WindowStyle Hidden
-        Ghi-NhatKy "✅ Đã định dạng xong phân vùng hệ thống."
+"@
+            $PathDiskpart = "$env:TEMP\diskpart_auto.txt"
+            $ScriptDiskpart | Out-File $PathDiskpart -Encoding ascii
+            Start-Process "diskpart.exe" "/s $PathDiskpart" -Wait -WindowStyle Hidden
+            
+            Ghi-NhatKy "✅ Đã cấu trúc lại phân vùng EFI & Recovery thành công."
+        } else {
+            Ghi-NhatKy "✅ Hệ thống đã có đủ phân vùng cần thiết."
+        }
+    } catch {
+        $Loi = $_.Exception.Message
+        Ghi-NhatKy "❌ LỖI PHÂN VÙNG: $Loi"
+        throw "Không thể chuẩn bị phân vùng: $Loi"
     }
 }
 
