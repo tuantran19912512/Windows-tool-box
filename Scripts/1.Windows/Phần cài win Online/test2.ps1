@@ -444,7 +444,7 @@ $NutBatDauCaiDat.Add_Click({
         Start-Sleep -Seconds 5
         
         # [MỞ KHÓA KHI ĐEM ĐI SỬ DỤNG THỰC TẾ]
-        # Restart-Computer -Force
+		Restart-Computer -Force
     } catch {
         $Loi = $_.Exception.Message
         Ghi-NhatKy "❌ LỖI HỆ THỐNG CHẶN ĐƯỢC: $Loi"
