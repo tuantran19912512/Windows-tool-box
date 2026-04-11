@@ -139,20 +139,60 @@ function Ghi-NhatKy($NoiDung) {
 function Quet-VaCapNhatPhienBanWin {
     $DuongDanFile = $HopThoaiFileBoCai.Text
     if (-not (Test-Path $DuongDanFile)) { return }
+    
     Ghi-NhatKy "Đang quét danh sách phiên bản..."
     $DanhSachPhienBanWin.Items.Clear()
+    $DanhSachPhienBanWin.Items.Add("⏳ Đang phân tích file...") | Out-Null
+    $DanhSachPhienBanWin.SelectedIndex = 0
+    CapNhat-GiaoDien
+
+    $FileWimCanQuet = $DuongDanFile
+    $DaMountIso = $false
+
     try {
-        $ThongTinWim = dism.exe /Get-WimInfo /WimFile:$DuongDanFile /English
-        $ChiSoHienTai = $null
-        foreach ($Dong in $ThongTinWim) {
-            if ($Dong -match 'Index : (\d+)') { $ChiSoHienTai = $matches[1] }
-            if ($Dong -match 'Name : (.*)' -and $ChiSoHienTai) {
-                $DanhSachPhienBanWin.Items.Add("Index $($ChiSoHienTai): $($matches[1])") | Out-Null
-                $ChiSoHienTai = $null
-            }
+        # [ĐÃ KHÔI PHỤC] Nếu là ISO, phải Mount ra ổ ảo để đọc ruột WIM bên trong
+        if ($DuongDanFile -match '(?i)\.iso$') {
+            Mount-DiskImage -ImagePath $DuongDanFile -PassThru | Out-Null
+            Start-Sleep -Seconds 1 
+            $KyTuODiaAo = (Get-DiskImage -ImagePath $DuongDanFile | Get-Volume).DriveLetter
+            if ($KyTuODiaAo -is [array]) { $KyTuODiaAo = $KyTuODiaAo[0] }
+            if (-not $KyTuODiaAo) { throw "Không tạo được ổ ảo từ ISO." }
+            
+            $FileWimCanQuet = "$($KyTuODiaAo):\sources\install.wim"
+            if (-not (Test-Path $FileWimCanQuet)) { $FileWimCanQuet = "$($KyTuODiaAo):\sources\install.esd" }
+            $DaMountIso = $true
         }
-        $DanhSachPhienBanWin.SelectedIndex = 0
-    } catch { Ghi-NhatKy "❌ Lỗi đọc file!" }
+
+        if (Test-Path $FileWimCanQuet) {
+            $ThongTinWim = dism.exe /Get-WimInfo /WimFile:$FileWimCanQuet /English
+            $ChiSoHienTai = $null
+            $Dem = 0
+            
+            $DanhSachPhienBanWin.Items.Clear()
+            foreach ($Dong in $ThongTinWim) {
+                if ($Dong -match 'Index : (\d+)') { $ChiSoHienTai = $matches[1] }
+                if ($Dong -match 'Name : (.*)' -and $ChiSoHienTai) {
+                    $DanhSachPhienBanWin.Items.Add("Index $($ChiSoHienTai): $($matches[1])") | Out-Null
+                    $ChiSoHienTai = $null
+                    $Dem++
+                }
+            }
+            if ($Dem -gt 0) {
+                $DanhSachPhienBanWin.SelectedIndex = 0
+                Ghi-NhatKy "✅ Quét thành công $Dem phiên bản!"
+            } else {
+                $DanhSachPhienBanWin.Items.Add("❌ Không đọc được danh sách") | Out-Null
+            }
+        } else {
+            $DanhSachPhienBanWin.Items.Clear()
+            $DanhSachPhienBanWin.Items.Add("❌ Lỗi: ISO không chứa file install.wim/esd") | Out-Null
+        }
+    } catch { 
+        Ghi-NhatKy "❌ Lỗi đọc file: $($_.Exception.Message)" 
+    } finally {
+        # Quét xong phải rút ổ ảo ra ngay để file không bị khóa
+        if ($DaMountIso) { Dismount-DiskImage -ImagePath $DuongDanFile | Out-Null }
+    }
 }
 
 $NutChonFileBoCai.Add_Click({
