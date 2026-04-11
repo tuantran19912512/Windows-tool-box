@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - PHIÊN BẢN ZERO-TOUCH V4 (KHÁNG TPM)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - PHIÊN BẢN ZERO-TOUCH V4.1 (FIX BOOT MENU)
     Tác giả: Tuấn & AI Assistant
 #>
 
@@ -42,7 +42,7 @@ function Chon-ThuMucHienDai($TieuDe) {
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V4 (Bypass OOBE &amp; TPM 2.0)" 
+        Title="Zero-Touch Deployment V4.1 (Auto Boot Desktop)" 
         Width="750" Height="820" WindowStartupLocation="CenterScreen" Background="#F0F4F8">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -145,7 +145,6 @@ function Quet-VaCapNhatPhienBanWin {
         foreach ($Dong in $ThongTinWim) {
             if ($Dong -match 'Index : (\d+)') { $ChiSoHienTai = $matches[1] }
             if ($Dong -match 'Name : (.*)' -and $ChiSoHienTai) {
-                # [ĐÃ FIX] Bọc biến vào $() để không bị dính dấu hai chấm
                 $DanhSachPhienBanWin.Items.Add("Index $($ChiSoHienTai): $($matches[1])") | Out-Null
                 $ChiSoHienTai = $null
             }
@@ -268,7 +267,7 @@ function Do-WinRE_Va_KichNo {
 
     Copy-Item -Path "$env:TEMP\SetupComplete_ZeroTouch.cmd" -Destination "$ThuMucMount\Windows\System32\SetupComplete_ZeroTouch.cmd" -Force
 
-    # KỊCH BẢN CHẠY TRONG WINRE (CÓ BƠM DRIVER Ổ CỨNG OFFLINE)
+    # KỊCH BẢN CHẠY TRONG WINRE (CÓ FIX LỖI BOOT MENU & RECOVERY)
     @"
 @echo off
 echo ==============================================
@@ -299,14 +298,18 @@ echo 4. Nap Driver o cung (Truoc khi khoi dong)...
 if not "%DRIVER_THUC_TE%"=="" dism /image:W:\ /add-driver /driver:"%DRIVER_THUC_TE%" /recurse
 
 echo.
-echo 5. Tao Boot va Nap kieu ban Zero-Touch...
+echo 5. Tao Boot va Xoa Menu Chon Win...
 bcdboot W:\Windows
+bcdedit /timeout 0
+bcdedit /set {default} bootstatuspolicy IgnoreAllFailures
+bcdedit /set {default} recoveryenabled No
+
 mkdir W:\Windows\Setup\Scripts
 copy /Y X:\Windows\System32\SetupComplete_ZeroTouch.cmd W:\Windows\Setup\Scripts\SetupComplete.cmd
 
 if exist X:\Windows\System32\winpeshl.ini del X:\Windows\System32\winpeshl.ini /F /Q
 echo Thanh cong! Dang reset...
-timeout /t 3
+ping 127.0.0.1 -n 4 >nul
 wpeutil reboot
 exit
 
@@ -382,7 +385,7 @@ $NutBatDauCaiDat.Add_Click({
         Start-Sleep -Seconds 5
         
         # Mở khóa dòng này khi mang đi dùng thật:
-		Restart-Computer -Force
+        Restart-Computer -Force
     } catch {
         Ghi-NhatKy "❌ LỖI: $($_.Exception.Message)"
         [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "Tiến Trình Bị Hủy", 0, 16)
