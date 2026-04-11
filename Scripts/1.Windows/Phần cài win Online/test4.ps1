@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V8.1 (REGION TỐI ƯU & FULL NGÔN NGỮ CHÂU Á)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V8.2 (RESPONSIVE UI & FULL NGÔN NGỮ)
     Tác giả: Tuấn & AI Assistant
 #>
 
@@ -24,83 +24,92 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 })
 
 # ==========================================
-# 3. GIAO DIỆN WPF (XAML) - BỔ SUNG NGÔN NGỮ
+# 3. GIAO DIỆN WPF (XAML) - ĐÃ LÀM LẠI KIẾN TRÚC DOCKPANEL CO GIÃN
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V8.1 (Đa Ngôn Ngữ &amp; Region Tối Ưu)" 
-        Width="780" Height="900" WindowStartupLocation="CenterScreen" Background="#F8FAFC">
-    <Grid Margin="20">
-        <Grid.RowDefinitions>
-            <RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-            <RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/>
-        </Grid.RowDefinitions>
+        Title="Zero-Touch Deployment V8.2 (Responsive UI)" 
+        Width="800" Height="850" MinWidth="750" MinHeight="750" 
+        WindowStartupLocation="CenterScreen" Background="#F8FAFC">
+    <DockPanel Margin="15">
+        
+        <TextBlock DockPanel.Dock="Top" Text="HỆ THỐNG TRIỂN KHAI WINDOWS TỰ ĐỘNG" FontSize="22" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,15"/>
 
-        <TextBlock Text="HỆ THỐNG TRIỂN KHAI WINDOWS TỰ ĐỘNG" FontSize="24" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,20"/>
-
-        <Border Grid.Row="1" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E2E8F0" BorderThickness="1">
-            <StackPanel>
-                <TextBlock Text="1. Nguồn dữ liệu:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
-                <Grid Margin="0,0,0,8">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
-                    <TextBox Name="HopFileBoCai" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
-                    <Button Name="NutChonFile" Grid.Column="1" Content="📂 Chọn Bộ Cài" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,15,0,0">
+            <StackPanel Margin="0,0,0,15">
+                <Grid Margin="0,0,0,5">
+                    <TextBlock Name="TxtTrangThai" Text="Sẵn sàng" FontSize="12" Foreground="#0F172A" FontWeight="Bold"/>
+                    <TextBlock Name="TxtPhanTram" Text="0%" FontWeight="Bold" Foreground="#0284C7" HorizontalAlignment="Right"/>
                 </Grid>
-                <ComboBox Name="DanhSachBanWin" Height="32" Margin="0,0,0,8" VerticalContentAlignment="Center"/>
-                <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
-                    <TextBox Name="HopThuMucDriver" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
-                    <Button Name="NutChonDriver" Grid.Column="1" Content="🖨️ Chọn Driver" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0"/>
-                </Grid>
+                <ProgressBar Name="ThanhTienDo" Height="14" Foreground="#0EA5E9" Background="#E2E8F0" BorderThickness="0"/>
             </StackPanel>
-        </Border>
-
-        <Border Grid.Row="2" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E2E8F0" BorderThickness="1">
-            <StackPanel>
-                <TextBlock Text="2. Cấu hình Hệ thống (Vùng &amp; Ngôn ngữ):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
-                <Grid Margin="0,0,0,10">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="Ngôn ngữ hiển thị:" VerticalAlignment="Center" Foreground="#475569"/>
-                    <ComboBox Name="CboLanguage" Grid.Column="1" Height="32" VerticalContentAlignment="Center">
-                        <ComboBoxItem Content="Tiếng Anh (en-US)" Tag="en-US" IsSelected="True"/>
-                        <ComboBoxItem Content="Tiếng Việt (vi-VN)" Tag="vi-VN"/>
-                        <ComboBoxItem Content="Tiếng Trung Giản Thể (zh-CN)" Tag="zh-CN"/>
-                        <ComboBoxItem Content="Tiếng Trung Phồn Thể (zh-TW)" Tag="zh-TW"/>
-                        <ComboBoxItem Content="Tiếng Hàn Quốc (ko-KR)" Tag="ko-KR"/>
-                        <ComboBoxItem Content="Tiếng Nhật Bản (ja-JP)" Tag="ja-JP"/>
-                    </ComboBox>
-                </Grid>
-                <TextBlock Text="* Mặc định: Múi giờ +7 (Hà Nội) &amp; Định dạng ngày tháng kiểu Việt Nam (DD/MM/YYYY)" FontSize="11" Foreground="#0284C7" Margin="130,0,0,10"/>
-                <Grid Margin="0,0,0,10">
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="Tên Tài Khoản:" VerticalAlignment="Center" Foreground="#475569"/>
-                    <TextBox Name="TxtTenUser" Grid.Column="1" Height="32" VerticalContentAlignment="Center" Text="Admin" FontWeight="Bold" Padding="10,0"/>
-                </Grid>
-            </StackPanel>
-        </Border>
-
-        <Border Grid.Row="3" Background="White" CornerRadius="8" Padding="15" Margin="0,0,0,15" BorderBrush="#E2E8F0" BorderThickness="1">
-            <UniformGrid Columns="2">
-                <CheckBox Name="ChkOOBE" Content="Bypass OOBE 100%" IsChecked="True" FontWeight="Bold" Margin="0,0,0,10"/>
-                <CheckBox Name="ChkLogon" Content="Auto Logon Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,10"/>
-                <CheckBox Name="ChkBackupDriver" Content="Backup Driver Mạng" IsChecked="True" Margin="0,0,0,10"/>
-                <CheckBox Name="ChkTPM" Content="Bypass TPM 2.0" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,10"/>
-                <CheckBox Name="ChkAnyDesk" Content="Tải AnyDesk" IsChecked="True" Foreground="#0284C7" FontWeight="Bold"/>
-                <CheckBox Name="ChkWifi" Content="Sao lưu Wi-Fi" IsChecked="True"/>
-            </UniformGrid>
-        </Border>
-
-        <Border Grid.Row="4" Background="#0F172A" CornerRadius="8" Margin="0,0,0,15" Padding="10">
-            <TextBox Name="HopNhatKy" Background="Transparent" Foreground="#10B981" FontFamily="Consolas" FontSize="12" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderThickness="0"/>
-        </Border>
-
-        <StackPanel Grid.Row="5" Margin="0,0,0,15">
-            <ProgressBar Name="ThanhTienDo" Height="10" Foreground="#0EA5E9" Background="#E2E8F0" BorderThickness="0"/>
-            <TextBlock Name="TxtTrangThai" Text="Sẵn sàng" FontSize="11" Margin="0,5,0,0" HorizontalAlignment="Center"/>
+            <Button Name="NutKichHoat" Content="🚀 TRIỂN KHAI WINDOWS" Height="55" Background="#E11D48" Foreground="White" FontSize="18" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
 
-        <Button Name="NutKichHoat" Grid.Row="6" Content="🚀 TRIỂN KHAI WINDOWS" Height="50" Background="#E11D48" Foreground="White" FontSize="18" FontWeight="Bold" BorderThickness="0"/>
-    </Grid>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto"/> <RowDefinition Height="*"/>    </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0">
+                <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="1. Nguồn dữ liệu:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
+                            <TextBox Name="HopFileBoCai" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
+                            <Button Name="NutChonFile" Grid.Column="1" Content="📂 Chọn Bộ Cài" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                        </Grid>
+                        <ComboBox Name="DanhSachBanWin" Height="32" Margin="0,0,0,8" VerticalContentAlignment="Center"/>
+                        <Grid>
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
+                            <TextBox Name="HopThuMucDriver" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
+                            <Button Name="NutChonDriver" Grid.Column="1" Content="🖨️ Chọn Driver" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <StackPanel>
+                        <TextBlock Text="2. Cấu hình Hệ thống (Vùng &amp; Ngôn ngữ):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
+                        <Grid Margin="0,0,0,8">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Ngôn ngữ hiển thị:" VerticalAlignment="Center" Foreground="#475569"/>
+                            <ComboBox Name="CboLanguage" Grid.Column="1" Height="32" VerticalContentAlignment="Center">
+                                <ComboBoxItem Content="Tiếng Anh (en-US)" Tag="en-US" IsSelected="True"/>
+                                <ComboBoxItem Content="Tiếng Việt (vi-VN)" Tag="vi-VN"/>
+                                <ComboBoxItem Content="Tiếng Trung Giản Thể (zh-CN)" Tag="zh-CN"/>
+                                <ComboBoxItem Content="Tiếng Trung Phồn Thể (zh-TW)" Tag="zh-TW"/>
+                                <ComboBoxItem Content="Tiếng Hàn Quốc (ko-KR)" Tag="ko-KR"/>
+                                <ComboBoxItem Content="Tiếng Nhật Bản (ja-JP)" Tag="ja-JP"/>
+                            </ComboBox>
+                        </Grid>
+                        <TextBlock Text="* Mặc định: Múi giờ +7 (Hà Nội) &amp; Định dạng ngày tháng kiểu Việt Nam (DD/MM/YYYY)" FontSize="11" Foreground="#0284C7" Margin="130,0,0,8"/>
+                        <Grid Margin="0,0,0,5">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                            <TextBlock Text="Tên Tài Khoản:" VerticalAlignment="Center" Foreground="#475569"/>
+                            <TextBox Name="TxtTenUser" Grid.Column="1" Height="32" VerticalContentAlignment="Center" Text="Admin" FontWeight="Bold" Padding="10,0"/>
+                        </Grid>
+                    </StackPanel>
+                </Border>
+
+                <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <UniformGrid Columns="2" VerticalAlignment="Top">
+                        <CheckBox Name="ChkOOBE" Content="Bypass OOBE 100%" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox Name="ChkLogon" Content="Auto Logon Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox Name="ChkBackupDriver" Content="Backup Driver Mạng" IsChecked="True" Margin="0,0,0,8"/>
+                        <CheckBox Name="ChkTPM" Content="Bypass TPM 2.0" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,8"/>
+                        <CheckBox Name="ChkAnyDesk" Content="Tải AnyDesk" IsChecked="True" Foreground="#0284C7" FontWeight="Bold"/>
+                        <CheckBox Name="ChkWifi" Content="Sao lưu Wi-Fi" IsChecked="True"/>
+                    </UniformGrid>
+                </Border>
+            </StackPanel>
+
+            <Border Grid.Row="1" Background="#0F172A" CornerRadius="8" Padding="10" MinHeight="100">
+                <TextBox Name="HopNhatKy" Background="Transparent" Foreground="#10B981" FontFamily="Consolas" FontSize="12" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderThickness="0"/>
+            </Border>
+
+        </Grid>
+    </DockPanel>
 </Window>
 "@
 
@@ -110,7 +119,7 @@ $HopThuMucDriver = $UI.FindName("HopThuMucDriver"); $NutChonDriver = $UI.FindNam
 $CboLanguage = $UI.FindName("CboLanguage"); $ChkOOBE = $UI.FindName("ChkOOBE"); $ChkLogon = $UI.FindName("ChkLogon")
 $ChkTPM = $UI.FindName("ChkTPM"); $ChkAnyDesk = $UI.FindName("ChkAnyDesk"); $ChkWifi = $UI.FindName("ChkWifi")
 $ChkBackupDriver = $UI.FindName("ChkBackupDriver"); $HopNhatKy = $UI.FindName("HopNhatKy"); $TxtTrangThai = $UI.FindName("TxtTrangThai")
-$ThanhTienDo = $UI.FindName("ThanhTienDo"); $NutKichHoat = $UI.FindName("NutKichHoat")
+$TxtPhanTram = $UI.FindName("TxtPhanTram"); $ThanhTienDo = $UI.FindName("ThanhTienDo"); $NutKichHoat = $UI.FindName("NutKichHoat")
 
 # ==========================================
 # 4. TIMER ĐỒNG BỘ
@@ -119,7 +128,7 @@ $DongHoTimer = New-Object System.Windows.Threading.DispatcherTimer
 $DongHoTimer.Interval = [TimeSpan]::FromMilliseconds(100)
 $DongHoTimer.Add_Tick({
     if ($Global:TrangThaiHethong.Log) { $HopNhatKy.AppendText($Global:TrangThaiHethong.Log); $HopNhatKy.ScrollToEnd(); $Global:TrangThaiHethong.Log = "" }
-    $ThanhTienDo.Value = $Global:TrangThaiHethong.TienDo; $TxtTrangThai.Text = $Global:TrangThaiHethong.TrangThai
+    $ThanhTienDo.Value = $Global:TrangThaiHethong.TienDo; $TxtPhanTram.Text = "$($Global:TrangThaiHethong.TienDo)%"; $TxtTrangThai.Text = $Global:TrangThaiHethong.TrangThai
     if ($Global:TrangThaiHethong.KetThuc) {
         $DongHoTimer.Stop()
         if ($Global:TrangThaiHethong.Loi) { [System.Windows.Forms.MessageBox]::Show($Global:TrangThaiHethong.Loi, "LỖI", 0, 16) }
@@ -182,7 +191,7 @@ $KichBanNen = {
             Dismount-DiskImage -ImagePath $FileCai | Out-Null; $FileCai = $FileCaiDich
         }
 
-        # TẠO UNATTEND.XML VỚI MÚI GIỜ +7 VÀ ĐỊNH DẠNG VIỆT NAM (DD/MM/YYYY) KÈM NGÔN NGỮ TÙY CHỌN
+        # TẠO UNATTEND.XML VỚI MÚI GIỜ +7 VÀ ĐỊNH DẠNG VIỆT NAM (DD/MM/YYYY)
         if ($OOBE) {
             $UnattendXML = @"
 <?xml version="1.0" encoding="utf-8"?>
@@ -269,6 +278,7 @@ $NutKichHoat.Add_Click({
     $FileCai = $HopFileBoCai.Text; $FileDriver = $HopThuMucDriver.Text; $ChonIndex = $DanhSachBanWin.SelectedItem
     if (-not (Test-Path $FileCai)) { return }
     
+    # [FIX AN TOÀN CHO POWERSHELL 5.1]
     if ($ChonIndex -match 'Index (\d+):') {
         $IndexLoi = $matches[1]
     } else {
