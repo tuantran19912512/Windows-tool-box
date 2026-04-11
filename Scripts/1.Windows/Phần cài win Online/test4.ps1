@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - PHIÊN BẢN ZERO-TOUCH V4.1 (FIX BOOT MENU)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V4.2 (AUTO ANYDESK & REMOTE SUPPORT)
     Tác giả: Tuấn & AI Assistant
 #>
 
@@ -42,7 +42,7 @@ function Chon-ThuMucHienDai($TieuDe) {
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V4.1 (Auto Boot Desktop)" 
+        Title="Zero-Touch Deployment V4.2 (AnyDesk Remote Support)" 
         Width="750" Height="820" WindowStartupLocation="CenterScreen" Background="#F0F4F8">
     <Grid Margin="20">
         <Grid.RowDefinitions>
@@ -92,7 +92,8 @@ function Chon-ThuMucHienDai($TieuDe) {
                 <UniformGrid Columns="2">
                     <CheckBox Name="ChkTatBitLocker" Content="Tắt BitLocker ổ C" IsChecked="True" Margin="0,0,0,10"/>
                     <CheckBox Name="ChkSaoLuuWifi" Content="Sao lưu Wi-Fi hiện tại" IsChecked="True" Margin="0,0,0,10"/>
-                    <CheckBox Name="ChkBypassTPM" Content="Bypass TPM 2.0 &amp; CPU (Dành cho máy cũ)" IsChecked="True" Foreground="#E11D48" FontWeight="Bold"/>
+                    <CheckBox Name="ChkBypassTPM" Content="Bypass TPM 2.0 &amp; CPU (Dành cho máy cũ)" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,10"/>
+                    <CheckBox Name="ChkAutoAnyDesk" Content="Tự tải AnyDesk và bật khi vào Desktop" IsChecked="True" Foreground="#0284C7" FontWeight="Bold"/>
                 </UniformGrid>
             </StackPanel>
         </Border>
@@ -120,6 +121,7 @@ $ChkAutoLogon = $GiaoDien.FindName("ChkAutoLogon")
 $ChkTatBitLocker = $GiaoDien.FindName("ChkTatBitLocker")
 $ChkSaoLuuWifi = $GiaoDien.FindName("ChkSaoLuuWifi")
 $ChkBypassTPM = $GiaoDien.FindName("ChkBypassTPM")
+$ChkAutoAnyDesk = $GiaoDien.FindName("ChkAutoAnyDesk") # Nút mới
 $HopThoaiNhatKy = $GiaoDien.FindName("HopThoaiNhatKy")
 $NutBatDauCaiDat = $GiaoDien.FindName("NutBatDauCaiDat")
 
@@ -207,7 +209,7 @@ assign letter=R
 }
 
 function Do-WinRE_Va_KichNo {
-    param($WimPath, $Index, $DriverPath, $TenUser, $BypassOOBE, $AutoLogon, $TatBitLocker, $SaoLuuWifi, $BypassTPM)
+    param($WimPath, $Index, $DriverPath, $TenUser, $BypassOOBE, $AutoLogon, $TatBitLocker, $SaoLuuWifi, $BypassTPM, $AutoAnyDesk)
     
     Ghi-NhatKy "Đang thiết lập định tuyến WinRE..."
     $PhanVungOS = Get-Partition -DriveLetter "C"
@@ -215,7 +217,7 @@ function Do-WinRE_Va_KichNo {
     $OsPartNum = $PhanVungOS.PartitionNumber
     $DuongDanTuongDoi = $WimPath.Substring(3)
 
-    # 1. TẠO KỊCH BẢN SETUPCOMPLETE (BƠM VÀO ĐẦU WIN MỚI)
+    # 1. TẠO KỊCH BẢN SETUPCOMPLETE (ĐÃ THÊM LỆNH ANYDESK)
     $Cmd = "@echo off`r`n"
     $Cmd += "echo --- KICH BAN ZERO-TOUCH DANG CHAY ---`r`n"
     $Cmd += "net user `"$TenUser`" /add /passwordreq:no`r`n"
@@ -224,7 +226,6 @@ function Do-WinRE_Va_KichNo {
     if ($BypassOOBE) { $Cmd += "reg add `"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\OOBE`" /v BypassNRO /t REG_DWORD /d 1 /f`r`n" }
     
     if ($BypassTPM) {
-        $Cmd += "echo Dang cap the mien nhiem TPM cho cac ban Update sau nay...`r`n"
         $Cmd += "reg add `"HKLM\SYSTEM\Setup\MoSetup`" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f`r`n"
         $Cmd += "reg add `"HKLM\SYSTEM\Setup\LabConfig`" /v BypassTPMCheck /t REG_DWORD /d 1 /f`r`n"
         $Cmd += "reg add `"HKLM\SYSTEM\Setup\LabConfig`" /v BypassSecureBootCheck /t REG_DWORD /d 1 /f`r`n"
@@ -242,8 +243,13 @@ function Do-WinRE_Va_KichNo {
         $Cmd += "reg add `"HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon`" /v DefaultUserName /t REG_SZ /d `"$TenUser`" /f`r`n"
     }
 
-    $Cmd += "powershell -Command `"Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile 'C:\Users\Public\Desktop\AnyDesk.exe'`"`r`n"
-    $Cmd += "start `"`" `"C:\Users\Public\Desktop\AnyDesk.exe`"`r`n"
+    # --- KHỐI LỆNH TỰ TẢI ANYDESK ---
+    if ($AutoAnyDesk) {
+        $Cmd += "echo Dang tai AnyDesk de ho tro tu xa...`r`n"
+        $Cmd += "powershell -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile 'C:\Users\Public\Desktop\AnyDesk.exe'`"`r`n"
+        $Cmd += "start `"`" `"C:\Users\Public\Desktop\AnyDesk.exe`"`r`n"
+    }
+
     $Cmd += "del %0`r`n"
     $Cmd | Out-File "$env:TEMP\SetupComplete_ZeroTouch.cmd" -Encoding oem
 
@@ -261,20 +267,14 @@ function Do-WinRE_Va_KichNo {
     Copy-Item -Path $WinRE_Goc -Destination $WinRE_Copy -Force
     Set-ItemProperty -Path $WinRE_Copy -Name IsReadOnly -Value $false
 
-    Ghi-NhatKy "Đang Mount WinRE (Mất khoảng 30s)..."
+    Ghi-NhatKy "Đang Mount WinRE (30s)..."
     CapNhat-GiaoDien
     dism.exe /Mount-Image /ImageFile:$WinRE_Copy /Index:1 /MountDir:$ThuMucMount | Out-Null
 
     Copy-Item -Path "$env:TEMP\SetupComplete_ZeroTouch.cmd" -Destination "$ThuMucMount\Windows\System32\SetupComplete_ZeroTouch.cmd" -Force
 
-    # KỊCH BẢN CHẠY TRONG WINRE (CÓ FIX LỖI BOOT MENU & RECOVERY)
     @"
 @echo off
-echo ==============================================
-echo KHOI DONG HE THONG ZERO-TOUCH DEPLOYMENT
-echo ==============================================
-
-echo 1. Quet tim file bo cai va thu muc Driver...
 set "WIM_THUC_TE="
 set "DRIVER_THUC_TE="
 for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
@@ -284,21 +284,13 @@ for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
 
 if "%WIM_THUC_TE%"=="" goto :Loi
 
-echo.
-echo 2. Format phan vung Windows...
 (echo select disk $OsDiskNum & echo select partition $OsPartNum & echo assign letter=W & echo format quick fs=ntfs label="Windows") | diskpart
 
-echo.
-echo 3. Dang bung Windows vao o C (DISM)...
 dism /apply-image /imagefile:"%WIM_THUC_TE%" /index:$Index /applydir:W:\
 if %errorlevel% neq 0 goto :Loi
 
-echo.
-echo 4. Nap Driver o cung (Truoc khi khoi dong)...
 if not "%DRIVER_THUC_TE%"=="" dism /image:W:\ /add-driver /driver:"%DRIVER_THUC_TE%" /recurse
 
-echo.
-echo 5. Tao Boot va Xoa Menu Chon Win...
 bcdboot W:\Windows
 bcdedit /timeout 0
 bcdedit /set {default} bootstatuspolicy IgnoreAllFailures
@@ -314,15 +306,13 @@ wpeutil reboot
 exit
 
 :Loi
-echo [LOI] Co loi xay ra! Dung tien trinh.
-if exist X:\Windows\System32\winpeshl.ini del X:\Windows\System32\winpeshl.ini /F /Q
 pause
 cmd.exe
 "@ | Out-File "$ThuMucMount\Windows\System32\LenhChayTrongRE.cmd" -Encoding oem
 
     "[LaunchApps]`r`nX:\Windows\System32\LenhChayTrongRE.cmd" | Out-File "$ThuMucMount\Windows\System32\winpeshl.ini" -Encoding ascii
 
-    Ghi-NhatKy "Đang đóng gói lại WinRE..."
+    Ghi-NhatKy "Đang Unmount WinRE..."
     CapNhat-GiaoDien
     dism.exe /Unmount-Image /MountDir:$ThuMucMount /Commit | Out-Null
     Remove-Item -Path $ThuMucMount -Force
@@ -332,7 +322,7 @@ cmd.exe
     Remove-Item -Path $ThuMucXuLy -Recurse -Force
 
     reagentc.exe /enable | Out-Null
-    Ghi-NhatKy "Ra lệnh chốt hạ: Ép khởi động vào WinRE!"
+    Ghi-NhatKy "Ép khởi động vào WinRE!"
     reagentc.exe /boottore | Out-Null
 }
 
@@ -344,51 +334,42 @@ $NutBatDauCaiDat.Add_Click({
         $FileCai = $HopThoaiFileBoCai.Text; $FileDriver = $HopThoaiThuMucDriver.Text; $ChonIndex = $DanhSachPhienBanWin.SelectedItem
         $TenUser = $TxtTenUser.Text; $BypassOOBE = $ChkBypassOOBE.IsChecked; $AutoLogon = $ChkAutoLogon.IsChecked
         $TatBitLocker = $ChkTatBitLocker.IsChecked; $SaoLuuWifi = $ChkSaoLuuWifi.IsChecked; $BypassTPM = $ChkBypassTPM.IsChecked
+        $AutoAnyDesk = $ChkAutoAnyDesk.IsChecked
 
-        if (-not (Test-Path $FileCai)) { throw "Chưa có file bộ cài hợp lệ!" }
-        if ($ChonIndex -notmatch 'Index (\d+):') { throw "Vui lòng chọn một phiên bản Win!" }
+        if (-not (Test-Path $FileCai)) { throw "Chưa chọn file bộ cài!" }
+        if ($ChonIndex -notmatch 'Index (\d+):') { throw "Chưa chọn Index!" }
         $IndexLoi = $matches[1]
 
-        if (-not $TenUser) { throw "Tên User không được để trống!" }
-        if ($SaoLuuWifi -and -not $FileDriver) { throw "Sao lưu Wi-Fi yêu cầu phải chọn Thư mục Driver lưu tạm." }
-        if ([System.IO.Path]::GetPathRoot($FileCai) -match "(?i)^C:") { throw "NGUY HIỂM: File cài nằm trên ổ C sẽ bị format xoá mất!" }
+        if ([System.IO.Path]::GetPathRoot($FileCai) -match "(?i)^C:") { throw "File cài không được để ở ổ C!" }
 
-        $XacNhan = [System.Windows.Forms.MessageBox]::Show("BẠN SẮP FORMAT Ổ C VÀ CÀI LẠI WIN.`nPhiên bản: $ChonIndex`nDữ liệu ổ C sẽ mất sạch. Khởi chạy?", "ĐIỂM KHÔNG QUAY ĐẦU", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
+        $XacNhan = [System.Windows.Forms.MessageBox]::Show("XÁC NHẬN FORMAT Ổ C VÀ CÀI LẠI WIN?", "CẢNH BÁO", [System.Windows.Forms.MessageBoxButtons]::YesNo, [System.Windows.Forms.MessageBoxIcon]::Stop)
         if ($XacNhan -ne 'Yes') { return }
 
         $NutBatDauCaiDat.IsEnabled = $false
         $GiaoDien.Cursor = [System.Windows.Input.Cursors]::Wait
 
-        if ($SaoLuuWifi) {
-            Ghi-NhatKy "Đang sao lưu Wi-Fi..."
+        if ($SaoLuuWifi -and $FileDriver) {
             Invoke-Expression "netsh wlan export profile key=clear folder=`"$FileDriver`"" | Out-Null
         }
 
         if ($FileCai -match '(?i)\.iso$') {
-            Ghi-NhatKy "Đang xả nén file ruột từ ISO..."
             Mount-DiskImage -ImagePath $FileCai -PassThru | Out-Null; Start-Sleep 1
             $KyTuIso = (Get-DiskImage -ImagePath $FileCai | Get-Volume).DriveLetter[0]
-            
             $Wim = "$($KyTuIso):\sources\install.wim"; $Esd = "$($KyTuIso):\sources\install.esd"
             $FileTrich = if (Test-Path $Wim) { $Wim } elseif (Test-Path $Esd) { $Esd } else { $null }
-            if (-not $FileTrich) { throw "ISO không có file install.wim/esd" }
-
             $FileCai = Join-Path ([System.IO.Path]::GetDirectoryName($FileCai)) ("install_extracted" + [System.IO.Path]::GetExtension($FileTrich))
             Copy-Item -Path $FileTrich -Destination $FileCai -Force
             Dismount-DiskImage -ImagePath $HopThoaiFileBoCai.Text | Out-Null
         }
 
         ChuanBi-PhanVungHeThong
-        Do-WinRE_Va_KichNo -WimPath $FileCai -Index $IndexLoi -DriverPath $FileDriver -TenUser $TenUser -BypassOOBE $BypassOOBE -AutoLogon $AutoLogon -TatBitLocker $TatBitLocker -SaoLuuWifi $SaoLuuWifi -BypassTPM $BypassTPM
+        Do-WinRE_Va_KichNo -WimPath $FileCai -Index $IndexLoi -DriverPath $FileDriver -TenUser $TenUser -BypassOOBE $BypassOOBE -AutoLogon $AutoLogon -TatBitLocker $TatBitLocker -SaoLuuWifi $SaoLuuWifi -BypassTPM $BypassTPM -AutoAnyDesk $AutoAnyDesk
         
-        Ghi-NhatKy "🚀 HOÀN TẤT! MÁY TỰ ĐỘNG RESET TRONG 5 GIÂY..."
+        Ghi-NhatKy "🚀 XONG! MÁY RESET TRONG 5 GIÂY..."
         Start-Sleep -Seconds 5
-        
-        # Mở khóa dòng này khi mang đi dùng thật:
         Restart-Computer -Force
     } catch {
-        Ghi-NhatKy "❌ LỖI: $($_.Exception.Message)"
-        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "Tiến Trình Bị Hủy", 0, 16)
+        [System.Windows.Forms.MessageBox]::Show($_.Exception.Message, "LỖI", 0, 16)
     } finally {
         $NutBatDauCaiDat.IsEnabled = $true
         $GiaoDien.Cursor = [System.Windows.Input.Cursors]::Arrow
