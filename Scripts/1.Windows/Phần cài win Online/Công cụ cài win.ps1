@@ -96,7 +96,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
                     <StackPanel>
                         <TextBlock Text="3. Module Kích hoạt ngầm:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
                         <UniformGrid Columns="2" VerticalAlignment="Top">
-                            <CheckBox Name="ChkOOBE" Content="Tiêu diệt Màn hình xanh OOBE" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
+                            <CheckBox Name="ChkOOBE" Content="Bỏ qua khai báo" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
                             <CheckBox Name="ChkLogon" Content="Auto Logon vào thẳng Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
                             <CheckBox Name="ChkBackupDriver" Content="Rút Driver máy hiện tại" IsChecked="True" Margin="0,0,0,8"/>
                             <CheckBox Name="ChkTPM" Content="Bypass TPM 2.0 &amp; CPU" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,8"/>
