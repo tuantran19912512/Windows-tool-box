@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.2 (ULTIMATE UI & RESIZABLE LOG)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.1 FINAL (MASTERPIECE ZERO-TOUCH)
 #>
 
 # ==========================================
@@ -23,7 +23,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 })
 
 # ==========================================
-# 3. GIAO DIỆN WPF (XAML) - CÓ THANH KÉO GRIDSPLITTER & SCROLLVIEWER
+# 3. GIAO DIỆN WPF (XAML) - RESPONSIVE & CHI TIẾT
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -126,7 +126,7 @@ $ChkBackupDriver = $UI.FindName("ChkBackupDriver"); $HopNhatKy = $UI.FindName("H
 $TxtPhanTram = $UI.FindName("TxtPhanTram"); $ThanhTienDo = $UI.FindName("ThanhTienDo"); $NutKichHoat = $UI.FindName("NutKichHoat")
 
 # ==========================================
-# 4. TIMER ĐỒNG BỘ
+# 4. TIMER ĐỒNG BỘ (ĐÃ FIX LỆNH RESTART)
 # ==========================================
 $DongHoTimer = New-Object System.Windows.Threading.DispatcherTimer
 $DongHoTimer.Interval = [TimeSpan]::FromMilliseconds(100)
@@ -175,7 +175,7 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN
+# 6. KỊCH BẢN NỀN (V9.1 FINAL LOGIC)
 # ==========================================
 $KichBanNen = {
     param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver, $SelectedLang)
@@ -226,7 +226,7 @@ $KichBanNen = {
         $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo File cấu hình tự động (Unattend.xml)..."
         InLog "Đang tổng hợp cấu hình: Ngôn ngữ ($SelectedLang), AutoLogon, User ($TenUser)..."
 
-        # BƯỚC 3: TẠO UNATTEND.XML (Đã Fix Namespace wcm)
+        # BƯỚC 3: TẠO UNATTEND.XML (LÕI NATIVE CHUẨN MICROSOFT)
         if ($OOBE) {
             $KhốiUser = ""
             if ($Logon) {
@@ -292,18 +292,20 @@ $KichBanNen = {
             InLog "✅ Đã tạo xong Unattend.xml (Bypass OOBE & Native AutoLogon)."
         }
 
-        # BƯỚC 4: TẠO SCRIPT POST-INSTALL
+        # BƯỚC 4: TẠO SCRIPT POST-INSTALL (FIX NETWORK DELAY)
         $G.TrangThai = "BƯỚC 4/6: Tạo kịch bản Hậu Cài đặt..."; $G.TienDo = 50
         $Cmd = "@echo off`r`n"
         if ($TPM) { $Cmd += "reg add `"HKLM\SYSTEM\Setup\MoSetup`" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f`r`n" }
         $Cmd += "manage-bde -off C:`r`n"
         
+        # Mạng LAN đã được nạp ở WinRE, giờ đợi 10s để Windows lấy IP mạng, sau đó nạp Pass Wi-Fi
         if ($Wifi) { 
             $Cmd += "echo Dang doi Card mang khoi dong...`r`n"
             $Cmd += "ping 127.0.0.1 -n 10 >nul`r`n"
             $Cmd += "for %%f in (`"%~dp0*.xml`") do netsh wlan add profile filename=`"%%f`" user=all`r`n" 
         }
         
+        # Chờ thêm 15 giây cho Wi-Fi kết nối thành công trước khi gọi AnyDesk
         if ($AnyDesk) { 
             $Cmd += "echo Dang doi Internet ket noi de tai AnyDesk...`r`n"
             $Cmd += "ping 127.0.0.1 -n 15 >nul`r`n"
