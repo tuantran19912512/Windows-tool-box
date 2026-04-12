@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.1 FINAL (MASTERPIECE ZERO-TOUCH)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.6 FINAL (COMPACT UI & PERFECT REGION)
 #>
 
 # ==========================================
@@ -23,93 +23,85 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 })
 
 # ==========================================
-# 3. GIAO DIỆN WPF (XAML) - RESPONSIVE & CHI TIẾT
+# 3. GIAO DIỆN WPF (XAML) - COMPACT UI (TỐI ƯU MÀN HÌNH NHỎ)
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V9.2 (Ultimate UI &amp; Resizable Log)" 
-        Width="820" Height="860" MinWidth="750" MinHeight="700" 
+        Title="Zero-Touch Deployment V9.6 (Compact UI)" 
+        Width="760" Height="650" MinWidth="700" MinHeight="500" 
         WindowStartupLocation="CenterScreen" Background="#F8FAFC">
-    <DockPanel Margin="15">
+    <DockPanel Margin="12">
         
-        <TextBlock DockPanel.Dock="Top" Text="HỆ THỐNG TRIỂN KHAI WINDOWS TỰ ĐỘNG" FontSize="22" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+        <TextBlock DockPanel.Dock="Top" Text="HỆ THỐNG TRIỂN KHAI WINDOWS TỰ ĐỘNG" FontSize="20" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,10"/>
 
-        <StackPanel DockPanel.Dock="Bottom" Margin="0,15,0,0">
-            <StackPanel Margin="0,0,0,15">
+        <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
+            <StackPanel Margin="0,0,0,10">
                 <Grid Margin="0,0,0,5">
-                    <TextBlock Name="TxtTrangThai" Text="Sẵn sàng" FontSize="13" Foreground="#1E293B" FontWeight="Bold"/>
-                    <TextBlock Name="TxtPhanTram" Text="0%" FontWeight="Bold" FontSize="14" Foreground="#E11D48" HorizontalAlignment="Right"/>
+                    <TextBlock Name="TxtTrangThai" Text="Sẵn sàng" FontSize="12" Foreground="#1E293B" FontWeight="Bold"/>
+                    <TextBlock Name="TxtPhanTram" Text="0%" FontWeight="Bold" FontSize="13" Foreground="#E11D48" HorizontalAlignment="Right"/>
                 </Grid>
-                <ProgressBar Name="ThanhTienDo" Height="18" Foreground="#10B981" Background="#E2E8F0" BorderThickness="0"/>
+                <ProgressBar Name="ThanhTienDo" Height="14" Foreground="#10B981" Background="#E2E8F0" BorderThickness="0"/>
             </StackPanel>
-            <Button Name="NutKichHoat" Content="🚀 KÍCH HOẠT QUY TRÌNH ZERO-TOUCH" Height="55" Background="#E11D48" Foreground="White" FontSize="18" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
+            <Button Name="NutKichHoat" Content="🚀 KÍCH HOẠT QUY TRÌNH ZERO-TOUCH" Height="45" Background="#E11D48" Foreground="White" FontSize="16" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
         </StackPanel>
 
         <Grid>
             <Grid.RowDefinitions>
-                <RowDefinition Height="3*"/> <RowDefinition Height="Auto"/> <RowDefinition Height="1*" MinHeight="100"/> </Grid.RowDefinitions>
+                <RowDefinition Height="2*"/> <RowDefinition Height="Auto"/> <RowDefinition Height="1*" MinHeight="80"/> </Grid.RowDefinitions>
 
             <ScrollViewer Grid.Row="0" VerticalScrollBarVisibility="Auto" Padding="0,0,8,0" Margin="0,0,0,5">
                 <StackPanel>
-                    <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <Border Background="White" CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderBrush="#E2E8F0" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="1. Nguồn dữ liệu (ISO/WIM &amp; Driver):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
-                                <TextBox Name="HopFileBoCai" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
+                            <TextBlock Text="1. Nguồn dữ liệu (ISO/WIM &amp; Driver):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
+                            <Grid Margin="0,0,0,6">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+                                <TextBox Name="HopFileBoCai" Height="28" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,8,0"/>
                                 <Button Name="NutChonFile" Grid.Column="1" Content="📂 Chọn Bộ Cài" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                             </Grid>
-                            <ComboBox Name="DanhSachBanWin" Height="32" Margin="0,0,0,8" VerticalContentAlignment="Center"/>
+                            <ComboBox Name="DanhSachBanWin" Height="28" Margin="0,0,0,6" VerticalContentAlignment="Center"/>
                             <Grid>
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="110"/></Grid.ColumnDefinitions>
-                                <TextBox Name="HopThuMucDriver" Height="32" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,10,0"/>
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+                                <TextBox Name="HopThuMucDriver" Height="28" VerticalContentAlignment="Center" IsReadOnly="True" Margin="0,0,8,0"/>
                                 <Button Name="NutChonDriver" Grid.Column="1" Content="🖨️ Chọn Driver" Background="#475569" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand"/>
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,12" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <Border Background="White" CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderBrush="#E2E8F0" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="2. Thiết lập Múi giờ, Ngôn ngữ &amp; Tài khoản:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
-                            <Grid Margin="0,0,0,8">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Ngôn ngữ hiển thị:" VerticalAlignment="Center" Foreground="#475569"/>
-                                <ComboBox Name="CboLanguage" Grid.Column="1" Height="32" VerticalContentAlignment="Center">
-                                    <ComboBoxItem Content="Tiếng Anh (en-US)" Tag="en-US" IsSelected="True"/>
-                                    <ComboBoxItem Content="Tiếng Việt (vi-VN)" Tag="vi-VN"/>
-                                    <ComboBoxItem Content="Tiếng Trung (zh-CN)" Tag="zh-CN"/>
-                                    <ComboBoxItem Content="Tiếng Hàn (ko-KR)" Tag="ko-KR"/>
-                                    <ComboBoxItem Content="Tiếng Nhật (ja-JP)" Tag="ja-JP"/>
-                                </ComboBox>
-                            </Grid>
-                            <TextBlock Text="* Hệ thống tự động cấu hình Múi giờ (+7) &amp; Định dạng ngày tháng Việt Nam (DD/MM/YYYY)" FontSize="11" Foreground="#0284C7" Margin="130,0,0,8"/>
-                            <Grid Margin="0,0,0,5">
-                                <Grid.ColumnDefinitions><ColumnDefinition Width="130"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                                <TextBlock Text="Tên Tài Khoản:" VerticalAlignment="Center" Foreground="#475569"/>
-                                <TextBox Name="TxtTenUser" Grid.Column="1" Height="32" VerticalContentAlignment="Center" Text="Admin" FontWeight="Bold" Padding="10,0"/>
+                            <TextBlock Text="2. Cấu hình Hệ thống (Region mặc định VN):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
+                            
+                            <TextBlock Text="* Hệ thống được khóa cứng ở Tiếng Anh (US) nhằm loại bỏ bộ gõ VIE." FontSize="11" Foreground="#D97706" FontWeight="Bold" Margin="0,0,0,3"/>
+                            <TextBlock Text="* Múi giờ tự động set +7 (Hà Nội) &amp; Định dạng ngày tháng VN (DD/MM/YYYY)." FontSize="11" Foreground="#0284C7" Margin="0,0,0,10"/>
+                            
+                            <Grid Margin="0,0,0,2">
+                                <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                <TextBlock Text="Tên Tài Khoản:" VerticalAlignment="Center" Foreground="#475569" FontWeight="Bold" FontSize="12"/>
+                                <TextBox Name="TxtTenUser" Grid.Column="1" Height="28" VerticalContentAlignment="Center" Text="Admin" FontWeight="Bold" Padding="10,0"/>
                             </Grid>
                         </StackPanel>
                     </Border>
 
-                    <Border Background="White" CornerRadius="8" Padding="12" Margin="0,0,0,5" BorderBrush="#E2E8F0" BorderThickness="1">
+                    <Border Background="White" CornerRadius="8" Padding="10" Margin="0,0,0,2" BorderBrush="#E2E8F0" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="3. Module Kích hoạt ngầm:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,10"/>
+                            <TextBlock Text="3. Module Kích hoạt ngầm:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
                             <UniformGrid Columns="2" VerticalAlignment="Top">
-                                <CheckBox Name="ChkOOBE" Content="Tiêu diệt Màn hình xanh OOBE" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
-                                <CheckBox Name="ChkLogon" Content="Auto Logon vào thẳng Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,8"/>
-                                <CheckBox Name="ChkBackupDriver" Content="Rút Driver máy hiện tại" IsChecked="True" Margin="0,0,0,8"/>
-                                <CheckBox Name="ChkTPM" Content="Bypass TPM 2.0 &amp; CPU" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,8"/>
-                                <CheckBox Name="ChkAnyDesk" Content="Tải &amp; Bật sẵn AnyDesk" IsChecked="True" Foreground="#0284C7" FontWeight="Bold"/>
-                                <CheckBox Name="ChkWifi" Content="Sao lưu Pass Wi-Fi" IsChecked="True"/>
+                                <CheckBox Name="ChkOOBE" Content="Tiêu diệt Màn hình xanh OOBE" IsChecked="True" FontWeight="Bold" Margin="0,0,0,6" FontSize="12"/>
+                                <CheckBox Name="ChkLogon" Content="Auto Logon vào Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,6" FontSize="12"/>
+                                <CheckBox Name="ChkBackupDriver" Content="Rút Driver máy hiện tại" IsChecked="True" Margin="0,0,0,6" FontSize="12"/>
+                                <CheckBox Name="ChkTPM" Content="Bypass TPM 2.0 &amp; CPU" IsChecked="True" Foreground="#E11D48" FontWeight="Bold" Margin="0,0,0,6" FontSize="12"/>
+                                <CheckBox Name="ChkAnyDesk" Content="Tải &amp; Bật sẵn AnyDesk" IsChecked="True" Foreground="#0284C7" FontWeight="Bold" FontSize="12"/>
+                                <CheckBox Name="ChkWifi" Content="Sao lưu Pass Wi-Fi" IsChecked="True" FontSize="12"/>
                             </UniformGrid>
                         </StackPanel>
                     </Border>
                 </StackPanel>
             </ScrollViewer>
 
-            <GridSplitter Grid.Row="1" Height="6" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" Cursor="SizeNS" Margin="0,2,0,8"/>
+            <GridSplitter Grid.Row="1" Height="5" HorizontalAlignment="Stretch" VerticalAlignment="Center" Background="#CBD5E1" Cursor="SizeNS" Margin="0,2,0,5"/>
 
-            <Border Grid.Row="2" Background="#0F172A" CornerRadius="8" Padding="10">
+            <Border Grid.Row="2" Background="#0F172A" CornerRadius="8" Padding="8">
                 <TextBox Name="HopNhatKy" Background="Transparent" Foreground="#38BDF8" FontFamily="Consolas" FontSize="12" IsReadOnly="True" TextWrapping="Wrap" VerticalScrollBarVisibility="Auto" BorderThickness="0"/>
             </Border>
         </Grid>
@@ -120,13 +112,13 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 $TrinhDoc = (New-Object System.Xml.XmlNodeReader $XAML); $UI = [Windows.Markup.XamlReader]::Load($TrinhDoc)
 $HopFileBoCai = $UI.FindName("HopFileBoCai"); $NutChonFile = $UI.FindName("NutChonFile"); $DanhSachBanWin = $UI.FindName("DanhSachBanWin")
 $HopThuMucDriver = $UI.FindName("HopThuMucDriver"); $NutChonDriver = $UI.FindName("NutChonDriver"); $TxtTenUser = $UI.FindName("TxtTenUser")
-$CboLanguage = $UI.FindName("CboLanguage"); $ChkOOBE = $UI.FindName("ChkOOBE"); $ChkLogon = $UI.FindName("ChkLogon")
+$ChkOOBE = $UI.FindName("ChkOOBE"); $ChkLogon = $UI.FindName("ChkLogon")
 $ChkTPM = $UI.FindName("ChkTPM"); $ChkAnyDesk = $UI.FindName("ChkAnyDesk"); $ChkWifi = $UI.FindName("ChkWifi")
 $ChkBackupDriver = $UI.FindName("ChkBackupDriver"); $HopNhatKy = $UI.FindName("HopNhatKy"); $TxtTrangThai = $UI.FindName("TxtTrangThai")
 $TxtPhanTram = $UI.FindName("TxtPhanTram"); $ThanhTienDo = $UI.FindName("ThanhTienDo"); $NutKichHoat = $UI.FindName("NutKichHoat")
 
 # ==========================================
-# 4. TIMER ĐỒNG BỘ (ĐÃ FIX LỆNH RESTART)
+# 4. TIMER ĐỒNG BỘ
 # ==========================================
 $DongHoTimer = New-Object System.Windows.Threading.DispatcherTimer
 $DongHoTimer.Interval = [TimeSpan]::FromMilliseconds(100)
@@ -175,18 +167,23 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN (V9.3 - BẤT TỬ WINRE)
+# 6. KỊCH BẢN NỀN
 # ==========================================
 $KichBanNen = {
-    param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver, $SelectedLang)
+    param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver)
     
     function InLog($txt) { $G.Log += "`n[$(Get-Date -f 'HH:mm:ss')] $txt" }
     
     try {
         InLog "🚀 BẮT ĐẦU CHUỖI QUY TRÌNH ZERO-TOUCH..."
         
-        # BƯỚC 1: BACKUP DRIVER
+        # BƯỚC 1: BACKUP DRIVER & WI-FI KÈM SMART MARKER
+        $MarkerFile = "THUMUC_KHONG_TON_TAI.txt"
         if ($FileDriver) {
+            $MarkerName = "ZT_Driver_$([guid]::NewGuid().ToString('N')).txt"
+            Out-File -FilePath "$FileDriver\$MarkerName" -InputObject "Day la thu muc Driver ZT" -Encoding ascii
+            $MarkerFile = if ($FileDriver.Length -eq 3) { $MarkerName } else { "$($FileDriver.Substring(3))\$MarkerName" }
+
             if ($BackupDriver) { 
                 $G.TrangThai = "BƯỚC 1/6: Đang trích xuất Driver..."; $G.TienDo = 5
                 InLog "Đang quét và trích xuất toàn bộ Driver máy hiện tại..."
@@ -224,17 +221,34 @@ $KichBanNen = {
         }
 
         $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo File cấu hình tự động (Unattend.xml)..."
-        InLog "Đang tổng hợp cấu hình: Ngôn ngữ ($SelectedLang), AutoLogon, User ($TenUser)..."
+        InLog "Đang tổng hợp cấu hình: Bàn phím US, Region VN, AutoLogon, User ($TenUser)..."
 
         # BƯỚC 3: TẠO UNATTEND.XML
+        $DuongDanTuongDoiWin = if ($FileCai.Length -gt 3) { $FileCai.Substring(3) } else { "" }
+
         if ($OOBE) {
             $KhốiUser = ""
+            $KhốiLogonReg = ""
+            
             if ($Logon) {
+                $KhốiLogonReg = @"
+        <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+            <RunSynchronous>
+                <RunSynchronousCommand wcm:action="add">
+                    <Order>1</Order>
+                    <Path>cmd /c reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d 1 /f</Path>
+                </RunSynchronousCommand>
+                <RunSynchronousCommand wcm:action="add">
+                    <Order>2</Order>
+                    <Path>cmd /c reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "$TenUser" /f</Path>
+                </RunSynchronousCommand>
+            </RunSynchronous>
+        </component>
+"@
                 $KhốiUser = @"
             <UserAccounts>
                 <LocalAccounts>
                     <LocalAccount wcm:action="add">
-                        <Password><Value></Value><PlainText>true</PlainText></Password>
                         <Description>Local Administrator</Description>
                         <DisplayName>$TenUser</DisplayName>
                         <Group>Administrators</Group>
@@ -243,7 +257,6 @@ $KichBanNen = {
                 </LocalAccounts>
             </UserAccounts>
             <AutoLogon>
-                <Password><Value></Value><PlainText>true</PlainText></Password>
                 <Enabled>true</Enabled>
                 <LogonCount>9999</LogonCount>
                 <Username>$TenUser</Username>
@@ -258,12 +271,13 @@ $KichBanNen = {
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
             <TimeZone>SE Asia Standard Time</TimeZone>
         </component>
+$KhốiLogonReg
     </settings>
     <settings pass="oobeSystem">
         <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-            <InputLocale>vi-VN</InputLocale>
-            <SystemLocale>vi-VN</SystemLocale>
-            <UILanguage>$SelectedLang</UILanguage>
+            <InputLocale>en-US</InputLocale>
+            <SystemLocale>en-US</SystemLocale>
+            <UILanguage>en-US</UILanguage>
             <UserLocale>vi-VN</UserLocale>
         </component>
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
@@ -310,11 +324,11 @@ $KichBanNen = {
         $Cmd | Out-File "$env:TEMP\PostInstall_ZT.cmd" -Encoding oem
         InLog "✅ Đã đóng gói các lệnh Hậu cài đặt."
 
-        # BƯỚC 5: XỬ LÝ WINRE (ĐÃ FIX LỖI TỪ CHỐI BOOT)
+        # BƯỚC 5: XỬ LÝ WINRE
         $G.TrangThai = "BƯỚC 5/6: Chuẩn bị lõi khởi động WinRE..."; $G.TienDo = 60
         $ChuCaiO_Win = [System.IO.Path]::GetPathRoot($env:windir).Substring(0,1)
         $PhanVungOS = Get-Partition -DriveLetter $ChuCaiO_Win
-        $OsDiskNum = $PhanVungOS.DiskNumber; $OsPartNum = $PhanVungOS.PartitionNumber; $DuongDanTuongDoi = $FileCai.Substring(3)
+        $OsDiskNum = $PhanVungOS.DiskNumber; $OsPartNum = $PhanVungOS.PartitionNumber
         
         $WinREGoc = "C:\Windows\System32\Recovery\winre.wim"; $ThuMucMnt = "C:\MountRE"
         
@@ -336,17 +350,26 @@ $KichBanNen = {
         $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
         @"
 @echo off
+set "WIM="
+set "DRIVER_DIR="
+
+REM Quet toan bo o dia de tim 2 file doc nhat
 for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( 
-    if exist "%%D:\$DuongDanTuongDoi" set "WIM=%%D:\$DuongDanTuongDoi"
-    if exist "%%D:\$FileDriver" set "DRIVER_DIR=%%D:\$FileDriver"
+    if exist "%%D:\$DuongDanTuongDoiWin" set "WIM=%%D:\$DuongDanTuongDoiWin"
+    if not "$MarkerFile"=="THUMUC_KHONG_TON_TAI.txt" (
+        if exist "%%D:\$MarkerFile" (
+            for %%F in ("%%D:\$MarkerFile") do set "DRIVER_DIR=%%~dpF"
+        )
+    )
 )
+
 (echo select disk $OsDiskNum & echo select partition $OsPartNum & echo assign letter=W & echo format quick fs=ntfs label="Windows") | diskpart
 dism /apply-image /imagefile:"%WIM%" /index:$IndexLoi /applydir:W:\
 
 mkdir W:\Windows\Setup\Scripts
 if not "%DRIVER_DIR%"=="" (
     dism /image:W:\ /add-driver /driver:"%DRIVER_DIR%" /recurse
-    copy /Y "%DRIVER_DIR%\*.xml" W:\Windows\Setup\Scripts\
+    copy /Y "%DRIVER_DIR%*.xml" W:\Windows\Setup\Scripts\
 )
 
 for %%p in (A B C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( if exist %%p:\EFI\Microsoft\Boot\BCD ( attrib -h -s -r %%p:\EFI\Microsoft\Boot\BCD & del /f /q %%p:\EFI\Microsoft\Boot\BCD ) )
@@ -365,7 +388,6 @@ wpeutil reboot
         dism.exe /Unmount-Image /MountDir:$ThuMucMnt /Commit | Out-Null
         Start-Sleep 2
         
-        # [ĐIỂM FIX QUAN TRỌNG TẠI ĐÂY] - Lột thuộc tính ẩn và đăng ký lại
         cmd.exe /c "attrib -h -s -r `"$WinREGoc`"" | Out-Null
         Copy-Item $WinRECopy $WinREGoc -Force
         Remove-Item $WinRECopy -Force -ErrorAction SilentlyContinue
@@ -386,7 +408,6 @@ $NutKichHoat.Add_Click({
     if (-not (Test-Path $FileCai)) { [System.Windows.Forms.MessageBox]::Show("Chưa chọn bộ cài!", "LỖI", 0, 16); return }
     
     if ($ChonIndex -match 'Index (\d+):') { $IndexLoi = $matches[1] } else { $IndexLoi = 1 }
-    $SelectedLang = ($CboLanguage.SelectedItem.Tag)
 
     if ( ($ChkBackupDriver.IsChecked -or $ChkWifi.IsChecked) -and -not $FileDriver ) {
         [System.Windows.Forms.MessageBox]::Show("Để Backup Driver/Wi-Fi, vui lòng 'Chọn Driver' (Chọn 1 thư mục trống ở ổ D/E).", "THIẾU THÔNG TIN", 0, 16); return
@@ -398,7 +419,7 @@ $NutKichHoat.Add_Click({
     $Global:TrangThaiHethong.TienDo = 0; $Global:TrangThaiHethong.Log = ""; $Global:TrangThaiHethong.KetThuc = $false; $DongHoTimer.Start()
 
     $MoiTruong = [runspacefactory]::CreateRunspace(); $MoiTruong.ApartmentState = "STA"; $MoiTruong.Open()
-    $TienTrinh = [powershell]::Create().AddScript($KichBanNen).AddArgument($Global:TrangThaiHethong).AddArgument($FileCai).AddArgument($FileDriver).AddArgument($IndexLoi).AddArgument($TxtTenUser.Text).AddArgument($ChkOOBE.IsChecked).AddArgument($ChkLogon.IsChecked).AddArgument($ChkTPM.IsChecked).AddArgument($ChkAnyDesk.IsChecked).AddArgument($ChkWifi.IsChecked).AddArgument($ChkBackupDriver.IsChecked).AddArgument($SelectedLang)
+    $TienTrinh = [powershell]::Create().AddScript($KichBanNen).AddArgument($Global:TrangThaiHethong).AddArgument($FileCai).AddArgument($FileDriver).AddArgument($IndexLoi).AddArgument($TxtTenUser.Text).AddArgument($ChkOOBE.IsChecked).AddArgument($ChkLogon.IsChecked).AddArgument($ChkTPM.IsChecked).AddArgument($ChkAnyDesk.IsChecked).AddArgument($ChkWifi.IsChecked).AddArgument($ChkBackupDriver.IsChecked)
     $TienTrinh.Runspace = $MoiTruong; $TienTrinh.BeginInvoke() | Out-Null
 })
 
