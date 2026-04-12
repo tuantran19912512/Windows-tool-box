@@ -175,7 +175,7 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN (V9.1 FINAL LOGIC)
+# 6. KỊCH BẢN NỀN (V9.3 - BẤT TỬ WINRE)
 # ==========================================
 $KichBanNen = {
     param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver, $SelectedLang)
@@ -226,7 +226,7 @@ $KichBanNen = {
         $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo File cấu hình tự động (Unattend.xml)..."
         InLog "Đang tổng hợp cấu hình: Ngôn ngữ ($SelectedLang), AutoLogon, User ($TenUser)..."
 
-        # BƯỚC 3: TẠO UNATTEND.XML (LÕI NATIVE CHUẨN MICROSOFT)
+        # BƯỚC 3: TẠO UNATTEND.XML
         if ($OOBE) {
             $KhốiUser = ""
             if ($Logon) {
@@ -289,53 +289,51 @@ $KichBanNen = {
 </unattend>
 "@
             $UnattendXML | Out-File "$env:TEMP\unattend_ZT.xml" -Encoding utf8
-            InLog "✅ Đã tạo xong Unattend.xml (Bypass OOBE & Native AutoLogon)."
         }
 
-        # BƯỚC 4: TẠO SCRIPT POST-INSTALL (FIX NETWORK DELAY)
+        # BƯỚC 4: TẠO SCRIPT POST-INSTALL
         $G.TrangThai = "BƯỚC 4/6: Tạo kịch bản Hậu Cài đặt..."; $G.TienDo = 50
         $Cmd = "@echo off`r`n"
         if ($TPM) { $Cmd += "reg add `"HKLM\SYSTEM\Setup\MoSetup`" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f`r`n" }
         $Cmd += "manage-bde -off C:`r`n"
         
-        # Mạng LAN đã được nạp ở WinRE, giờ đợi 10s để Windows lấy IP mạng, sau đó nạp Pass Wi-Fi
         if ($Wifi) { 
-            $Cmd += "echo Dang doi Card mang khoi dong...`r`n"
-            $Cmd += "ping 127.0.0.1 -n 10 >nul`r`n"
+            $Cmd += "echo Dang doi Card mang khoi dong...`r`nping 127.0.0.1 -n 10 >nul`r`n"
             $Cmd += "for %%f in (`"%~dp0*.xml`") do netsh wlan add profile filename=`"%%f`" user=all`r`n" 
         }
-        
-        # Chờ thêm 15 giây cho Wi-Fi kết nối thành công trước khi gọi AnyDesk
         if ($AnyDesk) { 
-            $Cmd += "echo Dang doi Internet ket noi de tai AnyDesk...`r`n"
-            $Cmd += "ping 127.0.0.1 -n 15 >nul`r`n"
+            $Cmd += "echo Dang doi Internet ket noi de tai AnyDesk...`r`nping 127.0.0.1 -n 15 >nul`r`n"
             $Cmd += "powershell -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://download.anydesk.com/AnyDesk.exe' -OutFile 'C:\Users\Public\Desktop\AnyDesk.exe'`"`r`n"
             $Cmd += "start `"`" `"C:\Users\Public\Desktop\AnyDesk.exe`"`r`n" 
         }
         $Cmd += "del %0`r`n"
         $Cmd | Out-File "$env:TEMP\PostInstall_ZT.cmd" -Encoding oem
-        InLog "✅ Đã đóng gói các lệnh AnyDesk (Có Delay), TPM, Wi-Fi vào PostInstall."
+        InLog "✅ Đã đóng gói các lệnh Hậu cài đặt."
 
-        # BƯỚC 5: XỬ LÝ WINRE
-        $G.TrangThai = "BƯỚC 5/6: Chuẩn bị lõi khởi động WinRE (Sẽ đơ khoảng 30s)..."; $G.TienDo = 60
-        InLog "Đang Mount WinRE để bơm kịch bản tự động hóa..."
-        $ChuCaiO_Win = [System.IO.Path]::GetPathRoot($env:windir).Substring(0,1); $PhanVungOS = Get-Partition -DriveLetter $ChuCaiO_Win
+        # BƯỚC 5: XỬ LÝ WINRE (ĐÃ FIX LỖI TỪ CHỐI BOOT)
+        $G.TrangThai = "BƯỚC 5/6: Chuẩn bị lõi khởi động WinRE..."; $G.TienDo = 60
+        $ChuCaiO_Win = [System.IO.Path]::GetPathRoot($env:windir).Substring(0,1)
+        $PhanVungOS = Get-Partition -DriveLetter $ChuCaiO_Win
         $OsDiskNum = $PhanVungOS.DiskNumber; $OsPartNum = $PhanVungOS.PartitionNumber; $DuongDanTuongDoi = $FileCai.Substring(3)
         
-        reagentc.exe /enable | Out-Null; Start-Sleep 2; reagentc.exe /disable | Out-Null
         $WinREGoc = "C:\Windows\System32\Recovery\winre.wim"; $ThuMucMnt = "C:\MountRE"
+        
+        InLog "Đang ép hệ thống nhả file WinRE..."
+        reagentc.exe /enable | Out-Null; Start-Sleep 2
+        reagentc.exe /disable | Out-Null; Start-Sleep 2
+        
+        if (-not (Test-Path $WinREGoc)) { throw "KHÔNG TÌM THẤY LÕI WINRE! Máy này đã bị xóa mất phân vùng Recovery gốc." }
+
         if (Test-Path $ThuMucMnt) { dism.exe /Unmount-Image /MountDir:$ThuMucMnt /Discard | Out-Null; Remove-Item $ThuMucMnt -Recurse -Force }
         New-Item -ItemType Directory -Path $ThuMucMnt | Out-Null
         $WinRECopy = "C:\winre_xu-ly.wim"; Copy-Item $WinREGoc $WinRECopy -Force; Set-ItemProperty $WinRECopy IsReadOnly $false
-        dism.exe /Mount-Image /ImageFile:$WinRECopy /Index:1 /MountDir:$ThuMucMnt | Out-Null
         
+        dism.exe /Mount-Image /ImageFile:$WinRECopy /Index:1 /MountDir:$ThuMucMnt | Out-Null
         Copy-Item "$env:TEMP\PostInstall_ZT.cmd" "$ThuMucMnt\Windows\System32\PostInstall_ZT.cmd" -Force
         if ($OOBE) { Copy-Item "$env:TEMP\unattend_ZT.xml" "$ThuMucMnt\Windows\System32\unattend_ZT.xml" -Force }
-        InLog "✅ Đã nhúng Unattend.xml & PostInstall vào WinRE."
-
-        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE (NẠP DRIVER OFFLINE)
-        $G.TrangThai = "BƯỚC 6/6: Tạo lệnh định tuyến format và bơm Driver..."; $G.TienDo = 80
-        InLog "Đang viết lệnh Diskpart, nạp Driver ngầm và Fix Boot BCD..."
+        
+        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE
+        $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
         @"
 @echo off
 for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( 
@@ -362,12 +360,21 @@ wpeutil reboot
 "@ | Out-File "$ThuMucMnt\Windows\System32\LenhRE.cmd" -Encoding oem
         "[LaunchApps]`r`nX:\Windows\System32\LenhRE.cmd" | Out-File "$ThuMucMnt\Windows\System32\winpeshl.ini" -Encoding ascii
         
-        $G.TrangThai = "Đang đóng gói và ép khởi động..."; $G.TienDo = 90
-        InLog "Đang Unmount WinRE và lưu thay đổi..."
+        $G.TrangThai = "Đang đóng gói và đăng ký WinRE..."; $G.TienDo = 90
+        InLog "Đang lưu cấu hình WinRE..."
         dism.exe /Unmount-Image /MountDir:$ThuMucMnt /Commit | Out-Null
-        Set-ItemProperty $WinREGoc IsReadOnly $false; Copy-Item $WinRECopy $WinREGoc -Force
+        Start-Sleep 2
         
-        reagentc.exe /enable | Out-Null; reagentc.exe /boottore | Out-Null
+        # [ĐIỂM FIX QUAN TRỌNG TẠI ĐÂY] - Lột thuộc tính ẩn và đăng ký lại
+        cmd.exe /c "attrib -h -s -r `"$WinREGoc`"" | Out-Null
+        Copy-Item $WinRECopy $WinREGoc -Force
+        Remove-Item $WinRECopy -Force -ErrorAction SilentlyContinue
+        
+        InLog "Đang ép hệ thống nhận diện WinRE mới..."
+        reagentc.exe /setreimage /path C:\Windows\System32\Recovery | Out-Null
+        reagentc.exe /enable | Out-Null
+        reagentc.exe /boottore | Out-Null
+        
         $G.TienDo = 100
         InLog "✅ Đã nạp cờ Boot To RE thành công!"
 
