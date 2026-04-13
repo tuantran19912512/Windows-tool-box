@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.7 FINAL (BULLETPROOF DRIVER INJECTION)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V10.0 ENDGAME (HOÀN MỸ - KHÔNG HỎI MẬT KHẨU)
 #>
 
 # ==========================================
@@ -27,7 +27,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V9.7 (Bulletproof Injection)" 
+        Title="Zero-Touch Deployment V10.0 (Endgame Edition)" 
         Width="760" Height="650" MinWidth="700" MinHeight="500" 
         WindowStartupLocation="CenterScreen" Background="#F8FAFC">
     <DockPanel Margin="12">
@@ -83,7 +83,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 
                     <Border Background="White" CornerRadius="8" Padding="10" Margin="0,0,0,2" BorderBrush="#E2E8F0" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="3. Module Kích hoạt ngầm:" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
+                            <TextBlock Text="3. Module Kích hoạt ngầm (An toàn dữ liệu):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
                             <UniformGrid Columns="2" VerticalAlignment="Top">
                                 <CheckBox Name="ChkOOBE" Content="Tiêu diệt Màn hình xanh OOBE" IsChecked="True" FontWeight="Bold" Margin="0,0,0,6" FontSize="12"/>
                                 <CheckBox Name="ChkLogon" Content="Auto Logon vào Desktop" IsChecked="True" FontWeight="Bold" Margin="0,0,0,6" FontSize="12"/>
@@ -165,7 +165,7 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN (V9.7 - SỬA LỖI ĐỊNH TUYẾN DRIVER THỰC TẾ)
+# 6. KỊCH BẢN NỀN (V10.0 - BẤT TỬ AUTO LOGON)
 # ==========================================
 $KichBanNen = {
     param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver)
@@ -180,7 +180,6 @@ $KichBanNen = {
         $ThuMucDriverTuongDoi = ""
 
         if ($FileDriver) {
-            # Tách riêng Tên File Nhận Diện và Đường Dẫn Tương Đối
             $MarkerName = "ZT_Driver_$([guid]::NewGuid().ToString('N')).txt"
             Out-File -FilePath "$FileDriver\$MarkerName" -InputObject "Day la thu muc Driver ZT" -Encoding ascii
             $ThuMucDriverTuongDoi = if ($FileDriver.Length -gt 3) { $FileDriver.Substring(3) } else { "" }
@@ -224,7 +223,7 @@ $KichBanNen = {
         $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo File cấu hình tự động (Unattend.xml)..."
         InLog "Đang tổng hợp cấu hình: Bàn phím US, Region VN, AutoLogon, User ($TenUser)..."
 
-        # BƯỚC 3: TẠO UNATTEND.XML 
+        # BƯỚC 3: TẠO UNATTEND.XML (CHỐNG LỖI BẮT ĐỔI MẬT KHẨU BẰNG THẺ PASSWORD RỖNG)
         $DuongDanTuongDoiWin = if ($FileCai.Length -gt 3) { $FileCai.Substring(3) } else { "" }
 
         if ($OOBE) {
@@ -250,6 +249,10 @@ $KichBanNen = {
             <UserAccounts>
                 <LocalAccounts>
                     <LocalAccount wcm:action="add">
+                        <Password>
+                            <Value></Value>
+                            <PlainText>true</PlainText>
+                        </Password>
                         <Description>Local Administrator</Description>
                         <DisplayName>$TenUser</DisplayName>
                         <Group>Administrators</Group>
@@ -258,6 +261,10 @@ $KichBanNen = {
                 </LocalAccounts>
             </UserAccounts>
             <AutoLogon>
+                <Password>
+                    <Value></Value>
+                    <PlainText>true</PlainText>
+                </Password>
                 <Enabled>true</Enabled>
                 <LogonCount>9999</LogonCount>
                 <Username>$TenUser</Username>
@@ -347,7 +354,7 @@ $KhốiLogonReg
         Copy-Item "$env:TEMP\PostInstall_ZT.cmd" "$ThuMucMnt\Windows\System32\PostInstall_ZT.cmd" -Force
         if ($OOBE) { Copy-Item "$env:TEMP\unattend_ZT.xml" "$ThuMucMnt\Windows\System32\unattend_ZT.xml" -Force }
         
-        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE (KIẾN TRÚC BULLETPROOF PATH)
+        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE
         $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
         
         $CheckDriverPath = if ($ThuMucDriverTuongDoi) { "%%D:\$ThuMucDriverTuongDoi\$MarkerName" } else { "%%D:\$MarkerName" }
@@ -406,7 +413,12 @@ wpeutil reboot
         $G.TienDo = 100
         InLog "✅ Đã nạp cờ Boot To RE thành công!"
 
-    } catch { $G.Loi = $_.Exception.Message } finally { $G.KetThuc = $true }
+    } catch { 
+        $G.Loi = $_.Exception.Message 
+    } finally { 
+        Remove-Item "$env:TEMP\unattend_ZT.xml", "$env:TEMP\PostInstall_ZT.cmd" -Force -ErrorAction SilentlyContinue
+        $G.KetThuc = $true 
+    }
 }
 
 $NutKichHoat.Add_Click({
