@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.6 FINAL (COMPACT UI & PERFECT REGION)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V9.7 FINAL (BULLETPROOF DRIVER INJECTION)
 #>
 
 # ==========================================
@@ -23,11 +23,11 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 })
 
 # ==========================================
-# 3. GIAO DIỆN WPF (XAML) - COMPACT UI (TỐI ƯU MÀN HÌNH NHỎ)
+# 3. GIAO DIỆN WPF (XAML)
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V9.6 (Compact UI)" 
+        Title="Zero-Touch Deployment V9.7 (Bulletproof Injection)" 
         Width="760" Height="650" MinWidth="700" MinHeight="500" 
         WindowStartupLocation="CenterScreen" Background="#F8FAFC">
     <DockPanel Margin="12">
@@ -71,10 +71,8 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
                     <Border Background="White" CornerRadius="8" Padding="10" Margin="0,0,0,8" BorderBrush="#E2E8F0" BorderThickness="1">
                         <StackPanel>
                             <TextBlock Text="2. Cấu hình Hệ thống (Region mặc định VN):" FontWeight="Bold" Foreground="#334155" Margin="0,0,0,8"/>
-                            
                             <TextBlock Text="* Hệ thống được khóa cứng ở Tiếng Anh (US) nhằm loại bỏ bộ gõ VIE." FontSize="11" Foreground="#D97706" FontWeight="Bold" Margin="0,0,0,3"/>
                             <TextBlock Text="* Múi giờ tự động set +7 (Hà Nội) &amp; Định dạng ngày tháng VN (DD/MM/YYYY)." FontSize="11" Foreground="#0284C7" Margin="0,0,0,10"/>
-                            
                             <Grid Margin="0,0,0,2">
                                 <Grid.ColumnDefinitions><ColumnDefinition Width="120"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
                                 <TextBlock Text="Tên Tài Khoản:" VerticalAlignment="Center" Foreground="#475569" FontWeight="Bold" FontSize="12"/>
@@ -167,7 +165,7 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN
+# 6. KỊCH BẢN NỀN (V9.7 - SỬA LỖI ĐỊNH TUYẾN DRIVER THỰC TẾ)
 # ==========================================
 $KichBanNen = {
     param($G, $FileCai, $FileDriver, $IndexLoi, $TenUser, $OOBE, $Logon, $TPM, $AnyDesk, $Wifi, $BackupDriver)
@@ -177,12 +175,15 @@ $KichBanNen = {
     try {
         InLog "🚀 BẮT ĐẦU CHUỖI QUY TRÌNH ZERO-TOUCH..."
         
-        # BƯỚC 1: BACKUP DRIVER & WI-FI KÈM SMART MARKER
-        $MarkerFile = "THUMUC_KHONG_TON_TAI.txt"
+        # BƯỚC 1: BACKUP DRIVER & WI-FI 
+        $MarkerName = "THUMUC_KHONG_TON_TAI.txt"
+        $ThuMucDriverTuongDoi = ""
+
         if ($FileDriver) {
+            # Tách riêng Tên File Nhận Diện và Đường Dẫn Tương Đối
             $MarkerName = "ZT_Driver_$([guid]::NewGuid().ToString('N')).txt"
             Out-File -FilePath "$FileDriver\$MarkerName" -InputObject "Day la thu muc Driver ZT" -Encoding ascii
-            $MarkerFile = if ($FileDriver.Length -eq 3) { $MarkerName } else { "$($FileDriver.Substring(3))\$MarkerName" }
+            $ThuMucDriverTuongDoi = if ($FileDriver.Length -gt 3) { $FileDriver.Substring(3) } else { "" }
 
             if ($BackupDriver) { 
                 $G.TrangThai = "BƯỚC 1/6: Đang trích xuất Driver..."; $G.TienDo = 5
@@ -223,7 +224,7 @@ $KichBanNen = {
         $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo File cấu hình tự động (Unattend.xml)..."
         InLog "Đang tổng hợp cấu hình: Bàn phím US, Region VN, AutoLogon, User ($TenUser)..."
 
-        # BƯỚC 3: TẠO UNATTEND.XML
+        # BƯỚC 3: TẠO UNATTEND.XML 
         $DuongDanTuongDoiWin = if ($FileCai.Length -gt 3) { $FileCai.Substring(3) } else { "" }
 
         if ($OOBE) {
@@ -346,19 +347,24 @@ $KhốiLogonReg
         Copy-Item "$env:TEMP\PostInstall_ZT.cmd" "$ThuMucMnt\Windows\System32\PostInstall_ZT.cmd" -Force
         if ($OOBE) { Copy-Item "$env:TEMP\unattend_ZT.xml" "$ThuMucMnt\Windows\System32\unattend_ZT.xml" -Force }
         
-        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE
+        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE (KIẾN TRÚC BULLETPROOF PATH)
         $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
+        
+        $CheckDriverPath = if ($ThuMucDriverTuongDoi) { "%%D:\$ThuMucDriverTuongDoi\$MarkerName" } else { "%%D:\$MarkerName" }
+        $DriverInjectPath = if ($ThuMucDriverTuongDoi) { "%DRIVER_DRIVE%:\$ThuMucDriverTuongDoi\." } else { "%DRIVER_DRIVE%:\." }
+        $XmlCopyPath = if ($ThuMucDriverTuongDoi) { "%DRIVER_DRIVE%:\$ThuMucDriverTuongDoi\*.xml" } else { "%DRIVER_DRIVE%:\*.xml" }
+
         @"
 @echo off
 set "WIM="
-set "DRIVER_DIR="
+set "DRIVER_DRIVE="
 
-REM Quet toan bo o dia de tim 2 file doc nhat
+REM Quet o dia tim ma xac nhan (Tranh loi nhan dien sai o tren may that)
 for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( 
     if exist "%%D:\$DuongDanTuongDoiWin" set "WIM=%%D:\$DuongDanTuongDoiWin"
-    if not "$MarkerFile"=="THUMUC_KHONG_TON_TAI.txt" (
-        if exist "%%D:\$MarkerFile" (
-            for %%F in ("%%D:\$MarkerFile") do set "DRIVER_DIR=%%~dpF"
+    if not "$MarkerName"=="THUMUC_KHONG_TON_TAI.txt" (
+        if exist "$CheckDriverPath" (
+            set "DRIVER_DRIVE=%%D"
         )
     )
 )
@@ -367,9 +373,9 @@ for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
 dism /apply-image /imagefile:"%WIM%" /index:$IndexLoi /applydir:W:\
 
 mkdir W:\Windows\Setup\Scripts
-if not "%DRIVER_DIR%"=="" (
-    dism /image:W:\ /add-driver /driver:"%DRIVER_DIR%" /recurse
-    copy /Y "%DRIVER_DIR%*.xml" W:\Windows\Setup\Scripts\
+if not "%DRIVER_DRIVE%"=="" (
+    dism /image:W:\ /add-driver /driver:"$DriverInjectPath" /recurse
+    copy /Y "$XmlCopyPath" W:\Windows\Setup\Scripts\
 )
 
 for %%p in (A B C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( if exist %%p:\EFI\Microsoft\Boot\BCD ( attrib -h -s -r %%p:\EFI\Microsoft\Boot\BCD & del /f /q %%p:\EFI\Microsoft\Boot\BCD ) )
