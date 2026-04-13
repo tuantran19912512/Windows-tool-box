@@ -13,7 +13,7 @@ False,WPS Office CN	,Kingsoft.WPSOffice.CN,,,,https://icon.horse/icon/wps.cn,htt
 False,K-Lite,CodecGuide.K-LiteCodecPack.Mega,k-litecodecpackbasic,,,https://icon.horse/icon/codecguide.com,https://files2.codecguide.com/K-Lite_Codec_Pack_1966_Mega.exe
 False,VLC media player,VideoLAN.VLC.Nightly,vlc,,,https://icon.horse/icon/videolan.org,https://artifacts.videolan.org/vlc/nightly-win64/20260304-0444/vlc-4.0.0-dev-win64-77d6c93e.msi
 False,Mozilla Firefox,Mozilla.Firefox.vi,firefox,,,https://icon.horse/icon/firefox.com,https://download-installer.cdn.mozilla.net/pub/firefox/releases/149.0/win64/vi/Firefox%20Setup%20149.0.exe
-False,Cốc cốc,CocCoc.CocCoc,,,,https://icon.horse/icon/coccoc.com,https://files.coccoc.com/browser/win_under_10/x64/coccoc_standalone_vi.exe
+False,Cốc cốc,CocCoc.CocCoc,,,/silent /install,https://icon.horse/icon/coccoc.com,https://files.coccoc.com/browser/win_under_10/x64/coccoc_standalone_vi.exe
 False,Java,Oracle.JavaRuntimeEnvironment,javaruntime,,/s REBOOT=0 SPONSORS=0,https://icon.horse/icon/java.com,https://javadl.oracle.com/webapps/download/AutoDL?BundleId=252907_0d06828d282343ea81775b28020a7cd3
 False,C++2015-2022 x64,Microsoft.VCRedist.2015+.x64,,,,https://icon.horse/icon/microsoft.com,https://download.visualstudio.microsoft.com/download/pr/6f02464a-5e9b-486d-a506-c99a17db9a83/8995548DFFFCDE7C49987029C764355612BA6850EE09A7B6F0FDDC85BDC5C280/VC_redist.x64.exe
 False,C++ 2015-2022x86,Microsoft.VCRedist.2015+.x86,,,,https://icon.horse/icon/microsoft.com,https://download.visualstudio.microsoft.com/download/pr/6f02464a-5e9b-486d-a506-c99a17db9a83/E7267C1BDF9237C0B4A28CF027C382B97AA909934F84F1C92D3FB9F04173B33E/VC_redist.x86.exe
