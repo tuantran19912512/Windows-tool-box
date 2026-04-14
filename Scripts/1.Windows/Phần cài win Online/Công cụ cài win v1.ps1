@@ -1,6 +1,6 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V10.1 (SMART OVERRIDE - HỖ TRỢ WIM MOD)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V10.2 (SMART OVERRIDE & BOOT BYPASS)
 #>
 
 # ==========================================
@@ -27,7 +27,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V10.1 (Smart Override)" 
+        Title="Zero-Touch Deployment V10.2 (Boot Bypass)" 
         Width="760" Height="650" MinWidth="700" MinHeight="500" 
         WindowStartupLocation="CenterScreen" Background="#F8FAFC">
     <DockPanel Margin="12">
@@ -373,7 +373,7 @@ $KhốiLogonReg
             Copy-Item "$env:TEMP\unattend_ZT.xml" "$ThuMucMnt\Windows\System32\unattend_ZT.xml" -Force 
         }
         
-        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE (CƠ CHẾ SETUPCOMPLETE FALLBACK)
+        # BƯỚC 6: LỆNH CHẠY BÊN TRONG WINRE (CÓ BCD BOOT BYPASS)
         $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
         
         $CheckDriverPath = if ($ThuMucDriverTuongDoi) { "%%D:\$ThuMucDriverTuongDoi\$MarkerName" } else { "%%D:\$MarkerName" }
@@ -406,7 +406,11 @@ if not "%DRIVER_DRIVE%"=="" (
 
 for %%p in (A B C D E F G H I J K L M N O P Q R S T U V W X Y Z) do ( if exist %%p:\EFI\Microsoft\Boot\BCD ( attrib -h -s -r %%p:\EFI\Microsoft\Boot\BCD & del /f /q %%p:\EFI\Microsoft\Boot\BCD ) )
 bcdboot W:\Windows
+
+REM [BÙA CHÚ] - Tat man hinh Recovery "Press Enter to try again" cho cac ban WIM Mod
 bcdedit /timeout 0
+bcdedit /set {default} recoveryenabled No
+bcdedit /set {default} bootstatuspolicy IgnoreAllFailures
 
 copy /Y X:\Windows\System32\PostInstall_ZT.cmd W:\Windows\Setup\Scripts\PostInstall_ZT.cmd
 
