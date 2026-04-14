@@ -1,5 +1,5 @@
 ﻿# ==========================================================
-# ADMIN TOOL V114 - FULL CHỨC NĂNG + NÚT XOÁ SẠCH BẢNG
+# ADMIN TOOL V114 - FULL CHỨC NĂNG + NÚT XOÁ SẠCH + TẢI LẠI
 # ==========================================================
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -38,24 +38,27 @@ $txtID = New-Object System.Windows.Forms.TextBox; $txtID.Location = "140,383"; $
 
 $form.Controls.AddRange(@($lblWin, $txtWin, $lblID, $txtID))
 
-# --- CÁC NÚT BẤM (CHIA LẠI CHO 4 NÚT THÀNH 1 HÀNG) ---
+# --- CÁC NÚT BẤM CÔNG CỤ ---
 $btnAdd = New-Object System.Windows.Forms.Button; $btnAdd.Text = "THÊM MỚI"; $btnAdd.Location = "460,340"; $btnAdd.Size = "80,75"; $btnAdd.BackColor = "#E8F5E9"; $btnAdd.FlatStyle = "Flat"; $btnAdd.Font = $fBtn
 $btnEdit = New-Object System.Windows.Forms.Button; $btnEdit.Text = "CẬP NHẬT"; $btnEdit.Location = "550,340"; $btnEdit.Size = "80,75"; $btnEdit.BackColor = "#FFF9C4"; $btnEdit.FlatStyle = "Flat"; $btnEdit.Font = $fBtn
 $btnDelete = New-Object System.Windows.Forms.Button; $btnDelete.Text = "XÓA DÒNG"; $btnDelete.Location = "640,340"; $btnDelete.Size = "80,75"; $btnDelete.BackColor = "#FFEBEE"; $btnDelete.FlatStyle = "Flat"; $btnDelete.Font = $fBtn
 $btnClearAll = New-Object System.Windows.Forms.Button; $btnClearAll.Text = "XOÁ SẠCH"; $btnClearAll.Location = "730,340"; $btnClearAll.Size = "80,75"; $btnClearAll.BackColor = "#B71C1C"; $btnClearAll.ForeColor = "White"; $btnClearAll.FlatStyle = "Flat"; $btnClearAll.Font = $fBtn
 
+# NÚT RELOAD MỚI THÊM
+$btnReload = New-Object System.Windows.Forms.Button; $btnReload.Text = "🔄 TẢI LẠI DANH SÁCH TỪ CLOUD"; $btnReload.Location = "460,430"; $btnReload.Size = "350,45"; $btnReload.BackColor = "#E1F5FE"; $btnReload.FlatStyle = "Flat"; $btnReload.Font = $fBtn
+
 $btnPush = New-Object System.Windows.Forms.Button; $btnPush.Text = "ĐẨY DANH SÁCH LÊN GITHUB (CLOUD)"; $btnPush.Location = "20,530"; $btnPush.Size = "790,80"; $btnPush.BackColor = "#007ACC"; $btnPush.ForeColor = "White"; $btnPush.FlatStyle = "Flat"; $btnPush.Font = $fTitle
 
 $lblStatus = New-Object System.Windows.Forms.Label; $lblStatus.Text = "Sẵn sàng..."; $lblStatus.Location = "20,620"; $lblStatus.Size = "790,25"; $lblStatus.Font = $fStd
 
-$form.Controls.AddRange(@($btnAdd, $btnEdit, $btnDelete, $btnClearAll, $btnPush, $lblStatus))
+$form.Controls.AddRange(@($btnAdd, $btnEdit, $btnDelete, $btnClearAll, $btnReload, $btnPush, $lblStatus))
 
 # ==========================================================
 # LOGIC XỬ LÝ
 # ==========================================================
 
-# --- [A] TẢI DỮ LIỆU ---
-$form.Add_Shown({
+# --- [A] KHỐI LỆNH TẢI DỮ LIỆU (DÙNG CHUNG) ---
+$Action_LoadData = {
     $lblStatus.Text = "Đang tải danh sách hiện tại từ GitHub..."
     $lblStatus.ForeColor = "Blue"; [System.Windows.Forms.Application]::DoEvents()
     $RawUrl = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/main/iso_list.csv"
@@ -71,7 +74,11 @@ $form.Add_Shown({
         }
         $lblStatus.Text = "✅ Đã tải xong $($lvISO.Items.Count) bản Windows từ Cloud!"; $lblStatus.ForeColor = "DarkGreen"
     } catch { $lblStatus.Text = "⚠️ Lỗi tải Cloud hoặc chưa có dữ liệu."; $lblStatus.ForeColor = "DarkOrange" }
-})
+}
+
+# Gán hành động Tải Dữ Liệu khi form vừa mở và khi bấm nút RELOAD
+$form.Add_Shown($Action_LoadData)
+$btnReload.Add_Click($Action_LoadData)
 
 # --- [B] CLICK CHỌN DÒNG ---
 $lvISO.Add_SelectedIndexChanged({
@@ -102,7 +109,7 @@ $btnEdit.Add_Click({
 # --- [E] XOÁ DÒNG ĐÃ CHỌN ---
 $btnDelete.Add_Click({ foreach ($s in $lvISO.SelectedItems) { $lvISO.Items.Remove($s) }; $txtWin.Clear(); $txtID.Clear() })
 
-# --- [X] NÚT XOÁ SẠCH BẢNG (MỚI THÊM) ---
+# --- [X] NÚT XOÁ SẠCH BẢNG ---
 $btnClearAll.Add_Click({
     $res = [System.Windows.Forms.MessageBox]::Show("Bạn có chắc chắn muốn XOÁ SẠCH tất cả danh sách không?", "Cảnh báo", "YesNo", "Warning")
     if ($res -eq "Yes") {
