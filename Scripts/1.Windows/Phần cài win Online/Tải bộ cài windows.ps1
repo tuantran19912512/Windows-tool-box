@@ -1,6 +1,7 @@
 ﻿# ==============================================================================
 # VIETTOOLBOX ISO CLIENT V301 - KIẾN TRÚC LÕI MỚI
 # Đặc tính: Fix UI cắt chữ, Chống văng tuyệt đối, Auto-Resume, Reset UI an toàn
+# Cập nhật: Tự động bóc tách định dạng thật (.zip, .wim, .iso) từ Google Drive
 # ==============================================================================
 
 # [PHẦN 1] THIẾT LẬP MẠNG & QUYỀN TRUY CẬP
@@ -122,7 +123,7 @@ $MaGiaoDien = @"
             <ListView.View>
                 <GridView>
                     <GridViewColumn Width="45"><GridViewColumn.CellTemplate><DataTemplate><CheckBox IsChecked="{Binding Check, Mode=TwoWay}"/></DataTemplate></GridViewColumn.CellTemplate></GridViewColumn>
-                    <GridViewColumn Header="TÊN FILE (GOOGLE DRIVE)" DisplayMemberBinding="{Binding Name}" Width="450"/>
+                    <GridViewColumn Header="TÊN GÓI TẢI (TỪ GITHUB)" DisplayMemberBinding="{Binding Name}" Width="450"/>
                     <GridViewColumn Header="TRẠNG THÁI" DisplayMemberBinding="{Binding Status}" Width="130"/>
                     <GridViewColumn Header="TIẾN ĐỘ" DisplayMemberBinding="{Binding Percent}" Width="70"/>
                     <GridViewColumn Header="TỐC ĐỘ" DisplayMemberBinding="{Binding Speed}" Width="80"/>
@@ -177,6 +178,7 @@ $BangDanhSach.ItemsSource = $Global:DanhSachHienThi
 # [PHẦN 5] LUỒNG XỬ LÝ BACKGROUND (ĐỘC LẬP HOÀN TOÀN)
 $KichBanTai = {
     param($HeThong, $ChiTiet, $DanhSachTai, $KhoaB64)
+    [System.Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
     function GhiLog($m) { $HeThong.NhatKy += "[$((Get-Date).ToString('HH:mm:ss'))] $m`r`n" }
     function GiaiMa($m, $i) { return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($m[$i])) }
     
@@ -184,15 +186,32 @@ $KichBanTai = {
         $IdxKhoa = 0
         foreach ($File in $DanhSachTai) {
             if ($HeThong.TinHieu -eq "DUNG") { break }
-            $DuongDanLuu = Join-Path $HeThong.ThuMucLuu ($File.Name.Replace(" ", "_") + ".iso")
-            $HeThong.FileDangTai = $DuongDanLuu
             
-            $ChiTiet[$File.ID] = @{ STT="🚀 Đang tải"; PCT="0%"; SPD="--"; SZ="--" }
-            GhiLog "📡 Kết nối: $($File.Name)"
+            $ChiTiet[$File.ID] = @{ STT="🚀 Đang kết nối..."; PCT="0%"; SPD="--"; SZ="--" }
+            GhiLog "📡 Đang lấy thông tin gốc của: $($File.Name)"
             
             $TaiThanhCong = $false; $SoLanThu = 0
             while (-not $TaiThanhCong -and $SoLanThu -lt $KhoaB64.Count -and $HeThong.TinHieu -ne "DUNG") {
-                $Link = "https://www.googleapis.com/drive/v3/files/$($File.ID)?alt=media&key=$(GiaiMa $KhoaB64 $IdxKhoa)&acknowledgeAbuse=true"
+                $ApiKey = GiaiMa $KhoaB64 $IdxKhoa
+                
+                # --- PHÉP MÀU NẰM Ở ĐÂY: HỎI GOOGLE TÊN GỐC TRƯỚC KHI TẢI ---
+                $TenGocTuDrive = $File.Name.Replace(" ", "_")
+                try {
+                    $MetaLink = "https://www.googleapis.com/drive/v3/files/$($File.ID)?fields=name&key=$ApiKey"
+                    $Meta = Invoke-RestMethod -Uri $MetaLink -TimeoutSec 10 -ErrorAction Stop
+                    if ($Meta.name) { 
+                        # Lấy được tên có đuôi thật (.iso, .wim, .zip) từ Drive!
+                        $TenGocTuDrive = $Meta.name.Replace(" ", "_") 
+                    }
+                } catch { 
+                    # Kệ nó, nếu lỗi do API (hết quota) thì bước tải file bên dưới sẽ bắt và đổi API Key
+                }
+                # -------------------------------------------------------------
+
+                $DuongDanLuu = Join-Path $HeThong.ThuMucLuu $TenGocTuDrive
+                $HeThong.FileDangTai = $DuongDanLuu
+                
+                $Link = "https://www.googleapis.com/drive/v3/files/$($File.ID)?alt=media&key=$ApiKey&acknowledgeAbuse=true"
                 $KetQua = [DongCoTai]::TaiFile($Link, $DuongDanLuu).GetAwaiter().GetResult()
                 
                 if ($KetQua -eq 200) { $TaiThanhCong = $true }
@@ -205,12 +224,12 @@ $KichBanTai = {
 
             if ($TaiThanhCong) {
                 $ChiTiet[$File.ID] = @{ STT="✅ Hoàn Tất"; PCT="100%"; SPD="Hoàn thành"; SZ="Xong" }
-                GhiLog "🎉 Đã tải xong: $($File.Name)"
+                GhiLog "🎉 Đã tải xong: $TenGocTuDrive"
             }
         }
     } catch { GhiLog "❌ LỖI BACKGROUND: $($_.Exception.Message)" }
     
-    # Luồng tải kết thúc, báo tín hiệu về cho Giao diện biết
+    # Luồng tải kết thúc
     if ($HeThong.TinHieu -eq "DUNG") { $HeThong.TrangThai = "DA_NGAT" } else { $HeThong.TrangThai = "HOAN_TAT" }
 }
 
@@ -269,7 +288,7 @@ $TimerGiaoDien.Add_Tick({
 # [PHẦN 7] SỰ KIỆN NÚT BẤM (GỌN GÀNG, KHÔNG LÀM NẶNG UI)
 $NutTai.Add_Click({
     $DuLieuChon = @($Global:DanhSachHienThi | Where-Object { $_.Check -eq $true })
-    if ($DuLieuChon.Count -eq 0) { [Windows.MessageBox]::Show("Sếp chưa chọn bản ISO nào để tải!", "Báo Cáo", 0, 48); return }
+    if ($DuLieuChon.Count -eq 0) { [Windows.MessageBox]::Show("Sếp chưa chọn file nào để tải!", "Báo Cáo", 0, 48); return }
     
     [DongCoTai]::KhoiTao()
     $NutTai.IsEnabled = $false; $NutHuy.IsEnabled = $true
@@ -310,12 +329,12 @@ function TaiCSV {
         $Csv = (Invoke-WebRequest $Link -UseBasicParsing -TimeoutSec 10).Content | ConvertFrom-Csv
         $Global:DanhSachHienThi.Clear()
         foreach ($Dong in $Csv) { $Global:DanhSachHienThi.Add([PSCustomObject]@{ Check=$false; Name=$Dong.Name; ID=$Dong.FileID; Status="Sẵn sàng"; Percent=""; Speed=""; Size="" }) }
-        $TxtTrangThaiChung.Text = "✅ Nạp dữ liệu hoàn tất ($($Global:DanhSachHienThi.Count) ISO)."
+        $TxtTrangThaiChung.Text = "✅ Nạp dữ liệu hoàn tất ($($Global:DanhSachHienThi.Count) File)."
     } catch { $TxtTrangThaiChung.Text = "❌ Không có Internet hoặc bị chặn GitHub." }
 }
 
 $CuaSoChinh.Add_Loaded({
-    $HopDuongDan.Text = Join-Path ([Environment]::GetFolderPath("Desktop")) "VietToolbox_ISO"
+    $HopDuongDan.Text = Join-Path ([Environment]::GetFolderPath("Desktop")) "VietToolbox_Downloads"
     if (-not (Test-Path $HopDuongDan.Text)) { New-Item $HopDuongDan.Text -Type Directory | Out-Null }
     TaiCSV
 })
