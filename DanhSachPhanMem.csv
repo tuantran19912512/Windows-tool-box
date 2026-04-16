@@ -21,7 +21,7 @@ False,DirectX End-User Runtime Installer,Thư viện Windows,Microsoft.DirectX,d
 False,Wechat,Nhắn Tin,Tencent.WeChat,,,,https://icon.horse/icon/wechat.com,https://drive.google.com/uc?export=download&id=1zO_I3HL7wOderBIPFv_c2NH05CUi9ljQ&confirm=t
 False,HP Smart,Khác,9WZDNCRFHWLH,,,,https://icon.horse/icon/hpsmart.com,
 False,PDF X edit,Văn Phòng,9P3CP9G025RM,,,,https://icon.horse/icon/pdfxapp.com,
-False,Zoom,Họp meeting,XP99J3KP4XZ4VV,,,,https://icon.horse/icon/zoom.us,https://www.zoom.us/client/latest/ZoomInstallerFull.msi
+False,Zoom,Họp meeting,XP99J3KP4XZ4VV,,,/quiet /qn /norestart ZNoAutoStart=1,https://icon.horse/icon/zoom.us,https://www.zoom.us/client/latest/ZoomInstallerFull.msi
 False,Microsoft Visual C++,Thư viện Windows,Microsoft.VCLibs.14,,,,https://icon.horse/icon/microsoft.com,
 False,WhatsApp,Nhắn Tin,9NKSQGP7F2NH,,,,https://icon.horse/icon/whatsapp.com,https://drive.google.com/uc?export=download&id=1zMRyp0fqhclozbDkSHoNg5LWX5NgcMiX&confirm=t
 False,Tiếng Việt Gói trải nghiệm cục bộ,Khác,9P0W68X0XZPT,,,,https://icon.horse/icon/apps.microsoft.com,
