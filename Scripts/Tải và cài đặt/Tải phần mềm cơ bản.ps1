@@ -32,7 +32,8 @@ $Global:DanhSachAPI = @(
     (GiaiMa-API "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v"),
     (GiaiMa-API "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv"),
     (GiaiMa-API "QUl6YVN5Q2IzaE1LUVNOamt2bFNKbUlhTGtYcVNybFpWaFNSTThR"),
-    (GiaiMa-API "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0")
+    (GiaiMa-API "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0"),
+    (GiaiMa-API "QUl6YVN5QlJLaDhrbmo2anE2WHJ6WFhLbHF2Z0k4ekEtUDZiOTZR")
 )
 
 # ------------------------------------------------------------------------------
