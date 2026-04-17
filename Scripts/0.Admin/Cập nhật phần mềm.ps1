@@ -1,7 +1,7 @@
 ﻿# ==============================================================================
-# VIETTOOLBOX ADMIN V126 - BẢN FULL VŨ KHÍ (CÓ DÒ LINK TẢI TRỰC TIẾP)
+# VIETTOOLBOX ADMIN V127 - BẢN FULL VŨ KHÍ (CÓ DÒ LINK & TỰ PHÂN LOẠI)
 # Tác giả: Tuấn Kỹ Thuật Máy Tính
-# Nâng cấp: Thêm chức năng dò Installer Url từ Winget, lưu thêm cột DownloadUrl.
+# Nâng cấp: Thêm chức năng tự động phân loại phần mềm, thêm cột Category.
 # ==============================================================================
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
@@ -9,7 +9,7 @@
 
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
-$LogicVietToolboxCloudV126 = {
+$LogicVietToolboxCloudV127 = {
     if (-not $Global:GH_TOKEN) {
         [System.Windows.Forms.MessageBox]::Show("Thiếu GitHub Token ở Main! Hãy đăng nhập trước.", "Lỗi hệ thống")
         return
@@ -20,9 +20,9 @@ $LogicVietToolboxCloudV126 = {
     $GH_FILE  = "DanhSachPhanMem.csv"
     $apiUrl   = "https://api.github.com/repos/$GH_USER/$GH_REPO/contents/$GH_FILE"
 
-    # --- GIAO DIỆN WPF HIỆN ĐẠI (ĐÃ THÊM Ô DÒ LINK) ---
+    # --- GIAO DIỆN WPF HIỆN ĐẠI ---
     $MaGiaoDien = @"
-<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox Admin V126" Width="1200" Height="860" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
+<Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" Title="VietToolbox Admin V127" Width="1200" Height="920" WindowStartupLocation="CenterScreen" Background="#F4F7F9" FontFamily="Segoe UI">
     <WindowChrome.WindowChrome><WindowChrome GlassFrameThickness="0" CornerRadius="15" CaptionHeight="35" ResizeBorderThickness="7" /></WindowChrome.WindowChrome>
     <Border Background="#F4F7F9" CornerRadius="15" BorderBrush="#0D47A1" BorderThickness="1.5">
         <Grid Margin="20">
@@ -30,7 +30,7 @@ $LogicVietToolboxCloudV126 = {
             
             <Grid Name="TitleBar" Grid.Row="0">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="VietToolbox Admin V126 - Cloud Manager" Foreground="#888" VerticalAlignment="Center" Margin="5,0,0,0" FontWeight="Bold"/>
+                <TextBlock Text="VietToolbox Admin V127 - Cloud Manager" Foreground="#888" VerticalAlignment="Center" Margin="5,0,0,0" FontWeight="Bold"/>
                 <Button Name="btnMinimize" Grid.Column="1" Content="—" Width="40" Background="Transparent" BorderThickness="0" Cursor="Hand"/><Button Name="btnClose" Grid.Column="2" Content="✕" Width="40" Background="Transparent" BorderThickness="0" Cursor="Hand" Foreground="#D32F2F" FontWeight="Bold"/>
             </Grid>
 
@@ -44,6 +44,15 @@ $LogicVietToolboxCloudV126 = {
                         
                         <TextBlock Text="Tên hiển thị:" FontSize="12" Foreground="#666"/>
                         <TextBox Name="TxtName" Height="32" Margin="0,5,0,10" VerticalContentAlignment="Center" Padding="5,0"/>
+                        
+                        <TextBlock Text="Phân loại (Category):" FontSize="12" Foreground="#666"/>
+                        <Grid Margin="0,5,0,10">
+                            <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="100"/></Grid.ColumnDefinitions>
+                            <TextBox Name="TxtCategory" Height="32" VerticalContentAlignment="Center" Padding="5,0" Margin="0,0,5,0"/>
+                            <Button Name="BtnDoCategory" Grid.Column="1" Content="🏷️ Phân loại" Background="#E65100" Foreground="White" FontWeight="Bold" Cursor="Hand">
+                                <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources>
+                            </Button>
+                        </Grid>
                         
                         <TextBlock Text="Winget ID:" FontSize="12" Foreground="#666"/>
                         <Grid Margin="0,5,0,10">
@@ -122,6 +131,7 @@ $LogicVietToolboxCloudV126 = {
                                     </DataGridTemplateColumn.CellTemplate>
                                 </DataGridTemplateColumn>
                                 <DataGridTextColumn Header="Tên Phần Mềm" Binding="{Binding Name}" Width="150"/>
+                                <DataGridTextColumn Header="Phân Loại" Binding="{Binding Category}" Width="100"/>
                                 <DataGridTextColumn Header="Winget ID" Binding="{Binding WingetID}" Width="130"/>
                                 <DataGridTextColumn Header="Link Tải" Binding="{Binding DownloadUrl}" Width="150"/>
                                 <DataGridTextColumn Header="Choco ID" Binding="{Binding ChocoID}" Width="100"/>
@@ -151,7 +161,8 @@ $LogicVietToolboxCloudV126 = {
     $dgList = $window.FindName("DgList"); $dgList.ItemsSource = $script:ListApp
     
     $chk = $window.FindName("ChkDefault"); $tName = $window.FindName("TxtName"); $tWin = $window.FindName("TxtWinget")
-    $tUrl = $window.FindName("TxtUrl") # Textbox link tải mới
+    $tCat = $window.FindName("TxtCategory"); $btnDoCat = $window.FindName("BtnDoCategory")
+    $tUrl = $window.FindName("TxtUrl")
     $tCho = $window.FindName("TxtChoco"); $tGDr = $window.FindName("TxtGDrive"); $tSil = $window.FindName("TxtSilent")
     $tIco = $window.FindName("TxtIcon"); $txtStatus = $window.FindName("TxtStatus")
     $imgPreview = $window.FindName("ImgPreview"); $txtPreviewStatus = $window.FindName("TxtPreviewStatus")
@@ -160,6 +171,31 @@ $LogicVietToolboxCloudV126 = {
     $window.FindName("TitleBar").Add_MouseLeftButtonDown({ $window.DragMove() })
     $window.FindName("btnMinimize").Add_Click({ $window.WindowState = "Minimized" })
     $window.FindName("btnClose").Add_Click({ $window.Close() })
+
+    # --- SỰ KIỆN NÚT TỰ ĐỘNG PHÂN LOẠI ---
+    $btnDoCat.Add_Click({
+        if (-not $tName.Text) {
+            [System.Windows.Forms.MessageBox]::Show("Tuấn phải nhập Tên phần mềm trước để tự động phân loại!", "Nhắc nhở")
+            return
+        }
+        $nameStr = $tName.Text.ToLower()
+        $category = "Khác"
+        
+        if ($nameStr -match "chrome|edge|firefox|coccoc|brave|opera|browser") { $category = "Trình Duyệt" }
+        elseif ($nameStr -match "zalo|telegram|messenger|skype|viber|discord|wechat|whatsapp") { $category = "Nhắn Tin" }
+        elseif ($nameStr -match "office|word|excel|powerpoint|pdf|foxit|acrobat|unikey|evkey|mathtype") { $category = "Văn Phòng" }
+        elseif ($nameStr -match "photoshop|illustrator|corel|premiere|camtasia|capcut|obs|lightroom|autocad") { $category = "Đồ Họa & Video" }
+        elseif ($nameStr -match "idm|torrent|teracopy|download") { $category = "Tải Xuống" }
+        elseif ($nameStr -match "kaspersky|avast|eset|defender|malwarebytes|bkav|antivirus") { $category = "Bảo Mật" }
+        elseif ($nameStr -match "winrar|7-zip|bandizip|peazip") { $category = "Giải Nén" }
+        elseif ($nameStr -match "teamviewer|ultraviewer|anydesk|rustdesk") { $category = "Điều Khiển Từ Xa" }
+        elseif ($nameStr -match "visual studio|vscode|python|nodejs|git|docker|postman|sql|java") { $category = "Lập Trình" }
+        elseif ($nameStr -match "steam|epic|garena|ea app|ubisoft|vng") { $category = "Game" }
+        elseif ($nameStr -match "vlc|k-lite|spotify|itunes|kmplayer") { $category = "Đa Phương Tiện" }
+        elseif ($nameStr -match "ccleaner|revo|your uninstaller|hwmonitor|cpuz|gpuz|rufus|partition") { $category = "Hệ Thống" }
+
+        $tCat.Text = $category
+    })
 
     # --- SỰ KIỆN PREVIEW LOGO ---
     $tIco.Add_TextChanged({
@@ -177,7 +213,7 @@ $LogicVietToolboxCloudV126 = {
         }
     })
 
-    # --- HÀM TẢI DỮ LIỆU (Tương thích ngược với file cũ) ---
+    # --- HÀM TẢI DỮ LIỆU ---
     function Reload-Admin {
         $script:ListApp.Clear()
         try {
@@ -188,12 +224,14 @@ $LogicVietToolboxCloudV126 = {
             foreach ($a in $csvData) {
                 $icon = ""; if ($a.PSObject.Properties.Match('IconURL').Count -gt 0) { $icon = $a.IconURL }
                 $url = ""; if ($a.PSObject.Properties.Match('DownloadUrl').Count -gt 0) { $url = $a.DownloadUrl }
-                $script:ListApp.Add([PSCustomObject]@{ Check = ($a.Check -match "True"); Name = $a.Name; WingetID = $a.WingetID; ChocoID = $a.ChocoID; GDriveID = $a.GDriveID; SilentArgs = $a.SilentArgs; IconURL = $icon; DownloadUrl = $url })
+                $cat = ""; if ($a.PSObject.Properties.Match('Category').Count -gt 0) { $cat = $a.Category }
+                
+                $script:ListApp.Add([PSCustomObject]@{ Check = ($a.Check -match "True"); Name = $a.Name; Category = $cat; WingetID = $a.WingetID; ChocoID = $a.ChocoID; GDriveID = $a.GDriveID; SilentArgs = $a.SilentArgs; IconURL = $icon; DownloadUrl = $url })
             }
         } catch { }
     }
 
-    # ... (CÁC HÀM DÒ WINGET/CHOCO/LOGO GIỮ NGUYÊN NHƯ V125) ...
+    # --- CÁC HÀM DÒ KHÁC ---
     function Show-IconPicker($appName) {
         $form = New-Object System.Windows.Forms.Form; $form.Text = "Dò Logo: $appName"; $form.Size = "450,180"; $form.StartPosition = "CenterParent"; $form.BackColor = "White"
         $lbl = New-Object System.Windows.Forms.Label; $lbl.Text = "Nhập trang chủ phần mềm (VD: zalo.me, google.com):"; $lbl.Location = "20,20"; $lbl.AutoSize = $true; $lbl.Font = New-Object System.Drawing.Font("Segoe UI", 10)
@@ -235,21 +273,21 @@ $LogicVietToolboxCloudV126 = {
         return $null
     }
 
-    # --- SỰ KIỆN NÚT BẤM CƠ BẢN ---
+    # --- SỰ KIỆN BẢNG GRID & NÚT LÀM TRỐNG ---
     $dgList.Add_SelectionChanged({
         if ($dgList.SelectedItem) {
             $chk.IsChecked = $dgList.SelectedItem.Check; $tName.Text = $dgList.SelectedItem.Name; $tWin.Text = $dgList.SelectedItem.WingetID
-            $tUrl.Text = $dgList.SelectedItem.DownloadUrl # Thêm map link tải
+            $tUrl.Text = $dgList.SelectedItem.DownloadUrl; $tCat.Text = $dgList.SelectedItem.Category
             $tCho.Text = $dgList.SelectedItem.ChocoID; $tGDr.Text = $dgList.SelectedItem.GDriveID; $tSil.Text = $dgList.SelectedItem.SilentArgs; $tIco.Text = $dgList.SelectedItem.IconURL
         }
     })
 
-    $window.FindName("BtnClear").Add_Click({ $chk.IsChecked=$true; $tName.Text=""; $tWin.Text=""; $tUrl.Text=""; $tCho.Text=""; $tGDr.Text=""; $tSil.Text=""; $tIco.Text=""; $dgList.SelectedItem = $null })
+    $window.FindName("BtnClear").Add_Click({ $chk.IsChecked=$true; $tName.Text=""; $tCat.Text=""; $tWin.Text=""; $tUrl.Text=""; $tCho.Text=""; $tGDr.Text=""; $tSil.Text=""; $tIco.Text=""; $dgList.SelectedItem = $null })
     $window.FindName("BtnDowinget").Add_Click({ if ($tName.Text) { $id = Show-WingetPicker $tName.Text; if ($id) { $tWin.Text = $id } } })
     $window.FindName("BtnDoChoco").Add_Click({ if ($tName.Text) { $id = Show-ChocoPicker $tName.Text; if ($id) { $tCho.Text = $id } } })
     $window.FindName("BtnDoIcon").Add_Click({ if ($tName.Text) { $link = Show-IconPicker $tName.Text; if ($link) { $tIco.Text = $link } } else { [System.Windows.Forms.MessageBox]::Show("Nhập Tên phần mềm trước!") } })
 
-    # --- SỰ KIỆN: NÚT DÒ LINK TẢI TRỰC TIẾP TỪ WINGET ---
+    # --- NÚT DÒ LINK TẢI TRỰC TIẾP TỪ WINGET ---
     $btnDoUrl.Add_Click({
         if (-not $tWin.Text) {
             [System.Windows.Forms.MessageBox]::Show("Tuấn phải nhập Winget ID trước hoặc bấm 'Dò Winget' đi đã!", "Thiếu ID")
@@ -258,27 +296,23 @@ $LogicVietToolboxCloudV126 = {
         
         $btnDoUrl.Content = "⏳ Đang quét..."
         $btnDoUrl.IsEnabled = $false
-        [System.Windows.Forms.Application]::DoEvents() # Giúp UI không bị đơ
+        [System.Windows.Forms.Application]::DoEvents()
 
         $id = $tWin.Text.Trim()
         $foundUrl = ""
-        # Áp dụng thuật toán Đa Tầng (x64 -> x86) giống V55
         $archs = @("x64", "x86", "neutral", "") 
         
         try {
             foreach ($arch in $archs) {
                 if ($arch -eq "") {
-                    # Đã bỏ dấu & và thêm .exe
                     $raw = winget.exe show --id $id --exact | Out-String
                 } else {
-                    # Đã bỏ dấu & và thêm .exe
                     $raw = winget.exe show --id $id --exact --architecture $arch | Out-String
                 }
                 
-                # Bắt dòng chữ Installer Url
                 if ($raw -match '(?im)Installer\s*Url:\s*(https?://[^\s]+)') {
                     $foundUrl = $Matches[1].Trim()
-                    break # Lụm được rồi thì nghỉ
+                    break 
                 }
             }
 
@@ -295,10 +329,10 @@ $LogicVietToolboxCloudV126 = {
         $btnDoUrl.IsEnabled = $true
     })
 
-    # --- THÊM & SỬA DỮ LIỆU (Đã nạp thuộc tính DownloadUrl) ---
+    # --- THÊM & SỬA DỮ LIỆU ---
     $window.FindName("BtnAdd").Add_Click({
         if ($tName.Text) {
-            $script:ListApp.Add([PSCustomObject]@{ Check=$chk.IsChecked; Name=$tName.Text; WingetID=$tWin.Text; ChocoID=$tCho.Text; GDriveID=$tGDr.Text; SilentArgs=$tSil.Text; IconURL=$tIco.Text; DownloadUrl=$tUrl.Text })
+            $script:ListApp.Add([PSCustomObject]@{ Check=$chk.IsChecked; Name=$tName.Text; Category=$tCat.Text; WingetID=$tWin.Text; ChocoID=$tCho.Text; GDriveID=$tGDr.Text; SilentArgs=$tSil.Text; IconURL=$tIco.Text; DownloadUrl=$tUrl.Text })
             $window.FindName("BtnClear").RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Primitives.ButtonBase]::ClickEvent)))
         }
     })
@@ -306,7 +340,7 @@ $LogicVietToolboxCloudV126 = {
     $window.FindName("BtnEdit").Add_Click({
         $idx = $dgList.SelectedIndex
         if ($idx -ge 0 -and $tName.Text) {
-            $script:ListApp[$idx] = [PSCustomObject]@{ Check=$chk.IsChecked; Name=$tName.Text; WingetID=$tWin.Text; ChocoID=$tCho.Text; GDriveID=$tGDr.Text; SilentArgs=$tSil.Text; IconURL=$tIco.Text; DownloadUrl=$tUrl.Text }
+            $script:ListApp[$idx] = [PSCustomObject]@{ Check=$chk.IsChecked; Name=$tName.Text; Category=$tCat.Text; WingetID=$tWin.Text; ChocoID=$tCho.Text; GDriveID=$tGDr.Text; SilentArgs=$tSil.Text; IconURL=$tIco.Text; DownloadUrl=$tUrl.Text }
         }
     })
 
@@ -317,17 +351,17 @@ $LogicVietToolboxCloudV126 = {
         }
     })
 
-    # --- PUSH CSV LÊN GITHUB (THÊM CỘT DOWNLOADURL) ---
+    # --- PUSH CSV LÊN GITHUB ---
     $window.FindName("BtnPush").Add_Click({
         try {
             $txtStatus.Text = "⏳ Đang kết nối..."
             
-            # Thêm cột DownloadUrl vào Header
-            $csvStr = "Check,Name,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl`n"
+            # Đã thêm cột Category vào Header
+            $csvStr = "Check,Name,Category,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl`n"
             foreach ($item in $script:ListApp) {
                 $cName = $item.Name -replace ',', ' ' -replace '"', ''
-                # Nhét thêm biến DownloadUrl vào hàng
-                $csvStr += "$($item.Check),$cName,$($item.WingetID),$($item.ChocoID),$($item.GDriveID),$($item.SilentArgs),$($item.IconURL),$($item.DownloadUrl)`n"
+                $cCat = $item.Category -replace ',', ' ' -replace '"', ''
+                $csvStr += "$($item.Check),$cName,$cCat,$($item.WingetID),$($item.ChocoID),$($item.GDriveID),$($item.SilentArgs),$($item.IconURL),$($item.DownloadUrl)`n"
             }
             
             $bytes = [System.Text.Encoding]::UTF8.GetBytes($csvStr.Trim())
@@ -342,15 +376,15 @@ $LogicVietToolboxCloudV126 = {
             } catch { }
             
             if ($sha -eq "") {
-                $jsonBody = '{"message":"Cập nhật danh sách + Link Tải","content":"' + $base64 + '"}'
+                $jsonBody = '{"message":"Cập nhật danh sách + Phân Loại + Link Tải","content":"' + $base64 + '"}'
             } else {
-                $jsonBody = '{"message":"Cập nhật danh sách + Link Tải","content":"' + $base64 + '","sha":"' + $sha + '"}'
+                $jsonBody = '{"message":"Cập nhật danh sách + Phân Loại + Link Tải","content":"' + $base64 + '","sha":"' + $sha + '"}'
             }
 
             Invoke-RestMethod -Uri $apiUrl -Headers $headers -Method Put -Body $jsonBody -ContentType "application/json; charset=utf-8"
             
             $txtStatus.Text = "✅ Thành công!"
-            [System.Windows.Forms.MessageBox]::Show("Đã lưu dữ liệu CÓ CHỨA LINK TẢI lên Cloud thành công tuyệt đối!", "Xong", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
+            [System.Windows.Forms.MessageBox]::Show("Đã lưu dữ liệu CÓ CHỨA PHÂN LOẠI & LINK TẢI lên Cloud thành công tuyệt đối!", "Xong", [System.Windows.Forms.MessageBoxButtons]::OK, [System.Windows.Forms.MessageBoxIcon]::Information)
             Reload-Admin
         } catch { 
             $errMsg = $_.Exception.Message
@@ -369,4 +403,4 @@ $LogicVietToolboxCloudV126 = {
     Reload-Admin; $window.ShowDialog() | Out-Null
 }
 
-&$LogicVietToolboxCloudV126
+&$LogicVietToolboxCloudV127
