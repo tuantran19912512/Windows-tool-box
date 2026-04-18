@@ -1,12 +1,12 @@
 Check,Name,Category,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl
 False,Google Chrome,Trình Duyệt,Google.Chrome,googlechrome,,,https://icon.horse/icon/google.com,https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi
 False,Zalo,Nhắn Tin,VNGCorp.Zalo,,,,https://icon.horse/icon/help.zalo.me,https://res-download-pc-te-vnso-pt-46.zadn.vn/win/ZaloSetup-26.3.20.exe
-False,Unikey,Văn Phòng,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn,https://www.unikey.org/assets/release/unikey46RC2-230919-win32.zip
+False,Unikey,Bộ gõ,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn,https://www.unikey.org/assets/release/unikey46RC2-230919-win32.zip
 False,UltraViewer,Điều Khiển Từ Xa,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net,https://dl2.ultraviewer.net/UltraViewer_setup_6.6_en.exe
 False,Foxit PDF Reader,Văn Phòng,Foxit.FoxitReader,FoxitReader,,/quiet /force,https://icon.horse/icon/foxit.com,https://drive.google.com/uc?export=download&id=108qMlDMb_Z6Lx1uIHi-Ftj0EOHN_bQZe&confirm=t
-False,EVKey,Văn Phòng,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com,https://github.com/lamquangminh/EVKey/releases/download/Release/EVKey.zip
+False,EVKey,Bộ gõ,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com,https://github.com/lamquangminh/EVKey/releases/download/Release/EVKey.zip
 False,WPS Office,Văn Phòng,Kingsoft.WPSOffice,wps-office-free,,,https://icon.horse/icon/vi.wps.com,https://wdl1.pcfg.cache.wpscdn.com/wpsdl/wpsoffice/download/12.2.0.23196/500.1001/WPSOffice_23196.exe
-False,Sogou,Khác,Sogou.SogouInput,,,,https://icon.horse/icon/shurufa.sogou.com,https://ime.gtimg.com/pc/build/_sogou_pinyin_16.3.0.3318_0.exe
+False,Sogou,Bộ gõ,Sogou.SogouInput,,,,https://icon.horse/icon/shurufa.sogou.com,https://ime.gtimg.com/pc/build/_sogou_pinyin_16.3.0.3318_0.exe
 False,Notepad++ ,Khác,Notepad++.Notepad++,notepadplusplus,,,https://icon.horse/icon/notepad-plus-plus.org,https://github.com/notepad-plus-plus/notepad-plus-plus/releases/download/v8.9.3/npp.8.9.3.Installer.x64.exe
 False,7-Zip,Giải Nén,7zip.7zip,7zip,,,https://icon.horse/icon/7-zip.org,https://7-zip.org/a/7z2600-x64.exe
 False,WPS Office CN	,Văn Phòng,Kingsoft.WPSOffice.CN,,1E5O3_DmxICVjs1H7OtmgwUJ3JhJ7Fn9S,/S /ACCEPTEULA=1 AutoRun=0,https://icon.horse/icon/wps.cn,https://drive.google.com/uc?export=download&id=1E5O3_DmxICVjs1H7OtmgwUJ3JhJ7Fn9S&confirm=t
