@@ -97,7 +97,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 
                     <Border Background="#F1F5F9" CornerRadius="8" Padding="12" Margin="0,0,0,2" BorderBrush="#CBD5E1" BorderThickness="1">
                         <StackPanel>
-                            <TextBlock Text="4. WINDOWS OPTIMIZER (Lược bỏ Crack):" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
+                            <TextBlock Text="4. WINDOWS tùy chỉnh:" FontWeight="Bold" Foreground="#0F172A" Margin="0,0,0,10"/>
                             <UniformGrid Columns="3" VerticalAlignment="Top">
                                 <CheckBox Name="ChkNet35" Content="NET Framework 3.5" IsChecked="False" FontSize="11" Margin="0,0,0,6"/>
                                 <CheckBox Name="ChkLegacy" Content="Legacy Components" IsChecked="False" FontSize="11" Margin="0,0,0,6"/>
