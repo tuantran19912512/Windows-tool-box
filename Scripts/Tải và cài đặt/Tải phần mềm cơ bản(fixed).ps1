@@ -1,10 +1,10 @@
 ﻿# ==============================================================================
-# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V604 - MẮT THẦN XUYÊN THẤU
-# Khắc phục: Đọc lõi nhị phân (Magic Bytes) để ép xả nén kể cả khi bị sai đuôi file. Báo lỗi xả nén rõ ràng.
+# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V705 - MỞ KHÓA BĂNG THÔNG
+# Fix: Khắc phục lỗi nghẽn cổ chai mạng do spam lệnh cập nhật giao diện (ProgressBar).
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
-# 1. THIẾT LẬP MÔI TRƯỜNG & PHÂN QUYỀN HỆ THỐNG
+# MODULE 1: THIẾT LẬP MÔI TRƯỜNG & TOÀN CỤC
 # ------------------------------------------------------------------------------
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -18,26 +18,20 @@ if (-not $QuyenQuanTri.IsInRole([Security.Principal.WindowsBuiltInRole]::Adminis
 Set-ExecutionPolicy Bypass -Scope Process -Force
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
-# ------------------------------------------------------------------------------
-# 2. CẤU HÌNH BIẾN TOÀN CỤC & TÀI NGUYÊN MẠNG
-# ------------------------------------------------------------------------------
 $Global:LienKetDuLieuGoc = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachPhanMem.csv"
 $Global:ThuMucLuuTru = Join-Path $env:PUBLIC "LuuTruPhanMemViet"
-$Global:TrangThaiHeThong = "NhanhRoi" 
+$Global:TrangThaiBoNho = [hashtable]::Synchronized(@{ TrangThai = "NhanhRoi" })
 
 if (-not (Test-Path $Global:ThuMucLuuTru)) { New-Item -ItemType Directory -Path $Global:ThuMucLuuTru -Force | Out-Null }
 
 function GiaiMa-ChuaKhoa ($ChuoiMaHoa) { return [System.Text.Encoding]::UTF8.GetString([System.Convert]::FromBase64String($ChuoiMaHoa)) }
 $Global:DanhSachKhoaAPI = @(
     (GiaiMa-ChuaKhoa "QUl6YVN5Q3VKUkJaTDZnUU8tdVZOMWVvdHhmMlppTXNtYy1sandR"),
-    (GiaiMa-ChuaKhoa "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v"),
-    (GiaiMa-ChuaKhoa "QUl6YVN5QkI0NENOamtHRkdQSjhBaVZaMURxZFJnc3M5MDc4QThv"),
-    (GiaiMa-ChuaKhoa "QUl6YVN5Q2IzaE1LUVNOamt2bFNKbUlhTGtYcVNybFpWaFNSTThR"),
-    (GiaiMa-ChuaKhoa "QUl6YVN5Q2V0SVlWVzRsQmlULTd3TzdNQUJoWlNVQ0dKR1puQTM0")
+    (GiaiMa-ChuaKhoa "QUl6YVN5QlRhVmRQdmlLaUJyR0JUVk0tUlRiVW51QUdFUzRWck1v")
 )
 
 # ------------------------------------------------------------------------------
-# 3. ĐỊNH NGHĨA KIỂU DỮ LIỆU HIỂN THỊ
+# MODULE 2: CÁC HÀM TIỆN ÍCH
 # ------------------------------------------------------------------------------
 if (-not ("KieuDuLieuPhanMem" -as [type])) {
     $MaNguonKieuDuLieu = @"
@@ -45,7 +39,6 @@ if (-not ("KieuDuLieuPhanMem" -as [type])) {
     public class KieuDuLieuPhanMem : INotifyPropertyChanged {
         public event PropertyChangedEventHandler PropertyChanged;
         private void CapNhatUI(string p) { if (PropertyChanged != null) PropertyChanged(this, new PropertyChangedEventArgs(p)); }
-        
         private bool _chon; public bool Chon { get{return _chon;} set{_chon=value;CapNhatUI("Chon");} }
         private string _ten; public string Ten { get{return _ten;} set{_ten=value;CapNhatUI("Ten");} }
         private string _bieutuong; public string BieuTuong { get{return _bieutuong;} set{_bieutuong=value;CapNhatUI("BieuTuong");} }
@@ -59,21 +52,6 @@ if (-not ("KieuDuLieuPhanMem" -as [type])) {
     Add-Type -TypeDefinition $MaNguonKieuDuLieu -Language CSharp
 }
 
-function Tao-LoiTatNhanh ($TenCuaPhanMem, $DuongDanFileChay) {
-    try {
-        $ThuMucManHinh = [Environment]::GetFolderPath("Desktop")
-        $TenLoiTatSach = ($TenCuaPhanMem -replace '[\\/:\*\?"<>\|]', '') + ".lnk"
-        $DuongDanLoiTat = Join-Path $ThuMucManHinh $TenLoiTatSach
-        $HeThongPhimTat = New-Object -ComObject WScript.Shell
-        $LoiTat = $HeThongPhimTat.CreateShortcut($DuongDanLoiTat)
-        $LoiTat.TargetPath = $DuongDanFileChay
-        $LoiTat.WorkingDirectory = [System.IO.Path]::GetDirectoryName($DuongDanFileChay)
-        $LoiTat.IconLocation = "$DuongDanFileChay,0"
-        $LoiTat.Save()
-    } catch {}
-}
-
-# HÀM MẮT THẦN: Kiểm tra lõi tệp tin (Magic Bytes) để ép xả nén
 function KiemTra-LoiFileNen ($DuongDanKiemTra) {
     try {
         $DongDocNhiPhan = [System.IO.File]::OpenRead($DuongDanKiemTra)
@@ -81,89 +59,112 @@ function KiemTra-LoiFileNen ($DuongDanKiemTra) {
         $DongDocNhiPhan.Read($MaLoi, 0, 4) | Out-Null
         $DongDocNhiPhan.Close()
         $ChuoiHexa = [System.BitConverter]::ToString($MaLoi)
-        # 50-4B-03-04 (ZIP) | 52-61-72-21 (RAR) | 37-7A-BC-AF (7Z)
         if ($ChuoiHexa -match "50-4B-03-04" -or $ChuoiHexa -match "52-61-72-21" -or $ChuoiHexa -match "37-7A-BC-AF") { return $true }
     } catch {}
     return $false
 }
 
+function TuDong-NhanDienThamSoEXE ($TenPhanMem, $ThamSoTuCSV) {
+    if (-not [string]::IsNullOrWhiteSpace($ThamSoTuCSV)) { return $ThamSoTuCSV }
+    $ThuVienThamSo = [ordered]@{
+        "(?i)wps" = "/S /ACCEPTEULA=1 AutoRun=0"
+        "(?i)foxit" = "/quiet /force /lang en"
+        "(?i)chrome|coccoc|brave|edge" = "--silent --do-not-launch-chrome"
+        "(?i)zalo" = "/S"
+        "(?i)winrar" = "/S"
+        "(?i)7-?zip" = "/S"
+        "(?i)vlc" = "/L=1033 /S"
+        "(?i)k-?lite" = "/verysilent /norestart"
+        "(?i)anydesk" = "--install `"$env:ProgramFiles\AnyDesk`" --start-with-win --silent"
+        "(?i)teamviewer" = "/S"
+        "(?i)ultraviewer" = "/silent"
+        "(?i)unikey|evkey" = "/S"
+        "(?i)java|jre|jdk" = "/s"
+        "(?i)adobe.*reader" = "/sAll /rs /msi EULA_ACCEPT=YES"
+        "(?i)zoom" = "/silent"
+    }
+    foreach ($MauNhanDien in $ThuVienThamSo.Keys) {
+        if ($TenPhanMem -match $MauNhanDien) { return $ThuVienThamSo[$MauNhanDien] }
+    }
+    return "/S"
+}
+
+function Chay-TienTrinhChuan ($DuongDanFile, $ThamSo, $ThuMucLamViec) {
+    try {
+        $ThongTinChay = New-Object System.Diagnostics.ProcessStartInfo
+        $ThongTinChay.FileName = $DuongDanFile
+        $ThongTinChay.Arguments = $ThamSo
+        $ThongTinChay.WorkingDirectory = $ThuMucLamViec
+        $ThongTinChay.UseShellExecute = $true
+        return [System.Diagnostics.Process]::Start($ThongTinChay)
+    } catch { return $null }
+}
+
 # ------------------------------------------------------------------------------
-# 4. XÂY DỰNG KHUNG GIAO DIỆN (WPF XAML)
+# MODULE 3: GIAO DIỆN (DASHBOARD XAML)
 # ------------------------------------------------------------------------------
 $MaNguonGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox V604" Width="1000" Height="750" MinWidth="850" MinHeight="600" WindowStartupLocation="CenterScreen" Background="#F8FAFC" FontFamily="Segoe UI">
-    <WindowChrome.WindowChrome>
-        <WindowChrome GlassFrameThickness="0" CornerRadius="12" CaptionHeight="50" ResizeBorderThickness="8"/>
-    </WindowChrome.WindowChrome>
-    <Border BorderBrush="#CBD5E1" BorderThickness="1.5" CornerRadius="12">
+        Title="VietToolbox Dashboard" Width="1100" Height="750" MinWidth="900" MinHeight="600" WindowStartupLocation="CenterScreen" 
+        Background="Transparent" AllowsTransparency="True" WindowStyle="None" FontFamily="Segoe UI">
+    <Border CornerRadius="12" Background="#F8FAFC" ClipToBounds="True">
         <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="50"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="90"/></Grid.RowDefinitions>
-            
-            <Border Grid.Row="0" Background="#0F172A" CornerRadius="11,11,0,0" Name="KhungTieuDe">
+            <Grid.ColumnDefinitions><ColumnDefinition Width="280"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+            <Border Grid.Column="0" Background="#0F172A">
                 <Grid>
-                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="45"/><ColumnDefinition Width="45"/><ColumnDefinition Width="45"/></Grid.ColumnDefinitions>
-                    <TextBlock Text="🚀 BỘ CÔNG CỤ VIETTOOLBOX V604 - MẮT THẦN XUYÊN THẤU" Foreground="White" VerticalAlignment="Center" FontWeight="Bold" FontSize="16" Margin="20,0,0,0"/>
-                    <Button Name="NutThuNho" Grid.Column="1" Content="—" Background="Transparent" BorderThickness="0" FontSize="16" Foreground="#94A3B8" Cursor="Hand" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Name="NutPhongTo" Grid.Column="2" Content="⬜" Background="Transparent" BorderThickness="0" FontSize="14" Foreground="#94A3B8" Cursor="Hand" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Button Name="NutThoat" Grid.Column="3" Content="✕" Background="Transparent" BorderThickness="0" FontSize="16" Foreground="#F87171" FontWeight="Bold" Cursor="Hand" WindowChrome.IsHitTestVisibleInChrome="True"/>
+                    <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+                    <StackPanel Grid.Row="0" Margin="20,40,20,30">
+                        <TextBlock Text="🚀" FontSize="45" HorizontalAlignment="Center" Margin="0,0,0,15"/>
+                        <TextBlock Text="VIETTOOLBOX" Foreground="White" FontSize="24" FontWeight="Black" HorizontalAlignment="Center"/>
+                        <TextBlock Text="Auto Deploy Dashboard" Foreground="#94A3B8" FontSize="13" HorizontalAlignment="Center" Margin="0,5,0,0"/>
+                        <Rectangle Height="1" Fill="#1E293B" Margin="0,30,0,0"/>
+                    </StackPanel>
+                    <StackPanel Grid.Row="1" Margin="20,0,20,0" VerticalAlignment="Top">
+                        <Button Name="NutKichHoat" Content="▶ BẮT ĐẦU CÀI ĐẶT" Height="55" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,0,0,15" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
+                        <Button Name="NutHuyViec" Content="⏹ HỦY TIẾN TRÌNH" Height="48" Background="#EF4444" Foreground="White" FontWeight="Bold" FontSize="14" Margin="0,0,0,12" Cursor="Hand" IsEnabled="False"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
+                    </StackPanel>
+                    <TextBlock Grid.Row="2" Text="Phiên bản V705 - Mở Khóa Băng Thông" Foreground="#475569" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,20"/>
                 </Grid>
             </Border>
-
-            <StackPanel Grid.Row="1" Orientation="Horizontal" Margin="20,15,20,10">
-                <Button Name="NutChonToanBo" Content="☑ Chọn tất cả" Width="130" Height="38" Margin="0,0,12,0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" Foreground="#334155" FontWeight="SemiBold" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources></Button>
-                <Button Name="NutHuyChon" Content="☐ Bỏ chọn" Width="130" Height="38" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1" Foreground="#334155" FontWeight="SemiBold" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources></Button>
-            </StackPanel>
-
-            <Border Grid.Row="2" Margin="20,0,20,0" BorderBrush="#E2E8F0" BorderThickness="1" CornerRadius="8" Background="White">
-                <DataGrid Name="BangHienThiDuLieu" AutoGenerateColumns="False" CanUserAddRows="False" Background="Transparent" RowHeight="65" HeadersVisibility="Column" BorderThickness="0" GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9" SelectionMode="Single">
-                    <DataGrid.GroupStyle>
-                        <GroupStyle>
-                            <GroupStyle.ContainerStyle>
-                                <Style TargetType="{x:Type GroupItem}">
-                                    <Setter Property="Template">
-                                        <Setter.Value>
-                                            <ControlTemplate TargetType="{x:Type GroupItem}">
-                                                <StackPanel>
-                                                    <Border Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="0,1,0,1" Padding="15,8">
-                                                        <TextBlock Text="{Binding Name}" FontWeight="Black" FontSize="15" Foreground="#0F172A" VerticalAlignment="Center"/>
-                                                    </Border>
-                                                    <ItemsPresenter />
-                                                </StackPanel>
-                                            </ControlTemplate>
-                                        </Setter.Value>
-                                    </Setter>
-                                </Style>
-                            </GroupStyle.ContainerStyle>
-                        </GroupStyle>
-                    </DataGrid.GroupStyle>
-
-                    <DataGrid.Resources>
-                        <Style TargetType="DataGridColumnHeader"><Setter Property="Background" Value="#F8FAFC"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="#475569"/><Setter Property="Padding" Value="15,12"/><Setter Property="BorderThickness" Value="0,0,0,1"/><Setter Property="BorderBrush" Value="#E2E8F0"/></Style>
-                    </DataGrid.Resources>
-                    <DataGrid.Columns>
-                        <DataGridCheckBoxColumn Header="Cài" Binding="{Binding Chon, UpdateSourceTrigger=PropertyChanged}" Width="65"><DataGridCheckBoxColumn.ElementStyle><Style TargetType="CheckBox"><Setter Property="HorizontalAlignment" Value="Center"/><Setter Property="VerticalAlignment" Value="Center"/></Style></DataGridCheckBoxColumn.ElementStyle></DataGridCheckBoxColumn>
-                        <DataGridTemplateColumn Header="Biểu tượng" Width="90"><DataGridTemplateColumn.CellTemplate><DataTemplate><Image Source="{Binding BieuTuong}" Width="42" Height="42" Margin="5" VerticalAlignment="Center"/></DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                        <DataGridTextColumn Header="Tên phần mềm" Binding="{Binding Ten}" Width="*" FontWeight="SemiBold" FontSize="14" Foreground="#1E293B"><DataGridTextColumn.ElementStyle><Style TargetType="TextBlock"><Setter Property="VerticalAlignment" Value="Center"/><Setter Property="Margin" Value="10,0,0,0"/></Style></DataGridTextColumn.ElementStyle></DataGridTextColumn>
-                        <DataGridTemplateColumn Header="Tiến trình xử lý" Width="350"><DataGridTemplateColumn.CellTemplate><DataTemplate>
-                            <Grid Margin="15,10">
-                                <ProgressBar Value="{Binding TienTrinh}" Height="26" Foreground="#10B981" Background="#F1F5F9" BorderThickness="0"><ProgressBar.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="13"/></Style></ProgressBar.Resources></ProgressBar>
-                                <TextBlock Text="{Binding TrangThai}" VerticalAlignment="Center" HorizontalAlignment="Center" FontSize="12" FontWeight="Bold" Foreground="#0F172A"/>
-                            </Grid>
-                        </DataTemplate></DataGridTemplateColumn.CellTemplate></DataGridTemplateColumn>
-                    </DataGrid.Columns>
-                </DataGrid>
-            </Border>
-
-            <Border Grid.Row="3" Background="#F8FAFC" BorderBrush="#E2E8F0" BorderThickness="0,1,0,0" CornerRadius="0,0,11,11">
-                <UniformGrid Columns="4" Margin="15">
-                    <Button Name="NutKichHoat" Content="▶ BẮT ĐẦU CÀI ĐẶT" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="14" Margin="8,0" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
-                    <Button Name="NutTamNgang" Content="⏸ TẠM DỪNG" Background="#F59E0B" Foreground="White" FontWeight="Bold" FontSize="14" Margin="8,0" Cursor="Hand" IsEnabled="False"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
-                    <Button Name="NutTiepDien" Content="⏯ TIẾP TỤC" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="14" Margin="8,0" Cursor="Hand" IsEnabled="False"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
-                    <Button Name="NutHuyViec" Content="⏹ HỦY BỎ" Background="#EF4444" Foreground="White" FontWeight="Bold" FontSize="14" Margin="8,0" Cursor="Hand" IsEnabled="False"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
-                </UniformGrid>
-            </Border>
+            <Grid Grid.Column="1">
+                <Grid.RowDefinitions><RowDefinition Height="65"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <Border Grid.Row="0" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="0,0,0,1" Name="KhungTieuDe">
+                    <Grid>
+                        <Grid.ColumnDefinitions><ColumnDefinition Width="Auto"/><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                        <StackPanel Grid.Column="0" Orientation="Horizontal" Margin="25,0,0,0" VerticalAlignment="Center">
+                            <Button Name="NutChonToanBo" Content="☑ Chọn tất cả" Width="110" Height="36" Margin="0,0,12,0" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" Foreground="#334155" FontWeight="SemiBold" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources></Button>
+                            <Button Name="NutHuyChon" Content="☐ Bỏ chọn" Width="110" Height="36" Background="#F8FAFC" BorderBrush="#CBD5E1" BorderThickness="1" Foreground="#334155" FontWeight="SemiBold" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style></Button.Resources></Button>
+                        </StackPanel>
+                        <StackPanel Grid.Column="2" Orientation="Horizontal" Margin="0,0,15,0" HorizontalAlignment="Right" VerticalAlignment="Center">
+                            <Button Name="NutThuNho" Content="—" Width="40" Height="40" Background="Transparent" BorderThickness="0" FontSize="16" Foreground="#64748B" Cursor="Hand"/>
+                            <Button Name="NutThoat" Content="✕" Width="40" Height="40" Background="Transparent" BorderThickness="0" FontSize="16" Foreground="#EF4444" FontWeight="Bold" Cursor="Hand"/>
+                        </StackPanel>
+                    </Grid>
+                </Border>
+                <ScrollViewer Grid.Row="1" Margin="20,15,10,20" VerticalScrollBarVisibility="Auto">
+                    <ItemsControl Name="BangHienThiDuLieu">
+                        <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel Orientation="Horizontal" /></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+                        <ItemsControl.GroupStyle><GroupStyle><GroupStyle.HeaderTemplate><DataTemplate><TextBlock Text="{Binding Name}" FontWeight="Black" FontSize="18" Foreground="#0F172A" Margin="5,20,10,15"/></DataTemplate></GroupStyle.HeaderTemplate></GroupStyle></ItemsControl.GroupStyle>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <Border Width="240" Height="95" Margin="5,5,15,15" Background="#FFFFFF" BorderBrush="#E2E8F0" BorderThickness="1.5" CornerRadius="10">
+                                    <Grid Margin="12,10">
+                                        <Grid.ColumnDefinitions><ColumnDefinition Width="30"/><ColumnDefinition Width="45"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
+                                        <CheckBox IsChecked="{Binding Chon, UpdateSourceTrigger=PropertyChanged}" VerticalAlignment="Center" HorizontalAlignment="Left" Grid.Column="0"><CheckBox.LayoutTransform><ScaleTransform ScaleX="1.3" ScaleY="1.3"/></CheckBox.LayoutTransform></CheckBox>
+                                        <Image Source="{Binding BieuTuong}" Width="36" Height="36" VerticalAlignment="Center" HorizontalAlignment="Center" Grid.Column="1"/>
+                                        <StackPanel Grid.Column="2" VerticalAlignment="Center" Margin="5,0,0,0">
+                                            <TextBlock Text="{Binding Ten}" FontWeight="Bold" FontSize="13" Foreground="#1E293B" TextTrimming="CharacterEllipsis" Margin="0,0,0,6"/>
+                                            <ProgressBar Value="{Binding TienTrinh}" Height="8" Foreground="#10B981" Background="#F1F5F9" BorderThickness="0"><ProgressBar.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="4"/></Style></ProgressBar.Resources></ProgressBar>
+                                            <TextBlock Text="{Binding TrangThai}" FontSize="11" Foreground="#64748B" FontWeight="SemiBold" Margin="0,4,0,0" TextTrimming="CharacterEllipsis"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </Grid>
         </Grid>
     </Border>
 </Window>
@@ -171,376 +172,229 @@ $MaNguonGiaoDien = @"
 
 $CuaSoChinh = [Windows.Markup.XamlReader]::Load([System.Xml.XmlReader]::Create([System.IO.StringReader]$MaNguonGiaoDien))
 $BangDanhSach = New-Object System.Collections.ObjectModel.ObservableCollection[Object]
-
 $BoLocGocNhin = [System.Windows.Data.CollectionViewSource]::GetDefaultView($BangDanhSach)
 $BoLocGocNhin.GroupDescriptions.Add((New-Object System.Windows.Data.PropertyGroupDescription("DanhMuc")))
 $CuaSoChinh.FindName("BangHienThiDuLieu").ItemsSource = $BoLocGocNhin
+$Dispatcher = $CuaSoChinh.Dispatcher
 
 # ------------------------------------------------------------------------------
-# 5. QUẢN LÝ SỰ KIỆN GIAO DIỆN
+# MODULE 4: SỰ KIỆN GIAO DIỆN
 # ------------------------------------------------------------------------------
 $CuaSoChinh.FindName("KhungTieuDe").Add_MouseLeftButtonDown({ $CuaSoChinh.DragMove() })
-$CuaSoChinh.FindName("NutThoat").Add_Click({ $CuaSoChinh.Close() })
+$CuaSoChinh.FindName("NutThoat").Add_Click({ $Global:TrangThaiBoNho.TrangThai = "DungLai"; $CuaSoChinh.Close() })
 $CuaSoChinh.FindName("NutThuNho").Add_Click({ $CuaSoChinh.WindowState = "Minimized" })
-$CuaSoChinh.FindName("NutPhongTo").Add_Click({ 
-    if ($CuaSoChinh.WindowState -eq "Normal") { $CuaSoChinh.WindowState = "Maximized" } else { $CuaSoChinh.WindowState = "Normal" } 
-})
 $CuaSoChinh.FindName("NutChonToanBo").Add_Click({ foreach ($Muc in $BangDanhSach) {$Muc.Chon=$true} })
 $CuaSoChinh.FindName("NutHuyChon").Add_Click({ foreach ($Muc in $BangDanhSach) {$Muc.Chon=$false} })
 
 $DieuKhienKichHoat = $CuaSoChinh.FindName("NutKichHoat")
-$DieuKhienTamNgang = $CuaSoChinh.FindName("NutTamNgang")
-$DieuKhienTiepDien = $CuaSoChinh.FindName("NutTiepDien")
 $DieuKhienHuyViec = $CuaSoChinh.FindName("NutHuyViec")
 
 function CapNhat-TrangThaiNutBam ($TrangThaiMoi) {
-    if ($TrangThaiMoi -eq "DangChay") { $DieuKhienKichHoat.IsEnabled=$false; $DieuKhienTamNgang.IsEnabled=$true; $DieuKhienTiepDien.IsEnabled=$false; $DieuKhienHuyViec.IsEnabled=$true }
-    elseif ($TrangThaiMoi -eq "TamDung") { $DieuKhienKichHoat.IsEnabled=$false; $DieuKhienTamNgang.IsEnabled=$false; $DieuKhienTiepDien.IsEnabled=$true; $DieuKhienHuyViec.IsEnabled=$true }
-    elseif ($TrangThaiMoi -eq "NhanhRoi") { $DieuKhienKichHoat.IsEnabled=$true; $DieuKhienTamNgang.IsEnabled=$false; $DieuKhienTiepDien.IsEnabled=$false; $DieuKhienHuyViec.IsEnabled=$false }
+    if ($TrangThaiMoi -eq "DangChay") { $DieuKhienKichHoat.IsEnabled=$false; $DieuKhienHuyViec.IsEnabled=$true }
+    elseif ($TrangThaiMoi -eq "NhanhRoi") { $DieuKhienKichHoat.IsEnabled=$true; $DieuKhienHuyViec.IsEnabled=$false }
 }
 
-$DieuKhienTamNgang.Add_Click({ $Global:TrangThaiHeThong = "TamDung"; CapNhat-TrangThaiNutBam "TamDung" })
-$DieuKhienTiepDien.Add_Click({ $Global:TrangThaiHeThong = "DangChay"; CapNhat-TrangThaiNutBam "DangChay" })
-$DieuKhienHuyViec.Add_Click({ $Global:TrangThaiHeThong = "DungLai"; CapNhat-TrangThaiNutBam "NhanhRoi" })
+$DieuKhienHuyViec.Add_Click({ $Global:TrangThaiBoNho.TrangThai = "DungLai"; CapNhat-TrangThaiNutBam "NhanhRoi" })
 
 # ------------------------------------------------------------------------------
-# 6. ĐỘNG CƠ CỐT LÕI: TẢI XUỐNG & CÀI ĐẶT
-# ------------------------------------------------------------------------------
-function TienHanh-CaiDatToanDien ($PhanMemHienTai) {
-    $PhanMemHienTai.TrangThai = "Đang phân tích..."; $PhanMemHienTai.TienTrinh = 5; [System.Windows.Forms.Application]::DoEvents()
-    
-    $MaLuuTruDrive = ""; if ($PhanMemHienTai.DuongDanTai -match "id=([^&]+)") {$MaLuuTruDrive=$Matches[1]} elseif ($PhanMemHienTai.DuongDanTai -match "/d/([^/]+)") {$MaLuuTruDrive=$Matches[1]}
-    
-    $DuoiDinhDang = ".exe" 
-    $TenFileLuuTam = $PhanMemHienTai.Ten -replace '[\\/:\*\?"<>\|]', ''
-    $DuongDanFileTrenMay = Join-Path $Global:ThuMucLuuTru "$TenFileLuuTam$DuoiDinhDang"
-    $DaTaiThanhCong = $false
-    
-    # --- GIAI ĐOẠN 1: TẢI DỮ LIỆU ---
-    if ($MaLuuTruDrive) {
-        foreach ($KhoaTruyCap in $Global:DanhSachKhoaAPI) {
-            try {
-                $PhanMemHienTai.TrangThai = "Quét Drive..."; [System.Windows.Forms.Application]::DoEvents()
-                
-                $UrlKiemTra = "https://www.googleapis.com/drive/v3/files/$($MaLuuTruDrive)?fields=name&key=$KhoaTruyCap"
-                $GoiKiemTra = [System.Net.HttpWebRequest]::Create($UrlKiemTra)
-                $PhanHoiKiemTra = $GoiKiemTra.GetResponse()
-                $DongDuLieuChu = New-Object System.IO.StreamReader($PhanHoiKiemTra.GetResponseStream())
-                $NoiDungJson = $DongDuLieuChu.ReadToEnd()
-                $PhanHoiKiemTra.Close()
-
-                if ($NoiDungJson -match '"name"\s*:\s*"([^"]+)"') {
-                    $TenFileGoc = $Matches[1]
-                    $DuoiMoRongGoc = [System.IO.Path]::GetExtension($TenFileGoc)
-                    if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") {
-                        $DuoiDinhDang = $DuoiMoRongGoc
-                        $DuongDanFileTrenMay = Join-Path $Global:ThuMucLuuTru $TenFileGoc
-                    }
-                }
-
-                $UrlTaiChinhThuc = "https://www.googleapis.com/drive/v3/files/$($MaLuuTruDrive)?alt=media&key=$KhoaTruyCap"
-                $GoiTaiVe = [System.Net.HttpWebRequest]::Create($UrlTaiChinhThuc); $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
-                
-                if ($PhanHoiTaiVe.ContentLength -lt 1MB) { $PhanHoiTaiVe.Close(); continue }
-
-                $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
-                $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
-                
-                do {
-                    while ($Global:TrangThaiHeThong -eq "TamDung") { Start-Sleep -Milliseconds 200; [System.Windows.Forms.Application]::DoEvents() }
-                    if ($Global:TrangThaiHeThong -eq "DungLai") { break }
-
-                    $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
-                    if ($SoByteDocDuoc -gt 0) {
-                        $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
-                        if ($TongKichThuocFile -gt 0) { $PhanMemHienTai.TienTrinh = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100) }
-                        $PhanMemHienTai.TrangThai = "Đang tải: $($PhanMemHienTai.TienTrinh)%"; [System.Windows.Forms.Application]::DoEvents()
-                    }
-                } while ($SoByteDocDuoc -gt 0)
-                
-                $FileDuLieuGhi.Close(); $DongDuLieuNhiPhan.Close(); $PhanHoiTaiVe.Close()
-                if ($Global:TrangThaiHeThong -eq "DungLai") { $PhanMemHienTai.TrangThai = "Đã Hủy ⛔"; $PhanMemHienTai.TienTrinh = 0; return }
-                $DaTaiThanhCong = $true; break 
-            } catch { if ($FileDuLieuGhi) {$FileDuLieuGhi.Close()} }
-        }
-    } else {
-        try {
-            $GoiTaiVe = [System.Net.HttpWebRequest]::Create($PhanMemHienTai.DuongDanTai); $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
-            
-            $KhaiBaoHeader = $PhanHoiTaiVe.Headers["Content-Disposition"]
-            if ($KhaiBaoHeader -match 'filename="?([^";]+)"?') {
-                $TenFileGoc = [System.Net.WebUtility]::UrlDecode($Matches[1])
-                $DuoiMoRongGoc = [System.IO.Path]::GetExtension($TenFileGoc)
-                if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") {
-                    $DuoiDinhDang = $DuoiMoRongGoc
-                    $DuongDanFileTrenMay = Join-Path $Global:ThuMucLuuTru $TenFileGoc
-                }
-            }
-
-            $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
-            $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
-            
-            do {
-                while ($Global:TrangThaiHeThong -eq "TamDung") { Start-Sleep -Milliseconds 200; [System.Windows.Forms.Application]::DoEvents() }
-                if ($Global:TrangThaiHeThong -eq "DungLai") { break }
-
-                $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
-                if ($SoByteDocDuoc -gt 0) {
-                    $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
-                    if ($TongKichThuocFile -gt 0) { $PhanMemHienTai.TienTrinh = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100) }
-                    $PhanMemHienTai.TrangThai = "Đang tải (Direct): $($PhanMemHienTai.TienTrinh)%"; [System.Windows.Forms.Application]::DoEvents()
-                }
-            } while ($SoByteDocDuoc -gt 0)
-            
-            $FileDuLieuGhi.Close(); $DongDuLieuNhiPhan.Close(); $PhanHoiTaiVe.Close()
-            if ($Global:TrangThaiHeThong -eq "DungLai") { $PhanMemHienTai.TrangThai = "Đã Hủy ⛔"; $PhanMemHienTai.TienTrinh = 0; return }
-            $DaTaiThanhCong = $true
-        } catch { if ($FileDuLieuGhi) {$FileDuLieuGhi.Close()} }
-    }
-
-    if (-not $DaTaiThanhCong -and $Global:TrangThaiHeThong -ne "DungLai") { $PhanMemHienTai.TrangThai = "❌ Lỗi mạng/Không tải được"; $PhanMemHienTai.TienTrinh = 0; return }
-    
-    # Kiểm tra an toàn: File quá nhỏ (rác HTML)
-    try {
-        $KichThuocThucTe = (Get-Item $DuongDanFileTrenMay -ErrorAction SilentlyContinue).Length
-        if ($KichThuocThucTe -lt 100KB) { $PhanMemHienTai.TrangThai = "❌ Tải xịt (File rỗng/Bị chặn)"; $PhanMemHienTai.TienTrinh = 0; return }
-    } catch {}
-
-    if ($Global:TrangThaiHeThong -eq "DungLai") { return }
-
-    # --- GIAI ĐOẠN 2: THỰC THI (MẮT THẦN SOI LÕI) ---
-    Unblock-File -Path $DuongDanFileTrenMay; $PhanMemHienTai.TienTrinh = 50; [System.Windows.Forms.Application]::DoEvents()
-
-    $PhanMemHienTai.TrangThai = "🔍 Soi lõi tệp tin..."; [System.Windows.Forms.Application]::DoEvents()
-    $BatBuocXaNen = KiemTra-LoiFileNen -DuongDanKiemTra $DuongDanFileTrenMay
-
-    if ($DuoiDinhDang -match "(?i)\.msixbundle|\.appx") {
-        $PhanMemHienTai.TrangThai = "⚡ Ép cài hệ thống..."; [System.Windows.Forms.Application]::DoEvents()
-        try { Add-AppxPackage -Path $DuongDanFileTrenMay -ErrorAction Stop; $PhanMemHienTai.TrangThai = "Hoàn tất ✔️"; $PhanMemHienTai.TienTrinh = 100 } 
-        catch { $PhanMemHienTai.TrangThai = "❌ Lỗi Win cũ"; $PhanMemHienTai.TienTrinh = 0 }
-    }
-    elseif ($BatBuocXaNen -or $DuoiDinhDang -match "(?i)\.(zip|rar|7z)") {
-        $PhanMemHienTai.TrangThai = "📦 Đang xả nén..."; [System.Windows.Forms.Application]::DoEvents()
-        
-        $ThuMucGiaiNenCuaPhanMem = "C:\VietToolbox_Temp\$($TenFileLuuTam -replace ' ', '')"
-        if (-not (Test-Path $ThuMucGiaiNenCuaPhanMem)) { New-Item -ItemType Directory -Path $ThuMucGiaiNenCuaPhanMem -Force | Out-Null }
-        
-        $DuongDan7zChuan1 = "$env:ProgramFiles\7-Zip\7z.exe"; $DuongDan7zChuan2 = "${env:ProgramFiles(x86)}\7-Zip\7z.exe"; $File7zLuuTam = Join-Path $env:TEMP "7za.exe"; $BoGiaiNenChinh = $null
-        if (Test-Path $DuongDan7zChuan1) { $BoGiaiNenChinh = $DuongDan7zChuan1 } 
-        elseif (Test-Path $DuongDan7zChuan2) { $BoGiaiNenChinh = $DuongDan7zChuan2 } 
-        elseif (Test-Path $File7zLuuTam) { $BoGiaiNenChinh = $File7zLuuTam }
-        else { try { Invoke-WebRequest "https://github.com/develar/7zip-bin/raw/master/win/x64/7za.exe" -OutFile $File7zLuuTam -UseBasicParsing; $BoGiaiNenChinh = $File7zLuuTam } catch {} }
-
-        if ($BoGiaiNenChinh) {
-            # ÉP CHUỖI THAM SỐ AN TOÀN TUYỆT ĐỐI (KHÔNG KHOẢNG TRẮNG BỊ LỖI)
-            $ChuoiThamSo7z = "x `"$DuongDanFileTrenMay`" -pAdmin@2512 -o$ThuMucGiaiNenCuaPhanMem -y -bsp0 -bso0"
-            $TienTrinhXaNen = Start-Process -FilePath $BoGiaiNenChinh -ArgumentList $ChuoiThamSo7z -PassThru -WindowStyle Hidden
-            
-            while (-not $TienTrinhXaNen.HasExited) { 
-                [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 300 
-                if ($Global:TrangThaiHeThong -eq "DungLai") { try { Stop-Process -Id $TienTrinhXaNen.Id -Force -ErrorAction SilentlyContinue } catch {}; $PhanMemHienTai.TrangThai = "Đã Hủy ⛔"; $PhanMemHienTai.TienTrinh = 0; return }
-            }
-            
-            # Kiểm tra nếu xả nén xịt (thường mã ExitCode của 7z là 0 hoặc 1 là OK, 2 trở lên là lỗi pass/hỏng)
-            if ($TienTrinhXaNen.ExitCode -ne 0 -and $TienTrinhXaNen.ExitCode -ne 1) {
-                $PhanMemHienTai.TrangThai = "❌ Lỗi xả nén/Sai pass"
-                $PhanMemHienTai.TienTrinh = 0
-                return
-            }
-        } else {
-            Expand-Archive -Path $DuongDanFileTrenMay -DestinationPath $ThuMucGiaiNenCuaPhanMem -Force -ErrorAction SilentlyContinue
-        }
-        
-        if ($Global:TrangThaiHeThong -eq "DungLai") { return }
-        
-        $PhanMemHienTai.TrangThai = "🔍 Truy tìm bộ cài..."; [System.Windows.Forms.Application]::DoEvents()
-        $FileThucThiCuoiCung = $null
-
-        try {
-            $TatCaFileExe = Get-ChildItem $ThuMucGiaiNenCuaPhanMem -Filter "*.exe" -Recurse -ErrorAction SilentlyContinue | Where-Object { $_.Name -notmatch "(?i)unins|crash|report|update" } | Sort-Object Length -Descending
-            if ($TatCaFileExe) { $FileThucThiCuoiCung = $TatCaFileExe[0].FullName }
-        } catch { }
-
-        if ($FileThucThiCuoiCung) {
-            $PhanMemHienTai.TrangThai = "🛠️ Đang cài đặt..."; [System.Windows.Forms.Application]::DoEvents()
-            
-            $LenhThamSoAn = $PhanMemHienTai.ThamSoNgam
-            if (-not $LenhThamSoAn) { 
-                if ($PhanMemHienTai.Ten -match "(?i)wps") { $LenhThamSoAn = "/S" }
-                elseif ($PhanMemHienTai.Ten -match "(?i)foxit") { $LenhThamSoAn = "/quiet /force /lang en" }
-                else { $LenhThamSoAn = "/S" }
-            }
-            
-            if ($PhanMemHienTai.Ten -match "(?i)Portable") { 
-                $LenhThamSoAn = ""
-                Tao-LoiTatNhanh -TenCuaPhanMem $PhanMemHienTai.Ten -DuongDanFileChay $FileThucThiCuoiCung 
-            }
-
-            try {
-                $ThuMucChuaFile = Split-Path $FileThucThiCuoiCung
-                $DanhSachPIDTruoc = Get-Process -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id
-                
-                $QuaTrinhChayMay = Start-Process -FilePath $FileThucThiCuoiCung -ArgumentList $LenhThamSoAn -WorkingDirectory $ThuMucChuaFile -PassThru 
-                
-                if ($QuaTrinhChayMay) {
-                    $DongHoDemGiay = 0
-                    $DanhSachTheoDoi = @($QuaTrinhChayMay.Id)
-                    
-                    Start-Sleep -Milliseconds 2500
-                    $DongHoDemGiay += 2.5
-                    
-                    $TienTrinhMoi = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Id -notin $DanhSachPIDTruoc }
-                    foreach ($TienTrinh in $TienTrinhMoi) {
-                        try {
-                            $PathThucTe = $TienTrinh.Path
-                            if ($PathThucTe -match "VietToolbox_Temp" -or $TienTrinh.Name -match "(?i)setup|install|wps") {
-                                $DanhSachTheoDoi += $TienTrinh.Id
-                            }
-                        } catch {}
-                    }
-                    $DanhSachTheoDoi = $DanhSachTheoDoi | Select-Object -Unique
-
-                    while ($DanhSachTheoDoi.Count -gt 0) {
-                        [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 1000; $DongHoDemGiay += 1
-                        $PhanMemHienTai.TrangThai = "Cài ngầm ($([int]$DongHoDemGiay)s)"
-                        
-                        $NhungKeConSong = @()
-                        foreach ($PIDKiemTra in $DanhSachTheoDoi) {
-                            if (Get-Process -Id $PIDKiemTra -ErrorAction SilentlyContinue) {
-                                $NhungKeConSong += $PIDKiemTra
-                            }
-                        }
-                        $DanhSachTheoDoi = $NhungKeConSong
-
-                        if ($DongHoDemGiay -ge 300) { break } 
-                        if ($Global:TrangThaiHeThong -eq "DungLai") {
-                            foreach ($PIDXoaBo in $DanhSachTheoDoi) { try { Stop-Process -Id $PIDXoaBo -Force -ErrorAction SilentlyContinue } catch {} }
-                            $PhanMemHienTai.TrangThai = "Đã Hủy ⛔"; $PhanMemHienTai.TienTrinh = 0; return
-                        }
-                    }
-                }
-            } catch {
-                $PhanMemHienTai.TrangThai = "Lỗi khởi chạy ⚠️"; Start-Sleep -Seconds 2
-            }
-        } else {
-            $PhanMemHienTai.TrangThai = "⚠️ Trống/Không có Exe"; Start-Sleep -Seconds 3
-        }
-        
-        $PhanMemHienTai.TrangThai = "Hoàn tất ✔️"; $PhanMemHienTai.TienTrinh = 100
-    }
-    else {
-        $PhanMemHienTai.TrangThai = "🛠️ Đang cài đặt..."; [System.Windows.Forms.Application]::DoEvents()
-        
-        $LenhThamSoAn = $PhanMemHienTai.ThamSoNgam
-        if (-not $LenhThamSoAn) { 
-            if ($PhanMemHienTai.Ten -match "(?i)wps") { $LenhThamSoAn = "/S" }
-            elseif ($PhanMemHienTai.Ten -match "(?i)foxit") { $LenhThamSoAn = "/quiet /force /lang en" }
-            else { $LenhThamSoAn = "/S" }
-        }
-
-        try {
-            $ThuMucChuaFile = Split-Path $DuongDanFileTrenMay
-            $DanhSachPIDTruoc = Get-Process -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id
-
-            if ($DuoiDinhDang -eq ".msi") { 
-                $QuaTrinhChayMay = Start-Process "msiexec.exe" -ArgumentList "/i `"$DuongDanFileTrenMay`" /quiet /norestart" -WorkingDirectory $ThuMucChuaFile -PassThru 
-            } else { 
-                $QuaTrinhChayMay = Start-Process -FilePath $DuongDanFileTrenMay -ArgumentList $LenhThamSoAn -WorkingDirectory $ThuMucChuaFile -PassThru 
-            }
-            
-            if ($QuaTrinhChayMay) {
-                $DongHoDemGiay = 0
-                $DanhSachTheoDoi = @($QuaTrinhChayMay.Id)
-                
-                Start-Sleep -Milliseconds 2500
-                $DongHoDemGiay += 2.5
-                
-                $TienTrinhMoi = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Id -notin $DanhSachPIDTruoc }
-                foreach ($TienTrinh in $TienTrinhMoi) {
-                    try { if ($TienTrinh.Name -match "(?i)setup|install|wps") { $DanhSachTheoDoi += $TienTrinh.Id } } catch {}
-                }
-                $DanhSachTheoDoi = $DanhSachTheoDoi | Select-Object -Unique
-
-                while ($DanhSachTheoDoi.Count -gt 0) {
-                    [System.Windows.Forms.Application]::DoEvents(); Start-Sleep -Milliseconds 1000; $DongHoDemGiay += 1
-                    $PhanMemHienTai.TrangThai = "Cài ngầm ($([int]$DongHoDemGiay)s)"
-                    
-                    $NhungKeConSong = @()
-                    foreach ($PIDKiemTra in $DanhSachTheoDoi) {
-                        if (Get-Process -Id $PIDKiemTra -ErrorAction SilentlyContinue) { $NhungKeConSong += $PIDKiemTra }
-                    }
-                    $DanhSachTheoDoi = $NhungKeConSong
-
-                    if ($DongHoDemGiay -ge 300) { break }
-                    if ($Global:TrangThaiHeThong -eq "DungLai") {
-                        foreach ($PIDXoaBo in $DanhSachTheoDoi) { try { Stop-Process -Id $PIDXoaBo -Force -ErrorAction SilentlyContinue } catch {} }
-                        $PhanMemHienTai.TrangThai = "Đã Hủy ⛔"; $PhanMemHienTai.TienTrinh = 0; return
-                    }
-                }
-            }
-        } catch { }
-        
-        if ($Global:TrangThaiHeThong -eq "DungLai") { return }
-        $PhanMemHienTai.TrangThai = "Hoàn tất ✔️"; $PhanMemHienTai.TienTrinh = 100
-    }
-}
-
-# ------------------------------------------------------------------------------
-# 7. VÒNG LẶP CHÍNH & KIỂM SOÁT DỌN RÁC
+# MODULE 5: ĐỘNG CƠ CÀI ĐẶT (XỬ LÝ LUỒNG NGẦM)
 # ------------------------------------------------------------------------------
 $DieuKhienKichHoat.Add_Click({
-    $Global:TrangThaiHeThong = "DangChay"; CapNhat-TrangThaiNutBam "DangChay"
-    
-    $DieuKhienKichHoat.Content = "🧹 DỌN RÁC LẦN TRƯỚC..."
-    [System.Windows.Forms.Application]::DoEvents()
+    $Global:TrangThaiBoNho.TrangThai = "DangChay"; CapNhat-TrangThaiNutBam "DangChay"
+    $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "🧹 DỌN RÁC LẦN TRƯỚC..." })
     try {
         if (Test-Path $Global:ThuMucLuuTru) { Get-ChildItem -Path $Global:ThuMucLuuTru -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue }
         if (Test-Path "C:\VietToolbox_Temp") { Remove-Item -Path "C:\VietToolbox_Temp" -Recurse -Force -ErrorAction SilentlyContinue }
     } catch {}
-    Start-Sleep -Milliseconds 500
 
-    $DieuKhienKichHoat.Content = "⏳ HỆ THỐNG ĐANG XỬ LÝ..."
+    $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "⏳ HỆ THỐNG ĐANG XỬ LÝ..." })
+
+    $Runspace = [runspacefactory]::CreateRunspace()
+    $Runspace.ApartmentState = "STA"
+    $Runspace.ThreadOptions = "ReuseThread"
+    $Runspace.Open()
+
+    $Runspace.SessionStateProxy.SetVariable("BangDanhSach", $BangDanhSach)
+    $Runspace.SessionStateProxy.SetVariable("ThuMucLuuTru", $Global:ThuMucLuuTru)
+    $Runspace.SessionStateProxy.SetVariable("DanhSachKhoaAPI", $Global:DanhSachKhoaAPI)
+    $Runspace.SessionStateProxy.SetVariable("TrangThaiBoNho", $Global:TrangThaiBoNho)
+    $Runspace.SessionStateProxy.SetVariable("Dispatcher", $Dispatcher)
     
-    foreach ($PhanMemTruyXuat in $BangDanhSach) { 
-        if ($PhanMemTruyXuat.Chon -and $Global:TrangThaiHeThong -ne "DungLai") { TienHanh-CaiDatToanDien $PhanMemTruyXuat } 
-    }
+    $Runspace.SessionStateProxy.SetVariable("F_KiemTra", ${Function:KiemTra-LoiFileNen})
+    $Runspace.SessionStateProxy.SetVariable("F_TuDong", ${Function:TuDong-NhanDienThamSoEXE})
+    $Runspace.SessionStateProxy.SetVariable("F_Chay", ${Function:Chay-TienTrinhChuan})
 
-    if ($Global:TrangThaiHeThong -ne "DungLai") {
-        $DieuKhienKichHoat.Content = "▶ HOÀN THÀNH - CHẠY LẠI?"
-    } else {
-        $DieuKhienKichHoat.Content = "▶ ĐÃ HỦY - CHẠY LẠI?"
-    }
+    $PowerShell = [powershell]::Create()
+    $PowerShell.Runspace = $Runspace
+    
+    [void]$PowerShell.AddScript({
+        Set-Item "Function:KiemTra-LoiFileNen" $F_KiemTra
+        Set-Item "Function:TuDong-NhanDienThamSoEXE" $F_TuDong
+        Set-Item "Function:Chay-TienTrinhChuan" $F_Chay
 
-    $Global:TrangThaiHeThong = "NhanhRoi"; CapNhat-TrangThaiNutBam "NhanhRoi"
+        function CapNhat-PhanMemUI ($PhanMem, $TrangThaiMoi, $TienTrinhMoi) {
+            $Dispatcher.Invoke([action]{
+                if ($TrangThaiMoi -ne $null) { $PhanMem.TrangThai = $TrangThaiMoi }
+                if ($TienTrinhMoi -ne $null) { $PhanMem.TienTrinh = $TienTrinhMoi }
+            })
+        }
+
+        function TienHanh-CaiDatToanDien ($PhanMemHienTai) {
+            CapNhat-PhanMemUI $PhanMemHienTai "Đang phân tích..." 5
+            
+            $MaLuuTruDrive = ""; if ($PhanMemHienTai.DuongDanTai -match "id=([^&]+)") {$MaLuuTruDrive=$Matches[1]} elseif ($PhanMemHienTai.DuongDanTai -match "/d/([^/]+)") {$MaLuuTruDrive=$Matches[1]}
+            $DuoiDinhDang = ".exe"; $TenFileLuuTam = $PhanMemHienTai.Ten -replace '[\\/:\*\?"<>\|]', ''
+            $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru "$TenFileLuuTam$DuoiDinhDang"; $DaTaiThanhCong = $false
+            
+            # --- TẢI XUỐNG ---
+            if ($MaLuuTruDrive) {
+                foreach ($KhoaTruyCap in $DanhSachKhoaAPI) {
+                    try {
+                        CapNhat-PhanMemUI $PhanMemHienTai "Quét Drive..." $null
+                        $UrlKiemTra = "https://www.googleapis.com/drive/v3/files/$($MaLuuTruDrive)?fields=name&key=$KhoaTruyCap"
+                        $GoiKiemTra = [System.Net.HttpWebRequest]::Create($UrlKiemTra); $PhanHoiKiemTra = $GoiKiemTra.GetResponse()
+                        $DongDuLieuChu = New-Object System.IO.StreamReader($PhanHoiKiemTra.GetResponseStream()); $NoiDungJson = $DongDuLieuChu.ReadToEnd(); $PhanHoiKiemTra.Close()
+
+                        if ($NoiDungJson -match '"name"\s*:\s*"([^"]+)"') {
+                            $TenFileGoc = $Matches[1]; $DuoiMoRongGoc = [System.IO.Path]::GetExtension($TenFileGoc)
+                            if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") { $DuoiDinhDang = $DuoiMoRongGoc; $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru $TenFileGoc }
+                        }
+
+                        $UrlTaiChinhThuc = "https://www.googleapis.com/drive/v3/files/$($MaLuuTruDrive)?alt=media&key=$KhoaTruyCap"
+                        $GoiTaiVe = [System.Net.HttpWebRequest]::Create($UrlTaiChinhThuc); $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
+                        if ($PhanHoiTaiVe.ContentLength -lt 1MB) { $PhanHoiTaiVe.Close(); continue }
+
+                        $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
+                        $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
+                        
+                        $PhanTramCu = -1 # GIẢI QUYẾT NGHẼN BĂNG THÔNG MẠNG
+                        do {
+                            if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
+                            $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
+                            if ($SoByteDocDuoc -gt 0) {
+                                $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
+                                if ($TongKichThuocFile -gt 0) { 
+                                    $PhanTram = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100)
+                                    if ($PhanTram -ne $PhanTramCu) { # CHỈ VẼ LẠI GIAO DIỆN KHI % THAY ĐỔI
+                                        CapNhat-PhanMemUI $PhanMemHienTai "Đang tải: $PhanTram%" $PhanTram
+                                        $PhanTramCu = $PhanTram
+                                    }
+                                }
+                            }
+                        } while ($SoByteDocDuoc -gt 0)
+                        $FileDuLieuGhi.Close(); $DongDuLieuNhiPhan.Close(); $PhanHoiTaiVe.Close()
+                        if ($TrangThaiBoNho.TrangThai -eq "DungLai") { return }
+                        $DaTaiThanhCong = $true; break 
+                    } catch { if ($FileDuLieuGhi) {$FileDuLieuGhi.Close()} }
+                }
+            } else {
+                try {
+                    $GoiTaiVe = [System.Net.HttpWebRequest]::Create($PhanMemHienTai.DuongDanTai); $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
+                    $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
+                    $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
+                    
+                    $PhanTramCu = -1 # GIẢI QUYẾT NGHẼN BĂNG THÔNG MẠNG
+                    do {
+                        if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
+                        $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
+                        if ($SoByteDocDuoc -gt 0) {
+                            $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
+                            if ($TongKichThuocFile -gt 0) { 
+                                $PhanTram = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100)
+                                if ($PhanTram -ne $PhanTramCu) { # CHỈ VẼ LẠI GIAO DIỆN KHI % THAY ĐỔI
+                                    CapNhat-PhanMemUI $PhanMemHienTai "Đang tải: $PhanTram%" $PhanTram
+                                    $PhanTramCu = $PhanTram
+                                }
+                            }
+                        }
+                    } while ($SoByteDocDuoc -gt 0)
+                    $FileDuLieuGhi.Close(); $DongDuLieuNhiPhan.Close(); $PhanHoiTaiVe.Close()
+                    if ($TrangThaiBoNho.TrangThai -eq "DungLai") { return }
+                    $DaTaiThanhCong = $true
+                } catch { if ($FileDuLieuGhi) {$FileDuLieuGhi.Close()} }
+            }
+
+            if (-not $DaTaiThanhCong) { CapNhat-PhanMemUI $PhanMemHienTai "❌ Lỗi tải" 0; return }
+
+            # --- THỰC THI (RADAR THÔNG MINH) ---
+            Unblock-File -Path $DuongDanFileTrenMay; CapNhat-PhanMemUI $PhanMemHienTai "🔍 Phân tích lõi..." 50
+            
+            $FileThucThiChinh = $DuongDanFileTrenMay
+            $ThuMucTempGiaiNen = "C:\VietToolbox_Temp\$($TenFileLuuTam -replace ' ', '')"
+
+            if (KiemTra-LoiFileNen -DuongDanKiemTra $DuongDanFileTrenMay -or $DuoiDinhDang -match "(?i)\.(zip|rar|7z)") {
+                CapNhat-PhanMemUI $PhanMemHienTai "📦 Đang xả nén..." $null
+                if (-not (Test-Path $ThuMucTempGiaiNen)) { New-Item -ItemType Directory -Path $ThuMucTempGiaiNen -Force | Out-Null }
+                $File7z = Join-Path $env:TEMP "7za.exe"; if (-not (Test-Path $File7z)) { Invoke-WebRequest "https://github.com/develar/7zip-bin/raw/master/win/x64/7za.exe" -OutFile $File7z -UseBasicParsing }
+                $Process7z = Start-Process -FilePath $File7z -ArgumentList "x `"$DuongDanFileTrenMay`" -pAdmin@2512 -o$ThuMucTempGiaiNen -y" -PassThru -WindowStyle Hidden
+                $Process7z.WaitForExit()
+                $TatCaExe = Get-ChildItem $ThuMucTempGiaiNen -Filter "*.exe" -Recurse | Sort-Object Length -Descending
+                if ($TatCaExe) { $FileThucThiChinh = $TatCaExe[0].FullName }
+            }
+
+            $LenhThamSo = TuDong-NhanDienThamSoEXE -TenPhanMem $PhanMemHienTai.Ten -ThamSoTuCSV $PhanMemHienTai.ThamSoNgam
+            CapNhat-PhanMemUI $PhanMemHienTai "🛠️ Đang cài đặt..." $null
+
+            try {
+                $ThuMucGoc = Split-Path $FileThucThiChinh
+                $TienTrinhGoc = Chay-TienTrinhChuan -DuongDanFile $FileThucThiChinh -ThamSo $LenhThamSo -ThuMucLamViec $ThuMucGoc
+                
+                $DongHoDem = 0
+                if ($TienTrinhGoc) {
+                    while (-not $TienTrinhGoc.HasExited) {
+                        Start-Sleep -Seconds 2; $DongHoDem += 2
+                        CapNhat-PhanMemUI $PhanMemHienTai "Cài ngầm ($($DongHoDem)s)..." $null
+                        if ($DongHoDem -ge 300 -or $TrangThaiBoNho.TrangThai -eq "DungLai") { break }
+                    }
+
+                    $ThoiGianChoPhu = 0
+                    while ($true) {
+                        Start-Sleep -Seconds 2; $DongHoDem += 2; $ThoiGianChoPhu += 2
+                        $TienTrinhConSot = Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.Name -match "(?i)setup|install|msiexec|unins" }
+                        
+                        if (-not $TienTrinhConSot -or $ThoiGianChoPhu -ge 30 -or $TrangThaiBoNho.TrangThai -eq "DungLai") { break }
+                        CapNhat-PhanMemUI $PhanMemHienTai "Hoàn thiện ($($DongHoDem)s)..." $null
+                    }
+                }
+                CapNhat-PhanMemUI $PhanMemHienTai "Hoàn tất ✔️" 100
+            } catch { CapNhat-PhanMemUI $PhanMemHienTai "Lỗi cài ⚠️" 0 }
+        }
+        
+        foreach ($PhanMem in $BangDanhSach) { 
+            if ($PhanMem.Chon -and $TrangThaiBoNho.TrangThai -ne "DungLai") { 
+                TienHanh-CaiDatToanDien $PhanMem 
+            } 
+        }
+    })
+    
+    $KenhDangChay = $PowerShell.BeginInvoke()
+    
+    $KiemTraHoanThanh = New-Object System.Windows.Threading.DispatcherTimer
+    $KiemTraHoanThanh.Interval = [TimeSpan]::FromMilliseconds(500)
+    $KiemTraHoanThanh.Add_Tick({
+        if ($KenhDangChay.IsCompleted) {
+            $PowerShell.EndInvoke($KenhDangChay)
+            $PowerShell.Dispose(); $Runspace.Close(); $Runspace.Dispose()
+            $KiemTraHoanThanh.Stop()
+            
+            $Global:TrangThaiBoNho.TrangThai = "NhanhRoi"; CapNhat-TrangThaiNutBam "NhanhRoi"
+            $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "▶ XONG - CHẠY LẠI?" })
+        }
+    })
+    $KiemTraHoanThanh.Start()
 })
 
 # ------------------------------------------------------------------------------
-# 8. LẤY DỮ LIỆU TỪ MẠNG (FILE CSV) VÀ KHỞI ĐỘNG GIAO DIỆN
+# MODULE 6: LẤY DỮ LIỆU
 # ------------------------------------------------------------------------------
 try {
-    $DuLieuCsvTho = (Invoke-RestMethod $Global:LienKetDuLieuGoc -UseBasicParsing) | ConvertFrom-Csv
-    foreach ($DongDuLieu in $DuLieuCsvTho) { 
-        if ($DongDuLieu.DownloadUrl) {
-            $HinhAnhDaiDien = $DongDuLieu.IconURL
-            if (-not $HinhAnhDaiDien) { $HinhAnhDaiDien = "https://cdn-icons-png.flaticon.com/512/2589/2589174.png" }
-            
-            $TenNhomPhanLoai = "Phần mềm chung"
-            if ($DongDuLieu.catologi) { $TenNhomPhanLoai = $DongDuLieu.catologi } 
-            elseif ($DongDuLieu.Category) { $TenNhomPhanLoai = $DongDuLieu.Category } 
-            elseif ($DongDuLieu.DanhMuc) { $TenNhomPhanLoai = $DongDuLieu.DanhMuc }
-
-            $BangDanhSach.Add([KieuDuLieuPhanMem]@{
-                Chon = ($DongDuLieu.Check -match "True"); 
-                Ten = $DongDuLieu.Name; 
-                BieuTuong = $HinhAnhDaiDien; 
-                DuongDanTai = $DongDuLieu.DownloadUrl; 
-                ThamSoNgam = $DongDuLieu.SilentArgs; 
-                TrangThai = "Sẵn sàng"; 
-                TienTrinh = 0; 
-                DanhMuc = $TenNhomPhanLoai
-            }) 
+    $CSV = (Invoke-RestMethod $Global:LienKetDuLieuGoc -UseBasicParsing) | ConvertFrom-Csv
+    foreach ($D in $CSV) { 
+        if ($D.DownloadUrl) {
+            $Icon = $D.IconURL; if (-not $Icon) { $Icon = "https://cdn-icons-png.flaticon.com/512/2589/2589174.png" }
+            $Cat = "Chung"; if ($D.catologi) { $Cat = $D.catologi } elseif ($D.Category) { $Cat = $D.Category }
+            $BangDanhSach.Add([KieuDuLieuPhanMem]@{ Chon = ($D.Check -match "True"); Ten = $D.Name; BieuTuong = $Icon; DuongDanTai = $D.DownloadUrl; ThamSoNgam = $D.SilentArgs; TrangThai = "Sẵn sàng"; TienTrinh = 0; DanhMuc = $Cat }) 
         } 
     }
-} catch { [System.Windows.Forms.MessageBox]::Show("Không thể tải danh sách phần mềm từ mạng!", "Lỗi Kết Nối", 0, 16) }
-
-try { $CuaSoChinh.ShowDialog() | Out-Null } catch {}
+} catch {}
+$CuaSoChinh.ShowDialog() | Out-Null
