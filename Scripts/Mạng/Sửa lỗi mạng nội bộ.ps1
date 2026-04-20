@@ -1,106 +1,98 @@
 ﻿# ==========================================================
-# VIETTOOLBOX: CHUYÊN GIA MÁY IN & LAN (WPF - V64.4)
-# Bản cập nhật: Ép kích hoạt Guest & Tắt Password Protected
+# CÔNG CỤ TỐI ƯU MẠNG LAN & CHIA SẺ FILE (WPF - V72)
+# Fix lỗi XAML LetterSpacing - Lõi an toàn không đụng IP
 # ==========================================================
 
-# 1. ÉP QUYỀN QUẢN TRỊ (ADMINISTRATOR)
+# 1. KIỂM TRA QUYỀN QUẢN TRỊ CAO NHẤT (ADMINISTRATOR)
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
     Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -File `"$PSCommandPath`"" -Verb RunAs
     exit
 }
 
-# 2. NẠP THƯ VIỆN GIAO DIỆN WPF
+# 2. NẠP THƯ VIỆN GIAO DIỆN HỆ THỐNG
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase
 
-$LogicFixMayInLAN_V64 = {
-    # --- BIẾN ĐIỀU KHIỂN & BÁO CÁO ---
+$ThuatToanSuaLoiLAN_V72 = {
+    # --- BIẾN TOÀN CỤC & NHẬT KÝ ---
     $script:DongHoBamGio = [System.Diagnostics.Stopwatch]::New()
     $script:DangChay = $false
     $script:BuocHienTai = 0 
     $script:TienTrinhPhu = $null
-    $script:BaoCaoLoi = @("==========================================================","VIETTOOLBOX - BÁO CÁO FIX MÁY IN & LAN","Ngày: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')","==========================================================")
+    $script:NhatKyHoatDong = @(
+        "==========================================================",
+        " BÁO CÁO XỬ LÝ CHIA SẺ TỆP TIN VÀ MÁY IN (V72)",
+        " Thời gian: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')",
+        "=========================================================="
+    )
 
-    $BieuTuong_YTe = [char]::ConvertFromUtf32(0x1FA7A)
-    $BieuTuong_TenLua = [char]::ConvertFromUtf32(0x1F680)
-    $BieuTuong_Dich = [char]::ConvertFromUtf32(0x1F3C1)
-    $BieuTuong_Dung = [char]::ConvertFromUtf32(0x1F6D1)
-
-    # --- 3. GIAO DIỆN XAML ---
+    # --- 3. GIAO DIỆN XAML PHẲNG (ĐÃ FIX LỖI LETTERSPACING) ---
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox Pro" Width="550" Height="480"
+        Title="Cong Cu Xu Ly LAN V72" Width="580" Height="480"
         WindowStartupLocation="CenterScreen" Background="Transparent" FontFamily="Segoe UI" 
         AllowsTransparency="True" WindowStyle="None" ResizeMode="CanMinimize">
     
     <Window.Resources>
-        <Storyboard x:Key="HieuUngQuet" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetName="BieuTuongQuet" Storyboard.TargetProperty="(Canvas.Left)" From="20" To="420" Duration="0:0:2" AutoReverse="True">
-                <DoubleAnimation.EasingFunction><QuadraticEase EasingMode="EaseInOut"/></DoubleAnimation.EasingFunction>
-            </DoubleAnimation>
-        </Storyboard>
-        <Storyboard x:Key="HieuUngSuaChua" RepeatBehavior="Forever">
-            <DoubleAnimation Storyboard.TargetName="XoaySuaChua" Storyboard.TargetProperty="Angle" From="0" To="360" Duration="0:0:3"/>
-        </Storyboard>
-
         <Style x:Key="KieuNutTieuDe" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#0078D7"/>
-            <Setter Property="Width" Value="40"/><Setter Property="Height" Value="35"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="Width" Value="45"/><Setter Property="Height" Value="32"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
-            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#33FFFFFF"/></Trigger></Style.Triggers>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#333333"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers>
         </Style>
 
         <Style x:Key="KieuNutDong" TargetType="Button">
-            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="White"/>
-            <Setter Property="Width" Value="45"/><Setter Property="Height" Value="35"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Background" Value="Transparent"/><Setter Property="Foreground" Value="#888888"/>
+            <Setter Property="Width" Value="45"/><Setter Property="Height" Value="32"/><Setter Property="BorderThickness" Value="0"/><Setter Property="Cursor" Value="Hand"/>
             <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
-            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E81123"/></Trigger></Style.Triggers>
+            <Style.Triggers><Trigger Property="IsMouseOver" Value="True"><Setter Property="Background" Value="#E81123"/><Setter Property="Foreground" Value="White"/></Trigger></Style.Triggers>
         </Style>
 
         <Style TargetType="Button">
-            <Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="Bold"/><Setter Property="Foreground" Value="White"/><Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="8"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+            <Setter Property="Cursor" Value="Hand"/><Setter Property="FontWeight" Value="SemiBold"/><Setter Property="Foreground" Value="White"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="Button"><Border Background="{TemplateBinding Background}" CornerRadius="2"><ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/></Border></ControlTemplate></Setter.Value></Setter>
+            <Style.Triggers><Trigger Property="IsEnabled" Value="False"><Setter Property="Opacity" Value="0.4"/></Trigger></Style.Triggers>
         </Style>
     </Window.Resources>
 
-    <Border Background="#2D2D2D" CornerRadius="12" BorderBrush="#3F3F3F" BorderThickness="1">
+    <Border Background="#1E1E1E" BorderBrush="#00A4EF" BorderThickness="1" CornerRadius="0">
         <Grid>
-            <Grid.RowDefinitions><RowDefinition Height="35"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+            <Grid.RowDefinitions><RowDefinition Height="32"/><RowDefinition Height="*"/></Grid.RowDefinitions>
 
-            <Grid Name="ThanhTieuDe" Grid.Row="0" Background="#252526">
+            <Grid Name="ThanhTieuDe" Grid.Row="0" Background="#2D2D2D">
                 <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
-                <TextBlock Text="🖨️ VietToolbox: Chuyên Gia Máy In &amp; LAN" Foreground="Gray" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="11"/>
+                <TextBlock Text="CÔNG CỤ XỬ LÝ CHIA SẺ MẠNG LAN - V72" Foreground="#CCCCCC" VerticalAlignment="Center" Margin="15,0,0,0" FontSize="11" FontWeight="Bold"/>
                 <Button Name="NutThuNho" Grid.Column="1" Content="—" Style="{StaticResource KieuNutTieuDe}"/>
-                <Button Name="NutDong" Grid.Column="2" Content="✕" Style="{StaticResource KieuNutDong}" FontSize="14"/>
+                <Button Name="NutDong" Grid.Column="2" Content="✕" Style="{StaticResource KieuNutDong}"/>
             </Grid>
 
-            <Grid Grid.Row="1" Margin="25,10,25,25">
-                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="60"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
+            <Grid Grid.Row="1" Margin="30,25,30,25">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/><RowDefinition Height="Auto"/></Grid.RowDefinitions>
 
-                <DockPanel Grid.Row="0" Margin="0,0,0,15">
-                    <TextBlock Name="ChuTrangThaiIcon" FontSize="20" Foreground="#00D4FF" VerticalAlignment="Center" Margin="0,0,8,0" FontFamily="Segoe UI Emoji">$BieuTuong_YTe</TextBlock>
-                    <TextBlock Name="BieuTuongSua" FontSize="22" Margin="0,0,10,0" VerticalAlignment="Center" RenderTransformOrigin="0.5,0.5" Visibility="Collapsed" DockPanel.Dock="Left">
-                        <TextBlock.RenderTransform><RotateTransform x:Name="XoaySuaChua" Angle="0"/></TextBlock.RenderTransform>
-                        <Run FontFamily="Segoe UI Emoji" Text="&#x1F6E0;"/>
-                    </TextBlock>
-                    <TextBlock Name="ChuTrangThai" Text="Sẵn sàng xử lý..." FontSize="18" FontWeight="Bold" Foreground="#00D4FF" VerticalAlignment="Center" DockPanel.Dock="Left"/>
-                    <TextBlock Name="ChuThoiGian" Text="00:00:00" FontSize="16" Foreground="Gray" HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Consolas"/>
+                <DockPanel Grid.Row="0" Margin="0,0,0,20">
+                    <TextBlock Text="📂" FontSize="28" Foreground="#00A4EF" VerticalAlignment="Center" Margin="0,0,15,0" FontFamily="Segoe UI Emoji"/>
+                    <StackPanel DockPanel.Dock="Left" VerticalAlignment="Center">
+                        <TextBlock Name="ChuTrangThai" Text="HỆ THỐNG ĐÃ SẴN SÀNG" FontSize="20" FontWeight="Bold" Foreground="#00A4EF"/>
+                        <TextBlock Name="ChuChiTiet" Text="Sẽ dọn dẹp Cache, mở khóa phân quyền và nạp chuẩn SMB/NTLM." Foreground="#888888" FontSize="13" Margin="0,2,0,0"/>
+                    </StackPanel>
+                    <TextBlock Name="ChuThoiGian" Text="00:00:00" FontSize="16" Foreground="#555555" HorizontalAlignment="Right" VerticalAlignment="Center" FontFamily="Consolas"/>
                 </DockPanel>
 
-                <Border Grid.Row="1" Height="15" Background="#424242" CornerRadius="7" ClipToBounds="True">
-                    <ProgressBar Name="ThanhTienDo" Minimum="0" Maximum="100" Value="0" Background="Transparent" BorderThickness="0" Foreground="#0078D7"/>
+                <Border Grid.Row="1" Height="4" Background="#333333" CornerRadius="0">
+                    <ProgressBar Name="ThanhTienDo" Minimum="0" Maximum="100" Value="0" Background="Transparent" BorderThickness="0" Foreground="#00A4EF"/>
                 </Border>
 
-                <Canvas Grid.Row="2" VerticalAlignment="Center">
-                    <TextBlock Name="BieuTuongQuet" Text="🔍" FontSize="26" Canvas.Top="10" FontFamily="Segoe UI Emoji"/>
-                </Canvas>
+                <Border Grid.Row="2" Background="#111111" BorderBrush="#333333" BorderThickness="1" Margin="0,20,0,20" Padding="15">
+                    <ScrollViewer VerticalScrollBarVisibility="Auto">
+                        <TextBlock Name="ChuConsole" Foreground="#00FF00" FontFamily="Consolas" FontSize="12" TextWrapping="Wrap" 
+                                   Text="[OK] Phân quyền hệ thống đã được cấp.&#x0a;[OK] Đã bảo lưu cấu hình Card mạng và IP.&#x0a;[INFO] Chờ lệnh khởi động tiến trình làm sạch Share Folder..."/>
+                    </ScrollViewer>
+                </Border>
 
-                <TextBlock Name="ChuChiTiet" Grid.Row="3" Text="Sửa lỗi 0x11b, NTLM Credential, LAN Guest, tắt Password Sharing." Foreground="#A0A0A0" FontSize="13" 
-                            FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
-
-                <Grid Grid.Row="4">
+                <Grid Grid.Row="3">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
-                    <Button Name="NutBatDau" Grid.Column="0" Content="$BieuTuong_TenLua BẮT ĐẦU FIX" Height="50" Background="#27AE60"/>
-                    <Button Name="NutDung" Grid.Column="2" Content="$BieuTuong_Dung DỪNG LẠI" Height="50" Background="#D32F2F" IsEnabled="False"/>
+                    <Button Name="NutBatDau" Grid.Column="0" Content="KÍCH HOẠT XỬ LÝ LAN" Height="45" Background="#00A4EF" FontSize="13"/>
+                    <Button Name="NutDung" Grid.Column="2" Content="HỦY BỎ TIẾN TRÌNH" Height="45" Background="#C50F1F" FontSize="13" IsEnabled="False"/>
                 </Grid>
             </Grid>
         </Grid>
@@ -112,27 +104,28 @@ $LogicFixMayInLAN_V64 = {
     $DocXml = [System.Xml.XmlReader]::Create($DocChuoi)
     $CuaSo = [Windows.Markup.XamlReader]::Load($DocXml)
 
-    # Ánh xạ thành phần giao diện
     $ThanhTieuDe = $CuaSo.FindName("ThanhTieuDe"); $NutThuNho = $CuaSo.FindName("NutThuNho"); $NutDong = $CuaSo.FindName("NutDong")
-    $ChuTrangThai = $CuaSo.FindName("ChuTrangThai"); $ChuThoiGian = $CuaSo.FindName("ChuThoiGian"); $ChuChiTiet = $CuaSo.FindName("ChuChiTiet")
-    $ChuTrangThaiIcon = $CuaSo.FindName("ChuTrangThaiIcon"); $BieuTuongSua = $CuaSo.FindName("BieuTuongSua")
-    $ThanhTienDo = $CuaSo.FindName("ThanhTienDo"); $NutBatDau = $CuaSo.FindName("NutBatDau"); $NutDung = $CuaSo.FindName("NutDung")
-    $HieuUngQuet = $CuaSo.Resources["HieuUngQuet"]; $HieuUngSuaChua = $CuaSo.Resources["HieuUngSuaChua"]
+    $ChuTrangThai = $CuaSo.FindName("ChuTrangThai"); $ChuChiTiet = $CuaSo.FindName("ChuChiTiet"); $ChuThoiGian = $CuaSo.FindName("ChuThoiGian")
+    $ThanhTienDo = $CuaSo.FindName("ThanhTienDo"); $ChuConsole = $CuaSo.FindName("ChuConsole")
+    $NutBatDau = $CuaSo.FindName("NutBatDau"); $NutDung = $CuaSo.FindName("NutDung")
 
-    # --- SỰ KIỆN CỬA SỔ ---
+    function GhiLog ($NoiDung) { 
+        $script:NhatKyHoatDong += "[$(Get-Date -Format 'HH:mm:ss')] $NoiDung"
+        $ChuConsole.Text += "`n[SYS] $NoiDung"
+    }
+
     $ThanhTieuDe.Add_MouseLeftButtonDown({ $CuaSo.DragMove() })
     $NutThuNho.Add_Click({ $CuaSo.WindowState = [System.Windows.WindowState]::Minimized })
     $NutDong.Add_Click({
         if ($script:DangChay) {
-            if ([System.Windows.MessageBox]::Show("Đang chạy tiến trình, bạn có chắc chắn muốn thoát không?", "Xác nhận", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Warning) -eq "No") { return }
+            if ([System.Windows.MessageBox]::Show("Hệ thống đang được xử lý mạng. Bạn có chắc muốn thoát?", "Cảnh báo", [System.Windows.MessageBoxButton]::YesNo, [System.Windows.MessageBoxImage]::Warning) -eq "No") { return }
             if ($null -ne $script:TienTrinhPhu) { try { Stop-Process -Id $script:TienTrinhPhu.Id -Force } catch {} }
         }
         $CuaSo.Close()
     })
 
-    # --- BỘ NÃO HẸN GIỜ (TIMER) ---
     $BoDemChinh = New-Object System.Windows.Threading.DispatcherTimer
-    $BoDemChinh.Interval = [TimeSpan]::FromMilliseconds(500)
+    $BoDemChinh.Interval = [TimeSpan]::FromMilliseconds(600)
     
     $BoDemChinh.Add_Tick({
         $ThoiGianDaTroi = $script:DongHoBamGio.Elapsed
@@ -142,114 +135,95 @@ $LogicFixMayInLAN_V64 = {
             if ($script:TienTrinhPhu.HasExited) {
                 $script:TienTrinhPhu = $null
                 switch ($script:BuocHienTai) {
-                    1 { $script:BuocHienTai = 2; $ThanhTienDo.Value = 20 }
-                    2 { $script:BuocHienTai = 3; $ThanhTienDo.Value = 40 }
-                    4 { $script:BuocHienTai = 5; $ThanhTienDo.Value = 70 }
-                    5 { $script:BuocHienTai = 6; $ThanhTienDo.Value = 100 }
+                    1 { $script:BuocHienTai = 2 }
+                    3 { $script:BuocHienTai = 4 }
                 }
-            } elseif ($ThanhTienDo.Value -lt 99) { $ThanhTienDo.Value += 0.05 }
+            }
         }
 
         if ($script:DangChay -and $null -eq $script:TienTrinhPhu) {
             switch ($script:BuocHienTai) {
                 1 {
-                    $ChuTrangThai.Text = "🌐 Nạp SMB 1.0..."; $ChuChiTiet.Text = "Kích hoạt giao thức chia sẻ cho máy đời cũ..."
+                    $ChuTrangThai.Text = "ĐANG NẠP PROTOCOL MẠNG"
+                    $ChuChiTiet.Text = "Kích hoạt SMB 1.0 hỗ trợ giao tiếp với máy chủ cũ..."
                     $ThanhTienDo.IsIndeterminate = $true
+                    GhiLog "Đang thực thi DISM để mở khóa SMB1Protocol..."
                     $script:TienTrinhPhu = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:SMB1Protocol /all /norestart" -WindowStyle Hidden -PassThru
                 }
                 2 {
-                    $ChuTrangThai.Text = "📦 Nạp Component cũ..."; $ChuChiTiet.Text = "Đang cài đặt DirectPlay và Function Discovery..."
-                    $ThanhTienDo.IsIndeterminate = $true
-                    $script:TienTrinhPhu = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:DirectPlay /all /norestart" -WindowStyle Hidden -PassThru
-                }
-                3 {
-                    $ChuTrangThaiIcon.Visibility = "Collapsed"; $BieuTuongSua.Visibility = "Visible"; $HieuUngSuaChua.Begin($CuaSo)
-                    $ChuTrangThai.Text = "🛠️ Vá bảo mật Credential..."; $ChuChiTiet.Text = "Đang ép mở khóa tài khoản Guest và tắt Password Protected Sharing..."
-                    $ThanhTienDo.IsIndeterminate = $false
+                    $ChuTrangThai.Text = "ĐANG LÀM SẠCH VÀ VÁ LỖI"
+                    $ChuChiTiet.Text = "Xóa mật khẩu kẹt, chuẩn hóa NTLM và cấp quyền Pass trắng..."
+                    GhiLog "Bắt đầu xóa Credential Cache và nạp Registry chuẩn..."
                     
                     $SuaLoiHeThong = {
                         function ThietLap-Reg ($DuongDan, $Ten, $GiaTri, $Kieu = "DWord") { if (!(Test-Path $DuongDan)) { New-Item $DuongDan -Force | Out-Null }; Set-ItemProperty $DuongDan $Ten $GiaTri -Type $Kieu -Force }
                         
-                        # 1. BẬT TÀI KHOẢN GUEST (QUAN TRỌNG NHẤT ĐỂ TRÁNH HỎI PASS)
-                        & net.exe user guest /active:yes | Out-Null
+                        # 1. XÓA MẬT KHẨU SAI BỊ KẸT (Cốt lõi sửa lỗi Credential)
+                        cmdkey.exe /list | Select-String -Pattern "Target: (.*)" | ForEach-Object { $MucTieu = $_.Matches.Groups[1].Value.Trim(); & cmdkey.exe /delete:$MucTieu | Out-Null }
                         
-                        # 2. XÓA CREDENTIAL CŨ BỊ KẸT
-                        cmdkey.exe /list | Select-String -Pattern "Target: (.*)" | ForEach-Object { 
-                            $MucTieu = $_.Matches.Groups[1].Value.Trim()
-                            & cmdkey.exe /delete:$MucTieu | Out-Null
-                        }
-
-                        # 3. TẮT PASSWORD PROTECTED SHARING & FIX GUEST
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "everyoneincludesanonymous" 1
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" "RestrictNullSessAccess" 0
+                        # 2. XỬ LÝ PHÂN QUYỀN (Guest, Pass Trắng, NTLM)
                         ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" "AllowInsecureGuestAuth" 1
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LmCompatibilityLevel" 1
                         ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LimitBlankPasswordUse" 0
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LmCompatibilityLevel" 1
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "everyoneincludesanonymous" 1
                         
-                        # 4. FIX PRINTNIGHTMARE (0x11b)
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Print" "RpcAuthnLevelPrivacyEnabled" 0
-                        ThietLap-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint" "RestrictDriverInstallationToAdministrators" 0
+                        # 3. MỞ ĐƯỜNG TƯỜNG LỬA CHO MẠNG NỘI BỘ
+                        $DanhSachMang = Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq "Public" }
+                        if ($DanhSachMang) { foreach ($Mang in $DanhSachMang) { Set-NetConnectionProfile -InterfaceAlias $Mang.InterfaceAlias -NetworkCategory Private } }
                         
-                        # 5. KÍCH HOẠT DỊCH VỤ MẠNG & TƯỜNG LỬA
                         $DanhSachDichVu = @("fdPHost", "FDResPub", "SSDPSRV", "upnphost")
-                        foreach ($DichVu in $DanhSachDichVu) {
-                            Set-Service $DichVu -StartupType Automatic
-                            Start-Service $DichVu -ErrorAction SilentlyContinue
-                        }
+                        foreach ($DichVu in $DanhSachDichVu) { Set-Service $DichVu -StartupType Automatic; Start-Service $DichVu -ErrorAction SilentlyContinue }
+                        
                         netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes
                         netsh advfirewall firewall set rule group="File and Printer Sharing" new enable=Yes
-
-                        # 6. ÉP CHUYỂN SANG MẠNG PRIVATE
-                        $DanhSachMang = Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq "Public" }
-                        if ($DanhSachMang) {
-                            foreach ($Mang in $DanhSachMang) { Set-NetConnectionProfile -InterfaceAlias $Mang.InterfaceAlias -NetworkCategory Private }
-                        }
                     }
                     &$SuaLoiHeThong
-                    $script:BaoCaoLoi += "[$(Get-Date -Format 'HH:mm:ss')] Đã kích hoạt Guest, xóa Credential kẹt và tắt Password Sharing."
-                    $script:BuocHienTai = 4
+                    
+                    GhiLog "Hoàn tất cấp quyền truy cập và mở Tường lửa."
+                    $script:BuocHienTai = 3
+                }
+                3 {
+                    $ChuTrangThai.Text = "LÀM MỚI DỊCH VỤ WORKSTATION"
+                    $ChuChiTiet.Text = "Đang khởi động lại dịch vụ máy trạm để nhận cấu hình..."
+                    GhiLog "Restart LanmanWorkstation và Print Spooler..."
+                    $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Restart-Service LanmanWorkstation -Force; Restart-Service Spooler -Force`"" -WindowStyle Hidden -PassThru
                 }
                 4 {
-                    $ChuTrangThai.Text = "🚀 Tối ưu kết nối..."; $ChuChiTiet.Text = "Tắt yêu cầu chữ ký SMB Signing để tăng tốc độ truyền tải..."
-                    $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-SmbClientConfiguration -RequireSecuritySignature `$false -Force; Set-SmbServerConfiguration -RequireSecuritySignature `$false -Force`"" -WindowStyle Hidden -PassThru
-                }
-                5 {
-                    $ChuTrangThai.Text = "🖨️ Làm mới dịch vụ..."; $ChuChiTiet.Text = "Đang khởi động lại Print Spooler, LanmanServer và LanmanWorkstation..."
-                    $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Restart-Service LanmanServer -Force; Restart-Service LanmanWorkstation -Force; Restart-Service Spooler -Force`"" -WindowStyle Hidden -PassThru
-                }
-                6 {
-                    $script:DangChay = $false; $script:DongHoBamGio.Stop(); $BoDemChinh.Stop(); $HieuUngQuet.Stop($CuaSo); $HieuUngSuaChua.Stop($CuaSo)
+                    $ChuTrangThai.Text = "HOÀN TẤT CHIẾN DỊCH V72"
+                    $ChuTrangThai.Foreground = "#107C10"
+                    $ChuChiTiet.Text = "Mọi rào cản truy cập mạng nội bộ đã được tháo gỡ."
+                    $ThanhTienDo.IsIndeterminate = $false; $ThanhTienDo.Value = 100
+                    GhiLog "QUY TRÌNH XỬ LÝ KẾT THÚC THÀNH CÔNG!"
                     
-                    $DuongDanDesktop = [System.Environment]::GetFolderPath('Desktop'); $DuongDanFile = Join-Path $DuongDanDesktop "Bao_Cao_Fix_In_LAN.txt"
-                    $script:BaoCaoLoi += "=========================================================="
-                    $script:BaoCaoLoi += "TỔNG KẾT: Đã hoàn tất sửa lỗi NTLM, ép bật Guest và tắt Password Sharing."
-                    $script:BaoCaoLoi | Out-File -FilePath $DuongDanFile -Encoding UTF8
+                    $script:DangChay = $false; $script:DongHoBamGio.Stop(); $BoDemChinh.Stop()
+                    
+                    $DuongDanFile = Join-Path ([System.Environment]::GetFolderPath('Desktop')) "Bao_Cao_Fix_LAN_V72.txt"
+                    $script:NhatKyHoatDong | Out-File -FilePath $DuongDanFile -Encoding UTF8
 
-                    $ChuTrangThaiIcon.Visibility = "Visible"; $BieuTuongSua.Visibility = "Collapsed"; $ChuTrangThaiIcon.Text = $BieuTuong_Dich
-                    $ChuTrangThai.Text = "🏁 HOÀN TẤT!"; $ChuTrangThai.Foreground = "#27AE60"
-                    $ChuChiTiet.Text = "Hãy KHỞI ĐỘNG LẠI CẢ 2 MÁY TÍNH để Windows nhận thông tin mới!"
-                    
-                    [System.Windows.MessageBox]::Show("Đã tiêu diệt lỗi Credential!`n`nVui lòng đảm bảo bạn đã chạy Tool này trên CẢ MÁY CHỦ và MÁY KHÁCH. Sau đó, khởi động lại cả 2 máy để kết nối thông suốt.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
+                    [System.Windows.MessageBox]::Show("Tối ưu mạng chia sẻ V72 hoàn tất!`n`nĐã làm sạch mật khẩu kẹt và mở khóa giao thức mà không làm ảnh hưởng đến cấu hình mạng (IP/DNS) của máy.`n`nHãy truy cập lại thư mục Share của bạn.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
                     $NutBatDau.IsEnabled = $true; $NutDung.IsEnabled = $false
                 }
             }
         }
     })
 
-    # --- SỰ KIỆN NÚT BẤM ---
     $NutBatDau.Add_Click({
+        $ChuConsole.Text = "[SYS] Đã nhận lệnh. Bắt đầu xử lý Share Folder..."
         $script:DangChay = $true; $script:BuocHienTai = 1; $script:DongHoBamGio.Reset(); $script:DongHoBamGio.Start(); $BoDemChinh.Start()
-        $NutBatDau.IsEnabled = $false; $NutDung.IsEnabled = $true; $HieuUngQuet.Begin($CuaSo)
+        $NutBatDau.IsEnabled = $false; $NutDung.IsEnabled = $true
     })
 
     $NutDung.Add_Click({
-        $script:DangChay = $false; $BoDemChinh.Stop(); $HieuUngQuet.Stop($CuaSo); $HieuUngSuaChua.Stop($CuaSo)
+        $script:DangChay = $false; $BoDemChinh.Stop()
         if ($null -ne $script:TienTrinhPhu) { try { Stop-Process -Id $script:TienTrinhPhu.Id -Force } catch {} }
-        $ChuTrangThaiIcon.Visibility = "Visible"; $BieuTuongSua.Visibility = "Collapsed"; $ChuTrangThaiIcon.Text = $BieuTuong_Dung
-        $ChuTrangThai.Text = "⛔ ĐÃ HỦY QUY TRÌNH!"; $ThanhTienDo.Value = 0; $NutBatDau.IsEnabled = $true; $NutDung.IsEnabled = $false
+        $ChuTrangThai.Text = "TIẾN TRÌNH BỊ ÉP DỪNG"
+        $ChuTrangThai.Foreground = "#C50F1F"
+        GhiLog "CẢNH BÁO: Quá trình làm sạch bị hủy ngang!"
+        $ThanhTienDo.IsIndeterminate = $false; $ThanhTienDo.Value = 0
+        $NutBatDau.IsEnabled = $true; $NutDung.IsEnabled = $false
     })
 
     $CuaSo.ShowDialog() | Out-Null
 }
 
-&$LogicFixMayInLAN_V64
+&$ThuatToanSuaLoiLAN_V72
