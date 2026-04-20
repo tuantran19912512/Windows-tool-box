@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V705 - MỞ KHÓA BĂNG THÔNG
-# Fix: Khắc phục lỗi nghẽn cổ chai mạng do spam lệnh cập nhật giao diện (ProgressBar).
+# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V706 - BẮT ĐÚNG ĐỊNH DẠNG
+# Fix: Khôi phục chức năng tự động nhận diện đuôi file (zip, msi, rar) cho Direct Link.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -124,7 +124,7 @@ $MaNguonGiaoDien = @"
                         <Button Name="NutKichHoat" Content="▶ BẮT ĐẦU CÀI ĐẶT" Height="55" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="15" Margin="0,0,0,15" Cursor="Hand"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
                         <Button Name="NutHuyViec" Content="⏹ HỦY TIẾN TRÌNH" Height="48" Background="#EF4444" Foreground="White" FontWeight="Bold" FontSize="14" Margin="0,0,0,12" Cursor="Hand" IsEnabled="False"><Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources></Button>
                     </StackPanel>
-                    <TextBlock Grid.Row="2" Text="Phiên bản V705 - Mở Khóa Băng Thông" Foreground="#475569" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,20"/>
+                    <TextBlock Grid.Row="2" Text="Phiên bản V706 - Bắt Đúng Định Dạng" Foreground="#475569" FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,20"/>
                 </Grid>
             </Border>
             <Grid Grid.Column="1">
@@ -257,7 +257,9 @@ $DieuKhienKichHoat.Add_Click({
 
                         if ($NoiDungJson -match '"name"\s*:\s*"([^"]+)"') {
                             $TenFileGoc = $Matches[1]; $DuoiMoRongGoc = [System.IO.Path]::GetExtension($TenFileGoc)
-                            if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") { $DuoiDinhDang = $DuoiMoRongGoc; $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru $TenFileGoc }
+                            if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") { 
+                                $DuoiDinhDang = $DuoiMoRongGoc; $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru $TenFileGoc 
+                            }
                         }
 
                         $UrlTaiChinhThuc = "https://www.googleapis.com/drive/v3/files/$($MaLuuTruDrive)?alt=media&key=$KhoaTruyCap"
@@ -267,7 +269,7 @@ $DieuKhienKichHoat.Add_Click({
                         $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
                         $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
                         
-                        $PhanTramCu = -1 # GIẢI QUYẾT NGHẼN BĂNG THÔNG MẠNG
+                        $PhanTramCu = -1
                         do {
                             if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
                             $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
@@ -275,7 +277,7 @@ $DieuKhienKichHoat.Add_Click({
                                 $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
                                 if ($TongKichThuocFile -gt 0) { 
                                     $PhanTram = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100)
-                                    if ($PhanTram -ne $PhanTramCu) { # CHỈ VẼ LẠI GIAO DIỆN KHI % THAY ĐỔI
+                                    if ($PhanTram -ne $PhanTramCu) {
                                         CapNhat-PhanMemUI $PhanMemHienTai "Đang tải: $PhanTram%" $PhanTram
                                         $PhanTramCu = $PhanTram
                                     }
@@ -289,11 +291,31 @@ $DieuKhienKichHoat.Add_Click({
                 }
             } else {
                 try {
-                    $GoiTaiVe = [System.Net.HttpWebRequest]::Create($PhanMemHienTai.DuongDanTai); $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
-                    $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream(); $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
+                    $GoiTaiVe = [System.Net.HttpWebRequest]::Create($PhanMemHienTai.DuongDanTai)
+                    $PhanHoiTaiVe = $GoiTaiVe.GetResponse()
+
+                    # KHÔI PHỤC: LẤY ĐÚNG ĐUÔI FILE TỪ HEADER HOẶC URL CHO DIRECT LINK
+                    $KhaiBaoHeader = $PhanHoiTaiVe.Headers["Content-Disposition"]
+                    if ($KhaiBaoHeader -match 'filename="?([^";]+)"?') {
+                        $TenFileGoc = [System.Net.WebUtility]::UrlDecode($Matches[1])
+                        $DuoiMoRongGoc = [System.IO.Path]::GetExtension($TenFileGoc)
+                        if ($DuoiMoRongGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") {
+                            $DuoiDinhDang = $DuoiMoRongGoc
+                            $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru $TenFileGoc
+                        }
+                    } else {
+                        $DuoiTuUrl = [System.IO.Path]::GetExtension($PhanMemHienTai.DuongDanTai.Split('?')[0])
+                        if ($DuoiTuUrl -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") {
+                            $DuoiDinhDang = $DuoiTuUrl
+                            $DuongDanFileTrenMay = Join-Path $ThuMucLuuTru "$TenFileLuuTam$DuoiDinhDang"
+                        }
+                    }
+
+                    $DongDuLieuNhiPhan = $PhanHoiTaiVe.GetResponseStream()
+                    $FileDuLieuGhi = New-Object System.IO.FileStream($DuongDanFileTrenMay, [System.IO.FileMode]::Create)
                     $KhoangNhoTam = New-Object byte[] 4MB; $TongKichThuocFile = $PhanHoiTaiVe.ContentLength; $DungLuongDaTai = 0
                     
-                    $PhanTramCu = -1 # GIẢI QUYẾT NGHẼN BĂNG THÔNG MẠNG
+                    $PhanTramCu = -1
                     do {
                         if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
                         $SoByteDocDuoc = $DongDuLieuNhiPhan.Read($KhoangNhoTam, 0, $KhoangNhoTam.Length)
@@ -301,7 +323,7 @@ $DieuKhienKichHoat.Add_Click({
                             $FileDuLieuGhi.Write($KhoangNhoTam, 0, $SoByteDocDuoc); $DungLuongDaTai += $SoByteDocDuoc
                             if ($TongKichThuocFile -gt 0) { 
                                 $PhanTram = [math]::Round(($DungLuongDaTai/$TongKichThuocFile)*100)
-                                if ($PhanTram -ne $PhanTramCu) { # CHỈ VẼ LẠI GIAO DIỆN KHI % THAY ĐỔI
+                                if ($PhanTram -ne $PhanTramCu) {
                                     CapNhat-PhanMemUI $PhanMemHienTai "Đang tải: $PhanTram%" $PhanTram
                                     $PhanTramCu = $PhanTram
                                 }
