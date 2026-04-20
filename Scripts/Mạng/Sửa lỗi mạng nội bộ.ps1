@@ -1,6 +1,6 @@
 ﻿# ==========================================================
-# VIETTOOLBOX: CHUYÊN GIA MÁY IN & LAN (WPF - V64.1)
-# Tác giả: Tuấn Kỹ Thuật Máy Tính
+# VIETTOOLBOX: CHUYÊN GIA MÁY IN & LAN (WPF - V64.2)
+# Bản cập nhật: Hỗ trợ máy cũ & Share nội bộ
 # ==========================================================
 
 # 1. ÉP QUYỀN ADMINISTRATOR
@@ -20,17 +20,16 @@ $LogicFixMayInLAN_V64 = {
     $script:SubProc = $null
     $script:LogReport = @("==========================================================","VIETTOOLBOX - BÁO CÁO FIX MÁY IN & LAN","Ngày: $(Get-Date -Format 'dd/MM/yyyy HH:mm:ss')","==========================================================")
 
-    # Icon Unicode
     $Icon_Medic = [char]::ConvertFromUtf32(0x1FA7A)
     $Icon_Rocket = [char]::ConvertFromUtf32(0x1F680)
     $Icon_Finish = [char]::ConvertFromUtf32(0x1F3C1)
     $Icon_Stop = [char]::ConvertFromUtf32(0x1F6D1)
 
-    # --- 3. GIAO DIỆN XAML (THANH TIÊU ĐỀ + ANIMATION + MIN/CLOSE) ---
+    # --- 3. GIAO DIỆI XAML ---
     $MaGiaoDien = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="VietToolbox Pro" Width="550" Height="460"
+        Title="VietToolbox Pro" Width="550" Height="480"
         WindowStartupLocation="CenterScreen" Background="Transparent" FontFamily="Segoe UI" 
         AllowsTransparency="True" WindowStyle="None" ResizeMode="CanMinimize">
     
@@ -95,8 +94,8 @@ $LogicFixMayInLAN_V64 = {
                     <TextBlock Name="ScanIcon" Text="🔍" FontSize="26" Canvas.Top="10" FontFamily="Segoe UI Emoji"/>
                 </Canvas>
 
-                <TextBlock Name="txtDetail" Grid.Row="3" Text="Sửa lỗi 0x0000011b, 0x00000709, LAN Guest và PrintNightmare." Foreground="#A0A0A0" FontSize="13" 
-                           FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
+                <TextBlock Name="txtDetail" Grid.Row="3" Text="Sửa lỗi 0x0000011b, LAN Guest, SMB 1.0 và nạp Component máy cổ." Foreground="#A0A0A0" FontSize="13" 
+                            FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
 
                 <Grid Grid.Row="4">
                     <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="15"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
@@ -120,7 +119,7 @@ $LogicFixMayInLAN_V64 = {
     $pgBar = $window.FindName("pgBar"); $btnStart = $window.FindName("btnStart"); $btnStop = $window.FindName("btnStop")
     $ScanAnim = $window.Resources["ScanAnimation"]; $RepairAnim = $window.Resources["RepairAnimation"]
 
-    # --- SỰ KIỆN GIAO DIỆN ---
+    # --- SỰ KIỆN ---
     $TitleBar.Add_MouseLeftButtonDown({ $window.DragMove() })
     $btnMinimize.Add_Click({ $window.WindowState = [System.Windows.WindowState]::Minimized })
     $btnClose.Add_Click({
@@ -143,9 +142,10 @@ $LogicFixMayInLAN_V64 = {
             if ($script:SubProc.HasExited) {
                 $script:SubProc = $null
                 switch ($script:CurrentStep) {
-                    1 { $script:CurrentStep = 2; $pgBar.Value = 30 }
-                    3 { $script:CurrentStep = 4; $pgBar.Value = 80 }
-                    4 { $script:CurrentStep = 5; $pgBar.Value = 100 }
+                    1 { $script:CurrentStep = 2; $pgBar.Value = 20 } # Xong SMB1
+                    2 { $script:CurrentStep = 3; $pgBar.Value = 40 } # Xong Component cũ
+                    4 { $script:CurrentStep = 5; $pgBar.Value = 70 } # Xong Tối ưu LAN
+                    5 { $script:CurrentStep = 6; $pgBar.Value = 100 } # Xong Spooler
                 }
             } elseif ($pgBar.Value -lt 99) { $pgBar.Value += 0.05 }
         }
@@ -153,58 +153,72 @@ $LogicFixMayInLAN_V64 = {
         if ($script:IsRunning -and $null -eq $script:SubProc) {
             switch ($script:CurrentStep) {
                 1 {
-                    $txtStatus.Text = "🌐 Đang nạp SMB 1.0..."; $txtDetail.Text = "Sử dụng DISM để kích hoạt SMB 1.0. Bước này có thể mất 2-5 phút."
+                    $txtStatus.Text = "🌐 Nạp SMB 1.0..."; $txtDetail.Text = "Kích hoạt giao thức chia sẻ cho máy đời cũ (Win XP/7)..."
                     $pgBar.IsIndeterminate = $true
                     $script:SubProc = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:SMB1Protocol /all /norestart" -WindowStyle Hidden -PassThru
                 }
                 2 {
-                    $txtStatusIcon.Visibility = "Collapsed"; $iconRepair.Visibility = "Visible"; $RepairAnim.Begin($window)
-                    $txtStatus.Text = "🛠️ Vá Registry RPC/LAN..."; $txtDetail.Text = "Đang áp dụng bộ Registry Fix cho 0x0000011b và PrintNightmare..."
-                    $pgBar.IsIndeterminate = $false
-                    
-                    # Chạy Registry Fix trực tiếp (Nhanh nên không cần luồng riêng)
-                    $RegFix = {
-                        function Set-Reg ($P, $N, $V, $T = "DWord") { if (!(Test-Path $P)) { New-Item $P -Force | Out-Null }; Set-ItemProperty $P $N $V -Type $T -Force }
-                        Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" "AllowInsecureGuestAuth" 1
-                        $P1 = "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\RPC"
-                        Set-Reg $P1 "RpcUseNamedPipeProtocol" 1; Set-Reg $P1 "RpcTcpPort" 0; Set-Reg $P1 "RpcAuthentication" 0
-                        Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint" "RestrictDriverInstallationToAdministrators" 1
-                        Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Print" "RpcAuthnLevelPrivacyEnabled" 0
-                        Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LimitBlankPasswordUse" 0; Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "EveryoneIncludesAnonymous" 1
-                    }
-                    &$RegFix
-                    $script:LogReport += "[$(Get-Date -Format 'HH:mm:ss')] Đã nạp xong bộ Registry Fix."
-                    $script:CurrentStep = 3
+                    $txtStatus.Text = "📦 Nạp Component cũ..."; $txtDetail.Text = "Đang cài DirectPlay và Function Discovery để các máy thấy nhau..."
+                    $pgBar.IsIndeterminate = $true
+                    $script:SubProc = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:DirectPlay /all /norestart" -WindowStyle Hidden -PassThru
                 }
                 3 {
-                    $txtStatus.Text = "🚀 Tối ưu mạng LAN..."; $txtDetail.Text = "Đang tắt yêu cầu chữ ký số SMB Signing để tăng tốc độ kết nối..."
-                    $script:SubProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-SmbClientConfiguration -RequireSecuritySignature `$false -Force; Set-SmbServerConfiguration -RequireSecuritySignature `$false -Force`"" -WindowStyle Hidden -PassThru
+                    $txtStatusIcon.Visibility = "Collapsed"; $iconRepair.Visibility = "Visible"; $RepairAnim.Begin($window)
+                    $txtStatus.Text = "🛠️ Vá Registry & Discovery..."; $txtDetail.Text = "Bật Network Discovery và vá lỗi 0x0000011b..."
+                    $pgBar.IsIndeterminate = $false
+                    
+                    # Registry & Service Fix
+                    $LegacyFix = {
+                        function Set-Reg ($P, $N, $V, $T = "DWord") { if (!(Test-Path $P)) { New-Item $P -Force | Out-Null }; Set-ItemProperty $P $N $V -Type $T -Force }
+                        # Fix Guest & 0x11b
+                        Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" "AllowInsecureGuestAuth" 1
+                        Set-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Print" "RpcAuthnLevelPrivacyEnabled" 0
+                        Set-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint" "RestrictDriverInstallationToAdministrators" 0
+                        
+                        # Kích hoạt các Service tìm kiếm máy tính trong mạng nội bộ
+                        $Services = @("fdPHost", "FDResPub", "SSDPSRV", "upnphost")
+                        foreach ($s in $Services) {
+                            Set-Service $s -StartupType Automatic
+                            Start-Service $s -ErrorAction SilentlyContinue
+                        }
+
+                        # Bật Network Discovery qua Firewall
+                        netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes
+                        netsh advfirewall firewall set rule group="File and Printer Sharing" new enable=Yes
+                    }
+                    &$LegacyFix
+                    $script:LogReport += "[$(Get-Date -Format 'HH:mm:ss')] Đã bật Discovery và nạp Registry."
+                    $script:CurrentStep = 4
                 }
                 4 {
-                    $txtStatus.Text = "🖨️ Làm mới máy in..."; $txtDetail.Text = "Đang khởi động lại dịch vụ Print Spooler để nhận cấu hình mới..."
-                    $script:SubProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-Service Spooler -StartupType Automatic; Restart-Service Spooler -Force`"" -WindowStyle Hidden -PassThru
+                    $txtStatus.Text = "🚀 Tối ưu kết nối..."; $txtDetail.Text = "Tắt SMB Signing để tăng tốc độ copy file giữa các máy..."
+                    $script:SubProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-SmbClientConfiguration -RequireSecuritySignature `$false -Force; Set-SmbServerConfiguration -RequireSecuritySignature `$false -Force`"" -WindowStyle Hidden -PassThru
                 }
                 5 {
+                    $txtStatus.Text = "🖨️ Làm mới máy in..."; $txtDetail.Text = "Đang khởi động lại dịch vụ Print Spooler..."
+                    $script:SubProc = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-Service Spooler -StartupType Automatic; Restart-Service Spooler -Force`"" -WindowStyle Hidden -PassThru
+                }
+                6 {
                     $script:IsRunning = $false; $script:StopWatch.Stop(); $MainTimer.Stop(); $ScanAnim.Stop($window); $RepairAnim.Stop($window)
                     
                     # XUẤT BÁO CÁO
                     $DesktopPath = [System.Environment]::GetFolderPath('Desktop'); $FilePath = Join-Path $DesktopPath "Bao_Cao_Fix_In_LAN.txt"
                     $script:LogReport += "=========================================================="
-                    $script:LogReport += "TỔNG KẾT: Sửa lỗi hoàn tất trong $($txtTimer.Text)."
+                    $script:LogReport += "TỔNG KẾT: Đã nạp SMB1, DirectPlay và fix lỗi LAN/In thành công."
                     $script:LogReport | Out-File -FilePath $FilePath -Encoding UTF8
 
                     $txtStatusIcon.Visibility = "Visible"; $iconRepair.Visibility = "Collapsed"; $txtStatusIcon.Text = $Icon_Finish
                     $txtStatus.Text = "🏁 HOÀN TẤT!"; $txtStatus.Foreground = "#27AE60"
-                    $txtDetail.Text = "Xong! Hãy khởi động lại máy. Báo cáo đã lưu ở Desktop."
+                    $txtDetail.Text = "Đã hỗ trợ máy cũ & Share nội bộ. Hãy khởi động lại máy!"
                     
-                    [System.Windows.MessageBox]::Show("Tuyệt vời Tuấn ơi! Đã xử lý xong lỗi Máy in & LAN.`n`nBáo cáo chi tiết đã nằm trên Desktop của ông.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
+                    [System.Windows.MessageBox]::Show("Xong rồi Tuấn ơi!`n`nĐã kích hoạt SMB1 và các thành phần hỗ trợ máy cũ. Giờ các máy khác sẽ thấy máy này trong mạng LAN.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
                     $btnStart.IsEnabled = $true; $btnStop.IsEnabled = $false
                 }
             }
         }
     })
 
-    # --- SỰ KIỆN NÚT BẤM ---
+    # --- NÚT BẤM ---
     $btnStart.Add_Click({
         $script:IsRunning = $true; $script:CurrentStep = 1; $script:StopWatch.Reset(); $script:StopWatch.Start(); $MainTimer.Start()
         $btnStart.IsEnabled = $false; $btnStop.IsEnabled = $true; $ScanAnim.Begin($window)
