@@ -1,6 +1,6 @@
 ﻿# ==========================================================
-# VIETTOOLBOX: CHUYÊN GIA MÁY IN & LAN (WPF - V64.3)
-# Bản cập nhật: Hỗ trợ máy cũ, Share nội bộ & Xóa lỗi Credential
+# VIETTOOLBOX: CHUYÊN GIA MÁY IN & LAN (WPF - V64.4)
+# Bản cập nhật: Ép kích hoạt Guest & Tắt Password Protected
 # ==========================================================
 
 # 1. ÉP QUYỀN QUẢN TRỊ (ADMINISTRATOR)
@@ -94,7 +94,7 @@ $LogicFixMayInLAN_V64 = {
                     <TextBlock Name="BieuTuongQuet" Text="🔍" FontSize="26" Canvas.Top="10" FontFamily="Segoe UI Emoji"/>
                 </Canvas>
 
-                <TextBlock Name="ChuChiTiet" Grid.Row="3" Text="Sửa lỗi 0x11b, NTLM Credential, LAN Guest, SMB 1.0 và nạp Component máy cổ." Foreground="#A0A0A0" FontSize="13" 
+                <TextBlock Name="ChuChiTiet" Grid.Row="3" Text="Sửa lỗi 0x11b, NTLM Credential, LAN Guest, tắt Password Sharing." Foreground="#A0A0A0" FontSize="13" 
                             FontStyle="Italic" HorizontalAlignment="Center" VerticalAlignment="Center" TextWrapping="Wrap" TextAlignment="Center"/>
 
                 <Grid Grid.Row="4">
@@ -142,10 +142,10 @@ $LogicFixMayInLAN_V64 = {
             if ($script:TienTrinhPhu.HasExited) {
                 $script:TienTrinhPhu = $null
                 switch ($script:BuocHienTai) {
-                    1 { $script:BuocHienTai = 2; $ThanhTienDo.Value = 20 } # Hoàn thành SMB1
-                    2 { $script:BuocHienTai = 3; $ThanhTienDo.Value = 40 } # Hoàn thành Component cũ
-                    4 { $script:BuocHienTai = 5; $ThanhTienDo.Value = 70 } # Hoàn thành Tối ưu LAN
-                    5 { $script:BuocHienTai = 6; $ThanhTienDo.Value = 100 } # Hoàn thành Khởi động Dịch vụ
+                    1 { $script:BuocHienTai = 2; $ThanhTienDo.Value = 20 }
+                    2 { $script:BuocHienTai = 3; $ThanhTienDo.Value = 40 }
+                    4 { $script:BuocHienTai = 5; $ThanhTienDo.Value = 70 }
+                    5 { $script:BuocHienTai = 6; $ThanhTienDo.Value = 100 }
                 }
             } elseif ($ThanhTienDo.Value -lt 99) { $ThanhTienDo.Value += 0.05 }
         }
@@ -153,54 +153,60 @@ $LogicFixMayInLAN_V64 = {
         if ($script:DangChay -and $null -eq $script:TienTrinhPhu) {
             switch ($script:BuocHienTai) {
                 1 {
-                    $ChuTrangThai.Text = "🌐 Nạp SMB 1.0..."; $ChuChiTiet.Text = "Kích hoạt giao thức chia sẻ cho máy đời cũ (Win XP/7)..."
+                    $ChuTrangThai.Text = "🌐 Nạp SMB 1.0..."; $ChuChiTiet.Text = "Kích hoạt giao thức chia sẻ cho máy đời cũ..."
                     $ThanhTienDo.IsIndeterminate = $true
                     $script:TienTrinhPhu = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:SMB1Protocol /all /norestart" -WindowStyle Hidden -PassThru
                 }
                 2 {
-                    $ChuTrangThai.Text = "📦 Nạp Component cũ..."; $ChuChiTiet.Text = "Đang cài đặt DirectPlay và Function Discovery để các máy thấy nhau..."
+                    $ChuTrangThai.Text = "📦 Nạp Component cũ..."; $ChuChiTiet.Text = "Đang cài đặt DirectPlay và Function Discovery..."
                     $ThanhTienDo.IsIndeterminate = $true
                     $script:TienTrinhPhu = Start-Process dism.exe -ArgumentList "/online /enable-feature /featurename:DirectPlay /all /norestart" -WindowStyle Hidden -PassThru
                 }
                 3 {
                     $ChuTrangThaiIcon.Visibility = "Collapsed"; $BieuTuongSua.Visibility = "Visible"; $HieuUngSuaChua.Begin($CuaSo)
-                    $ChuTrangThai.Text = "🛠️ Vá Registry & Giao thức..."; $ChuChiTiet.Text = "Xử lý lỗi Credential NTLM, đổi mạng sang Private và vá 0x11b..."
+                    $ChuTrangThai.Text = "🛠️ Vá bảo mật Credential..."; $ChuChiTiet.Text = "Đang ép mở khóa tài khoản Guest và tắt Password Protected Sharing..."
                     $ThanhTienDo.IsIndeterminate = $false
                     
-                    # Chạy các lệnh vá Registry & Dịch vụ nội bộ
                     $SuaLoiHeThong = {
                         function ThietLap-Reg ($DuongDan, $Ten, $GiaTri, $Kieu = "DWord") { if (!(Test-Path $DuongDan)) { New-Item $DuongDan -Force | Out-Null }; Set-ItemProperty $DuongDan $Ten $GiaTri -Type $Kieu -Force }
                         
-                        # Xử lý Guest, 0x11b
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" "AllowInsecureGuestAuth" 1
-                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Print" "RpcAuthnLevelPrivacyEnabled" 0
-                        ThietLap-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint" "RestrictDriverInstallationToAdministrators" 0
+                        # 1. BẬT TÀI KHOẢN GUEST (QUAN TRỌNG NHẤT ĐỂ TRÁNH HỎI PASS)
+                        & net.exe user guest /active:yes | Out-Null
                         
-                        # Xử lý lỗi hỏi Credential liên tục (NTLM và Mật khẩu trống)
+                        # 2. XÓA CREDENTIAL CŨ BỊ KẸT
+                        cmdkey.exe /list | Select-String -Pattern "Target: (.*)" | ForEach-Object { 
+                            $MucTieu = $_.Matches.Groups[1].Value.Trim()
+                            & cmdkey.exe /delete:$MucTieu | Out-Null
+                        }
+
+                        # 3. TẮT PASSWORD PROTECTED SHARING & FIX GUEST
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "everyoneincludesanonymous" 1
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanServer\Parameters" "RestrictNullSessAccess" 0
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Services\LanmanWorkstation\Parameters" "AllowInsecureGuestAuth" 1
                         ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LmCompatibilityLevel" 1
                         ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Lsa" "LimitBlankPasswordUse" 0
                         
-                        # Kích hoạt các Dịch vụ tìm kiếm máy tính trong mạng nội bộ
+                        # 4. FIX PRINTNIGHTMARE (0x11b)
+                        ThietLap-Reg "HKLM:\SYSTEM\CurrentControlSet\Control\Print" "RpcAuthnLevelPrivacyEnabled" 0
+                        ThietLap-Reg "HKLM:\SOFTWARE\Policies\Microsoft\Windows NT\Printers\PointAndPrint" "RestrictDriverInstallationToAdministrators" 0
+                        
+                        # 5. KÍCH HOẠT DỊCH VỤ MẠNG & TƯỜNG LỬA
                         $DanhSachDichVu = @("fdPHost", "FDResPub", "SSDPSRV", "upnphost")
                         foreach ($DichVu in $DanhSachDichVu) {
                             Set-Service $DichVu -StartupType Automatic
                             Start-Service $DichVu -ErrorAction SilentlyContinue
                         }
-
-                        # Bật Network Discovery qua Tường lửa (Firewall)
                         netsh advfirewall firewall set rule group="Network Discovery" new enable=Yes
                         netsh advfirewall firewall set rule group="File and Printer Sharing" new enable=Yes
 
-                        # Tự động quét và chuyển đổi tất cả mạng Public sang Private
+                        # 6. ÉP CHUYỂN SANG MẠNG PRIVATE
                         $DanhSachMang = Get-NetConnectionProfile | Where-Object { $_.NetworkCategory -eq "Public" }
                         if ($DanhSachMang) {
-                            foreach ($Mang in $DanhSachMang) {
-                                Set-NetConnectionProfile -InterfaceAlias $Mang.InterfaceAlias -NetworkCategory Private
-                            }
+                            foreach ($Mang in $DanhSachMang) { Set-NetConnectionProfile -InterfaceAlias $Mang.InterfaceAlias -NetworkCategory Private }
                         }
                     }
                     &$SuaLoiHeThong
-                    $script:BaoCaoLoi += "[$(Get-Date -Format 'HH:mm:ss')] Đã nạp thành công bộ Fix NTLM, Credential và Discovery."
+                    $script:BaoCaoLoi += "[$(Get-Date -Format 'HH:mm:ss')] Đã kích hoạt Guest, xóa Credential kẹt và tắt Password Sharing."
                     $script:BuocHienTai = 4
                 }
                 4 {
@@ -208,23 +214,22 @@ $LogicFixMayInLAN_V64 = {
                     $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-SmbClientConfiguration -RequireSecuritySignature `$false -Force; Set-SmbServerConfiguration -RequireSecuritySignature `$false -Force`"" -WindowStyle Hidden -PassThru
                 }
                 5 {
-                    $ChuTrangThai.Text = "🖨️ Làm mới dịch vụ..."; $ChuChiTiet.Text = "Đang khởi động lại Print Spooler và LanmanWorkstation..."
-                    $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Set-Service Spooler -StartupType Automatic; Restart-Service Spooler -Force; Restart-Service LanmanWorkstation -Force`"" -WindowStyle Hidden -PassThru
+                    $ChuTrangThai.Text = "🖨️ Làm mới dịch vụ..."; $ChuChiTiet.Text = "Đang khởi động lại Print Spooler, LanmanServer và LanmanWorkstation..."
+                    $script:TienTrinhPhu = Start-Process powershell.exe -ArgumentList "-NoProfile -ExecutionPolicy Bypass -Command `"Restart-Service LanmanServer -Force; Restart-Service LanmanWorkstation -Force; Restart-Service Spooler -Force`"" -WindowStyle Hidden -PassThru
                 }
                 6 {
                     $script:DangChay = $false; $script:DongHoBamGio.Stop(); $BoDemChinh.Stop(); $HieuUngQuet.Stop($CuaSo); $HieuUngSuaChua.Stop($CuaSo)
                     
-                    # XUẤT BÁO CÁO KẾT QUẢ
                     $DuongDanDesktop = [System.Environment]::GetFolderPath('Desktop'); $DuongDanFile = Join-Path $DuongDanDesktop "Bao_Cao_Fix_In_LAN.txt"
                     $script:BaoCaoLoi += "=========================================================="
-                    $script:BaoCaoLoi += "TỔNG KẾT: Đã hoàn tất sửa lỗi NTLM, nạp SMB1, DirectPlay và chuyển mạng Private."
+                    $script:BaoCaoLoi += "TỔNG KẾT: Đã hoàn tất sửa lỗi NTLM, ép bật Guest và tắt Password Sharing."
                     $script:BaoCaoLoi | Out-File -FilePath $DuongDanFile -Encoding UTF8
 
                     $ChuTrangThaiIcon.Visibility = "Visible"; $BieuTuongSua.Visibility = "Collapsed"; $ChuTrangThaiIcon.Text = $BieuTuong_Dich
                     $ChuTrangThai.Text = "🏁 HOÀN TẤT!"; $ChuTrangThai.Foreground = "#27AE60"
-                    $ChuChiTiet.Text = "Đã xử lý triệt để lỗi Credential & Máy cổ. Hãy khởi động lại máy tính!"
+                    $ChuChiTiet.Text = "Hãy KHỞI ĐỘNG LẠI CẢ 2 MÁY TÍNH để Windows nhận thông tin mới!"
                     
-                    [System.Windows.MessageBox]::Show("Đã hoàn tất quy trình sửa lỗi!`n`nĐã kích hoạt chuẩn NTLM cũ, chuyển cấu hình mạng sang Private và hỗ trợ kết nối máy in nội bộ thành công. Xin vui lòng khởi động lại máy tính để áp dụng.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
+                    [System.Windows.MessageBox]::Show("Đã tiêu diệt lỗi Credential!`n`nVui lòng đảm bảo bạn đã chạy Tool này trên CẢ MÁY CHỦ và MÁY KHÁCH. Sau đó, khởi động lại cả 2 máy để kết nối thông suốt.", "Thành công", [System.Windows.MessageBoxButton]::OK, [System.Windows.MessageBoxImage]::Information)
                     $NutBatDau.IsEnabled = $true; $NutDung.IsEnabled = $false
                 }
             }
