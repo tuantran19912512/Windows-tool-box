@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V709
-# Cải tiến: Nút Reload, Co giãn giao diện tự do, Nhận diện UWP/Portable
+# Cải tiến: Nút Reload, Co giãn giao diện tự do, Nhận diện UWP/Portable, Tự xóa file khi xong, Nút tải lại luôn hiện
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -477,7 +477,7 @@ $DieuKhienTaiLai   = $CuaSoChinh.FindName("NutTaiLai")
 function CapNhat-NutBam ($TT) {
     $DieuKhienKichHoat.IsEnabled = ($TT -eq "NhanhRoi")
     $DieuKhienHuyViec.IsEnabled  = ($TT -eq "DangChay")
-    $DieuKhienTaiLai.IsEnabled   = ($TT -eq "NhanhRoi")
+    $DieuKhienTaiLai.IsEnabled   = $true # CẬP NHẬT: Luôn bật nút tải lại
 }
 
 $DieuKhienHuyViec.Add_Click({
@@ -486,6 +486,9 @@ $DieuKhienHuyViec.Add_Click({
 })
 
 $DieuKhienTaiLai.Add_Click({
+    # CẬP NHẬT: Ngắt tiến trình đang chạy (nếu có) trước khi tải lại
+    $Global:TrangThaiBoNho.TrangThai = "DungLai"
+    
     # Reset nút bấm và trạng thái
     $DieuKhienKichHoat.Content = "▶  BẮT ĐẦU CÀI ĐẶT"
     $Global:TrangThaiBoNho.TrangThai = "NhanhRoi"
@@ -739,6 +742,13 @@ public class WinHelper {
                     
                     Start-Process -FilePath $ExeTrongOC.FullName -ErrorAction SilentlyContinue
                     UI $PM "✅ Hoàn tất!" 100
+
+                    # TỰ ĐỘNG XÓA RÁC KHI XONG (APP PORTABLE)
+                    try {
+                        if (Test-Path $DuongDanLT) { Remove-Item -Path $DuongDanLT -Force -ErrorAction SilentlyContinue }
+                        if (Test-Path $ThuMucTemp) { Remove-Item -Path $ThuMucTemp -Recurse -Force -ErrorAction SilentlyContinue }
+                    } catch {}
+
                     return 
                 }
             }
@@ -814,6 +824,13 @@ public class WinHelper {
                 }
 
                 UI $PM "✅ Hoàn tất!" 100
+
+                # TỰ ĐỘNG XÓA RÁC KHI XONG (APP SETUP BÌNH THƯỜNG)
+                try {
+                    if (Test-Path $DuongDanLT) { Remove-Item -Path $DuongDanLT -Force -ErrorAction SilentlyContinue }
+                    if (Test-Path $ThuMucTemp) { Remove-Item -Path $ThuMucTemp -Recurse -Force -ErrorAction SilentlyContinue }
+                } catch {}
+
             } catch { UI $PM "⚠️ Lỗi cài đặt" 0 }
         }
 
