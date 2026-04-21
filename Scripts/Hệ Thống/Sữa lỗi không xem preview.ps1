@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (UNBLOCK-FILE GUI)
-# Đặc tính: Hỗ trợ mạng UNC, Giao diện duyệt hiện đại, Tự động Fix lỗi "Harmful"
+# Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (HỖ TRỢ Ổ ĐĨA ÁNH XẠ)
+# Đặc tính: Hỗ trợ mạng UNC, Ổ đĩa ánh xạ, Tự động Fix lỗi "Harmful"
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -12,7 +12,7 @@ if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdenti
     exit
 }
 
-# 2. XÂY DỰNG GIAO DIỆN XAML (Đã thêm Checkbox)
+# 2. XÂY DỰNG GIAO DIỆN XAML
 $GiaoDienXML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
         Title="Cong Cu Go Phong An" Width="600" Height="410" Background="Transparent" AllowsTransparency="True" WindowStyle="None" WindowStartupLocation="CenterScreen" FontFamily="Segoe UI">
@@ -31,7 +31,7 @@ $GiaoDienXML = @"
             </Grid>
             
             <StackPanel Grid.Row="1" Margin="25">
-                <TextBlock Text="Nhập đường dẫn cục bộ hoặc mạng (VD: D:\ hoặc \\MayChu\ThuMuc):" Foreground="#E2E8F0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Text="Nhập đường dẫn cục bộ hoặc mạng (VD: D:\, Z:\ hoặc \\MayChu\ThuMuc):" Foreground="#E2E8F0" FontSize="14" FontWeight="SemiBold" Margin="0,0,0,10"/>
                 
                 <Grid Margin="0,0,0,15">
                     <Grid.ColumnDefinitions>
@@ -40,7 +40,7 @@ $GiaoDienXML = @"
                     </Grid.ColumnDefinitions>
                     
                     <Border Grid.Column="0" CornerRadius="6" BorderBrush="#475569" BorderThickness="1" Background="#1E293B">
-                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (Hỗ trợ cả ổ đĩa thường và đường dẫn mạng)"/>
+                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (Hỗ trợ cả ổ đĩa thường, ổ ánh xạ và đường dẫn mạng)"/>
                     </Border>
                     
                     <Button Name="NutChon" Grid.Column="1" Content="📁 Duyệt..." Height="40" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="14" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0">
@@ -109,11 +109,22 @@ $NutThucThi.Add_Click({
         return
     }
 
-    if (-not (Test-Path -LiteralPath $DuongDan)) {
-        if ($DuongDan -match "^[A-Za-z]:\\") {
-            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDan'. Nếu đây là ổ đĩa mạng, vui lòng nhập trực tiếp đường dẫn gốc (VD: \\\\Dia_Chi_IP\\Thu_Muc)."
+    # BƯỚC XỬ LÝ Ổ ĐĨA ÁNH XẠ: Chuyển đổi ký tự ổ đĩa (VD: Z:\) thành đường dẫn mạng thực tế (UNC)
+    $DuongDanThuc = $DuongDan
+    if ($DuongDan -match "^([A-Za-z]):") {
+        $KyTuO = $matches[1]
+        # Đọc trực tiếp từ Registry của tài khoản hiện tại để lấy đường dẫn ánh xạ
+        $ThongTinMang = Get-ItemProperty -Path "HKCU:\Network\$KyTuO" -ErrorAction SilentlyContinue
+        if ($null -ne $ThongTinMang -and -not [string]::IsNullOrEmpty($ThongTinMang.RemotePath)) {
+            $DuongDanThuc = $DuongDan -replace "^[A-Za-z]:", $ThongTinMang.RemotePath
+        }
+    }
+
+    if (-not (Test-Path -LiteralPath $DuongDanThuc)) {
+        if ($DuongDanThuc -match "^[A-Za-z]:\\") {
+            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDanThuc'. Hãy kiểm tra lại kết nối mạng."
         } else {
-            $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn '$DuongDan' không tồn tại hoặc không thể truy cập!"
+            $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn mạng '$DuongDanThuc' không tồn tại hoặc không thể truy cập lúc này!"
         }
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
         return
@@ -124,16 +135,15 @@ $NutThucThi.Add_Click({
     $NutThucThi.IsEnabled = $false
     $CuaSo.Dispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Render, [System.Action]{})
 
-    # 1. Xử lý tự động thêm IP/Tên máy chủ vào vùng Local Intranet
+    # 1. Xử lý tự động thêm IP/Tên máy chủ vào vùng Local Intranet (Dùng đường dẫn thực UNC)
     $TrangThaiMang = ""
-    if ($HopKiemAnToan.IsChecked -and $DuongDan -match "^\\\\\\*([^\\]+)") {
-        $TenMayChu = $matches[1] # Trích xuất IP hoặc Tên máy chủ từ đường dẫn UNC
+    if ($HopKiemAnToan.IsChecked -and $DuongDanThuc -match "^\\\\\\*([^\\]+)") {
+        $TenMayChu = $matches[1]
         try {
             $RegPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMapKey"
             if (-not (Test-Path $RegPath)) {
                 New-Item -Path $RegPath -Force | Out-Null
             }
-            # Value "1" tương ứng với vùng Local Intranet
             Set-ItemProperty -Path $RegPath -Name $TenMayChu -Value "1" -Type String -Force
             $TrangThaiMang = "`n🛡️ Đã cấp quyền tin cậy cho máy chủ: $TenMayChu"
         } catch {
@@ -141,10 +151,10 @@ $NutThucThi.Add_Click({
         }
     }
 
-    # 2. Thực thi gỡ phong ấn (Unblock-File)
+    # 2. Thực thi gỡ phong ấn (Unblock-File) trên đường dẫn thực tế
     try {
-        Get-ChildItem -LiteralPath $DuongDan -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
-        $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn cho toàn bộ tập tin tại '$DuongDan'.$TrangThaiMang"
+        Get-ChildItem -LiteralPath $DuongDanThuc -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+        $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn cho toàn bộ tập tin.$TrangThaiMang"
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#10B981")
     } catch {
         $NhanTrangThai.Text = "❌ LỖI HỆ THỐNG: $_"
