@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
-# Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (HỖ TRỢ Ổ ĐĨA ÁNH XẠ)
-# Đặc tính: Hỗ trợ mạng UNC, Ổ đĩa ánh xạ, Tự động Fix lỗi "Harmful"
+# Tên công cụ: GIAO DIỆN GỠ PHONG ẤN TẬP TIN (PHIÊN BẢN ĐA LUỒNG - CHỐNG TREO)
+# Đặc tính: Không đơ UI khi quét mạng lớn, Hỗ trợ UNC & Ổ ánh xạ, Auto-Fix Harmful
 # ==============================================================================
 
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
@@ -40,7 +40,7 @@ $GiaoDienXML = @"
                     </Grid.ColumnDefinitions>
                     
                     <Border Grid.Column="0" CornerRadius="6" BorderBrush="#475569" BorderThickness="1" Background="#1E293B">
-                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (Hỗ trợ cả ổ đĩa thường, ổ ánh xạ và đường dẫn mạng)"/>
+                        <TextBox Name="OTimKiem" FontSize="14" VerticalContentAlignment="Center" Padding="10,0" Background="Transparent" Foreground="White" BorderThickness="0" ToolTip="Dán đường dẫn vào đây (Hỗ trợ ổ đĩa thường, ổ ánh xạ và mạng UNC)"/>
                     </Border>
                     
                     <Button Name="NutChon" Grid.Column="1" Content="📁 Duyệt..." Height="40" Background="#3B82F6" Foreground="White" FontWeight="Bold" FontSize="14" BorderThickness="0" Cursor="Hand" Margin="10,0,0,0">
@@ -48,7 +48,7 @@ $GiaoDienXML = @"
                     </Button>
                 </Grid>
 
-                <CheckBox Name="HopKiemAnToan" Content="🛡️ Tự động khai báo máy chủ này là mạng nội bộ an toàn (Sửa lỗi báo Harmful)" Foreground="#94A3B8" FontSize="13" Margin="0,0,0,20" IsChecked="True" ToolTip="Giúp khung Preview của Windows không chặn file từ IP/Máy chủ mạng này nữa"/>
+                <CheckBox Name="HopKiemAnToan" Content="🛡️ Tự động khai báo máy chủ này là mạng nội bộ an toàn (Sửa lỗi báo Harmful)" Foreground="#94A3B8" FontSize="13" Margin="0,0,0,20" IsChecked="True"/>
 
                 <Button Name="NutThucThi" Content="⚡ MỞ KHÓA TOÀN BỘ TẬP TIN" Height="50" Background="#10B981" Foreground="White" FontWeight="Bold" FontSize="16" BorderThickness="0" Cursor="Hand" Margin="0,0,0,20">
                     <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
@@ -66,12 +66,7 @@ $GiaoDienXML = @"
 # --- NẠP GIAO DIỆN ---
 $BoDocTruyen = New-Object System.IO.StringReader($GiaoDienXML)
 $DocXML = [System.Xml.XmlReader]::Create($BoDocTruyen)
-try {
-    $CuaSo = [System.Windows.Markup.XamlReader]::Load($DocXML)
-} catch {
-    [System.Windows.MessageBox]::Show("Lỗi phân tích giao diện XAML: $_", "Lỗi", 0, 16)
-    exit
-}
+$CuaSo = [System.Windows.Markup.XamlReader]::Load($DocXML)
 
 # --- KẾT NỐI BIẾN ---
 $NutDong = $CuaSo.FindName("NutDong")
@@ -85,35 +80,31 @@ $NhanTrangThai = $CuaSo.FindName("NhanTrangThai")
 $NutDong.Add_Click({ $CuaSo.Close() })
 $CuaSo.Add_MouseLeftButtonDown({ $CuaSo.DragMove() })
 
-# --- SỰ KIỆN: NÚT DUYỆT THƯ MỤC ---
 $NutChon.Add_Click({
     $HopThoai = New-Object System.Windows.Forms.OpenFileDialog
-    $HopThoai.Title = "Chọn thư mục cần gỡ phong ấn bảo mật"
+    $HopThoai.Title = "Chọn thư mục"
     $HopThoai.ValidateNames = $false
     $HopThoai.CheckFileExists = $false
-    $HopThoai.CheckPathExists = $true
     $HopThoai.FileName = "Chọn_Thư_Mục_Này" 
-    
     if ($HopThoai.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK) {
         $OTimKiem.Text = [System.IO.Path]::GetDirectoryName($HopThoai.FileName)
     }
 })
 
-# --- SỰ KIỆN: NÚT MỞ KHÓA TẬP TIN ---
+# --- SỰ KIỆN: NÚT MỞ KHÓA (ĐÃ TÍCH HỢP ĐA LUỒNG) ---
 $NutThucThi.Add_Click({
     $DuongDan = $OTimKiem.Text.Trim('"').Trim()
     
     if ([string]::IsNullOrWhiteSpace($DuongDan)) {
-        $NhanTrangThai.Text = "❌ Vui lòng nhập hoặc chọn đường dẫn trước khi thực thi!"
+        $NhanTrangThai.Text = "❌ Vui lòng nhập đường dẫn!"
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
         return
     }
 
-    # BƯỚC XỬ LÝ Ổ ĐĨA ÁNH XẠ: Chuyển đổi ký tự ổ đĩa (VD: Z:\) thành đường dẫn mạng thực tế (UNC)
+    # Chuyển đổi ổ ánh xạ (Z:\) thành mạng thực (UNC)
     $DuongDanThuc = $DuongDan
     if ($DuongDan -match "^([A-Za-z]):") {
         $KyTuO = $matches[1]
-        # Đọc trực tiếp từ Registry của tài khoản hiện tại để lấy đường dẫn ánh xạ
         $ThongTinMang = Get-ItemProperty -Path "HKCU:\Network\$KyTuO" -ErrorAction SilentlyContinue
         if ($null -ne $ThongTinMang -and -not [string]::IsNullOrEmpty($ThongTinMang.RemotePath)) {
             $DuongDanThuc = $DuongDan -replace "^[A-Za-z]:", $ThongTinMang.RemotePath
@@ -121,47 +112,86 @@ $NutThucThi.Add_Click({
     }
 
     if (-not (Test-Path -LiteralPath $DuongDanThuc)) {
-        if ($DuongDanThuc -match "^[A-Za-z]:\\") {
-            $NhanTrangThai.Text = "❌ Lỗi: Không tìm thấy '$DuongDanThuc'. Hãy kiểm tra lại kết nối mạng."
-        } else {
-            $NhanTrangThai.Text = "❌ Lỗi: Đường dẫn mạng '$DuongDanThuc' không tồn tại hoặc không thể truy cập lúc này!"
-        }
+        $NhanTrangThai.Text = "❌ Lỗi: Không thể truy cập '$DuongDanThuc'."
         $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
         return
     }
 
-    $NhanTrangThai.Text = "⏳ Đang quét và cấu hình, vui lòng chờ..."
-    $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#F59E0B")
+    # CẬP NHẬT GIAO DIỆN TRƯỚC KHI CHẠY NGẦM
     $NutThucThi.IsEnabled = $false
-    $CuaSo.Dispatcher.Invoke([System.Windows.Threading.DispatcherPriority]::Render, [System.Action]{})
+    $NhanTrangThai.Text = "⏳ Đang khởi động bộ quét ngầm..."
+    $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#F59E0B")
 
-    # 1. Xử lý tự động thêm IP/Tên máy chủ vào vùng Local Intranet (Dùng đường dẫn thực UNC)
-    $TrangThaiMang = ""
-    if ($HopKiemAnToan.IsChecked -and $DuongDanThuc -match "^\\\\\\*([^\\]+)") {
+    # Thu thập dữ liệu để đẩy xuống luồng ngầm
+    $CapQuyenMang = $HopKiemAnToan.IsChecked
+    $TenMayChu = $null
+    if ($CapQuyenMang -and $DuongDanThuc -match "^\\\\\\*([^\\]+)") {
         $TenMayChu = $matches[1]
+    }
+
+    # TẠO LUỒNG CHẠY NGẦM (RUNSPACE) ĐỂ KHÔNG LÀM TREO GIAO DIỆN
+    $KhongGianChay = [runspacefactory]::CreateRunspace()
+    $KhongGianChay.ThreadOptions = "ReuseThread"
+    $KhongGianChay.Open()
+    $TienTrinhPS = [powershell]::Create()
+    $TienTrinhPS.Runspace = $KhongGianChay
+
+    [void]$TienTrinhPS.AddScript({
+        param($DuongDanQuet, $MayChu)
         try {
-            $RegPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMapKey"
-            if (-not (Test-Path $RegPath)) {
-                New-Item -Path $RegPath -Force | Out-Null
+            $TinNhan = ""
+            # Cấu hình Local Intranet
+            if ($MayChu) {
+                $RegPath = "HKLM:\SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings\ZoneMapKey"
+                if (-not (Test-Path $RegPath)) { New-Item -Path $RegPath -Force | Out-Null }
+                Set-ItemProperty -Path $RegPath -Name $MayChu -Value "1" -Type String -Force
+                $TinNhan = "`n🛡️ Đã cấp quyền tin cậy mạng nội bộ cho: $MayChu"
             }
-            Set-ItemProperty -Path $RegPath -Name $TenMayChu -Value "1" -Type String -Force
-            $TrangThaiMang = "`n🛡️ Đã cấp quyền tin cậy cho máy chủ: $TenMayChu"
+            # Lệnh quét ngầm tốn thời gian
+            Get-ChildItem -LiteralPath $DuongDanQuet -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
+            return "THANHCONG|$TinNhan"
         } catch {
-            $TrangThaiMang = "`n⚠️ Không thể tự động thêm vùng tin cậy: $_"
+            return "LOI|$_"
         }
-    }
+    }).AddArgument($DuongDanThuc).AddArgument($TenMayChu)
 
-    # 2. Thực thi gỡ phong ấn (Unblock-File) trên đường dẫn thực tế
-    try {
-        Get-ChildItem -LiteralPath $DuongDanThuc -Recurse -File -Force -ErrorAction SilentlyContinue | Unblock-File -ErrorAction SilentlyContinue
-        $NhanTrangThai.Text = "✅ THÀNH CÔNG: Đã gỡ phong ấn cho toàn bộ tập tin.$TrangThaiMang"
-        $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#10B981")
-    } catch {
-        $NhanTrangThai.Text = "❌ LỖI HỆ THỐNG: $_"
-        $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
-    }
+    # Bắt đầu thực thi ngầm
+    $KqChayNgam = $TienTrinhPS.BeginInvoke()
 
-    $NutThucThi.IsEnabled = $true
+    # BỘ HẸN GIỜ KIỂM TRA TRẠNG THÁI (Đồng bộ với giao diện)
+    $BoDem = New-Object System.Windows.Threading.DispatcherTimer
+    $BoDem.Interval = [TimeSpan]::FromMilliseconds(500)
+    $NhipHieuUng = 0
+
+    $BoDem.Add_Tick({
+        if ($KqChayNgam.IsCompleted) {
+            # Khi luồng ngầm hoàn tất
+            $BoDem.Stop()
+            $KetQuaTraVe = $TienTrinhPS.EndInvoke($KqChayNgam)
+            
+            # Dọn dẹp bộ nhớ
+            $TienTrinhPS.Dispose()
+            $KhongGianChay.Close()
+            $KhongGianChay.Dispose()
+
+            # Phân tách kết quả
+            $TachKQ = $KetQuaTraVe -split "\|", 2
+            if ($TachKQ[0] -eq "THANHCONG") {
+                $NhanTrangThai.Text = "✅ ĐÃ XONG: Hoàn tất quét và mở khóa tập tin." + $TachKQ[1]
+                $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#10B981")
+            } else {
+                $NhanTrangThai.Text = "❌ CÓ LỖI: " + $TachKQ[1]
+                $NhanTrangThai.Foreground = [Windows.Media.BrushConverter]::new().ConvertFrom("#EF4444")
+            }
+            $NutThucThi.IsEnabled = $true
+        } else {
+            # Hiệu ứng đang chạy để báo hiệu UI không chết
+            $NhipHieuUng++
+            $Cham = "." * ($NhipHieuUng % 4)
+            $NhanTrangThai.Text = "⏳ Đang quét cấu trúc mạng ngầm (Đừng tắt cửa sổ)$Cham"
+        }
+    })
+    $BoDem.Start()
 })
 
 # Hiển thị cửa sổ
