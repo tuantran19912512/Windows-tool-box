@@ -1,14 +1,15 @@
 ﻿# ==============================================================================
 # BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V709
-# Cải tiến: Nút Reload, Co giãn giao diện tự do, Nhận diện UWP/Portable, Tự xóa file khi xong, Nút tải lại luôn hiện
+# Cải tiến: Nút Reload, Nhận diện UWP/Portable, Hàng chờ ưu tiên, Full Băng thông
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
 # MODULE 1: THIẾT LẬP MÔI TRƯỜNG & TOÀN CỤC
 # ------------------------------------------------------------------------------
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
 [System.Net.ServicePointManager]::DefaultConnectionLimit = 20
+[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
+
 $TaiKhoanHienTai = [Security.Principal.WindowsIdentity]::GetCurrent()
 $QuyenQuanTri    = [Security.Principal.WindowsPrincipal]$TaiKhoanHienTai
 if (-not $QuyenQuanTri.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -21,6 +22,7 @@ Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, Sys
 $Global:LienKetDuLieuGoc = "https://raw.githubusercontent.com/tuantran19912512/Windows-tool-box/refs/heads/main/DanhSachPhanMem.csv"
 $Global:ThuMucLuuTru     = Join-Path $env:PUBLIC "LuuTruPhanMemViet"
 $Global:TrangThaiBoNho   = [hashtable]::Synchronized(@{ TrangThai = "NhanhRoi" })
+$Global:HangChoCaiDat    = New-Object System.Collections.Generic.List[Object]
 
 if (-not (Test-Path $Global:ThuMucLuuTru)) { New-Item -ItemType Directory -Path $Global:ThuMucLuuTru -Force | Out-Null }
 
@@ -77,13 +79,13 @@ function TuDong-NhanDienThamSoEXE ($TenPhanMem, $ThamSoTuCSV, $DuongDanFile) {
             if ($Uni  -match "Inno Setup"      -or $Ansi -match "Inno Setup")      { return "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-" }
             if ($Uni  -match "Nullsoft Install" -or $Ansi -match "Nullsoft|NSIS")   { return "/S" }
             if ($Uni  -match "InstallShield"    -or $Ansi -match "InstallShield")   { return "/s /v`"/qn /norestart`"" }
-            if ($Uni  -match "WiX Toolset|Windows Installer XML")                    { return "/quiet /norestart" }
-            if ($Uni  -match "Advanced Installer")                                   { return "/exenoui /qn /norestart" }
-            if ($Uni  -match "Squirrel\.exe|squirrel-")                              { return "--silent" }
-            if ($Uni  -match "WISE.*Install|Install.*WISE")                          { return "/s" }
-            if ($Uni  -match "Setup Factory")                                        { return "/S" }
-            if ($Uni  -match "msiexec|\.msi")                                        { return "/quiet /norestart" }
-            if ($Ansi -match "7zS\.sfx|7-Zip")                                       { return "/S" }
+            if ($Uni  -match "WiX Toolset|Windows Installer XML")                   { return "/quiet /norestart" }
+            if ($Uni  -match "Advanced Installer")                                  { return "/exenoui /qn /norestart" }
+            if ($Uni  -match "Squirrel\.exe|squirrel-")                             { return "--silent" }
+            if ($Uni  -match "WISE.*Install|Install.*WISE")                         { return "/s" }
+            if ($Uni  -match "Setup Factory")                                       { return "/S" }
+            if ($Uni  -match "msiexec|\.msi")                                       { return "/quiet /norestart" }
+            if ($Ansi -match "7zS\.sfx|7-Zip")                                      { return "/S" }
         } catch {}
     }
 
@@ -246,7 +248,7 @@ $XAML = @"
                                 <RowDefinition Height="*"/>
                             </Grid.RowDefinitions>
                             <Border Grid.Row="0" Background="#1E293B" CornerRadius="6,6,0,0" Padding="10,7">
-                                <TextBlock Text="📋  Danh sách đã chọn" Foreground="#94A3B8"
+                                <TextBlock Text="📋  Danh sách chờ cài đặt" Foreground="#94A3B8"
                                            FontSize="11" FontWeight="SemiBold"/>
                             </Border>
                             <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto" Name="LogScroll">
@@ -368,13 +370,13 @@ $LogScroll   = $CuaSoChinh.FindName("LogScroll")
 
 function CapNhat-LogChon {
     $Dispatcher.Invoke([action]{
-        # Cập nhật số đếm
-        $SoChon = ($BangDanhSach | Where-Object { $_.Chon }).Count
-        $NhanSoLuong.Text = $SoChon
+        # Cập nhật số đếm dựa trên số lượng trong hàng chờ
+        $NhanSoLuong.Text = $Global:HangChoCaiDat.Count
 
-        # Vẽ lại log panel
+        # Vẽ lại log panel theo ĐÚNG THỨ TỰ TRONG HÀNG CHỜ
         $LogPanel.Children.Clear()
-        $DaChon = $BangDanhSach | Where-Object { $_.Chon }
+        $DaChon = $Global:HangChoCaiDat
+        
         if ($DaChon.Count -eq 0) {
             $Trong = New-Object System.Windows.Controls.TextBlock
             $Trong.Text       = "Chưa chọn phần mềm nào"
@@ -496,6 +498,7 @@ $DieuKhienTaiLai.Add_Click({
     
     # Xóa sạch dữ liệu cũ và tải lại mới từ CSV
     $BangDanhSach.Clear()
+    $Global:HangChoCaiDat.Clear()
     TaiDuLieuTuCSV
 })
 
@@ -519,6 +522,7 @@ $DieuKhienKichHoat.Add_Click({
     $RS.SessionStateProxy.SetVariable("ThuMucLuuTru",    $Global:ThuMucLuuTru)
     $RS.SessionStateProxy.SetVariable("DanhSachKhoaAPI", $Global:DanhSachKhoaAPI)
     $RS.SessionStateProxy.SetVariable("TrangThaiBoNho",  $Global:TrangThaiBoNho)
+    $RS.SessionStateProxy.SetVariable("HangChoCaiDat",   $Global:HangChoCaiDat) # BƠM HÀNG CHỜ VÀO RUNSPACE
     $RS.SessionStateProxy.SetVariable("Dispatcher",      $Dispatcher)
     $RS.SessionStateProxy.SetVariable("F_KiemTra",       ${Function:KiemTra-LoiFileNen})
     $RS.SessionStateProxy.SetVariable("F_TuDong",        ${Function:TuDong-NhanDienThamSoEXE})
@@ -645,7 +649,7 @@ public class WinHelper {
             } else {
                 try {
                     $Goi = [System.Net.HttpWebRequest]::Create($PM.DuongDanTai)
-					$Goi.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+                    $Goi.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                     $PH  = $Goi.GetResponse()
                     $CD  = $PH.Headers["Content-Disposition"]
                     if ($CD -match 'filename="?([^";]+)"?') {
@@ -853,8 +857,20 @@ public class WinHelper {
             } catch { UI $PM "⚠️ Lỗi cài đặt" 0 }
         }
 
-        foreach ($PM in $BangDanhSach) {
-            if ($PM.Chon -and $TrangThaiBoNho.TrangThai -ne "DungLai") { CaiDat $PM }
+        # --- BƯỚC ƯU TIÊN 7-ZIP (Tạo bản sao mảng để chạy an toàn trong đa luồng) ---
+        $DanhSachTienHanh = @($HangChoCaiDat)
+        $UuTien7Zip = $DanhSachTienHanh | Where-Object { $_.Ten -match "(?i)7-?Zip" } | Select-Object -First 1
+        
+        if ($null -ne $UuTien7Zip) {
+            $PhanConLai = $DanhSachTienHanh | Where-Object { $_ -ne $UuTien7Zip }
+            $DanhSachTienHanh = @($UuTien7Zip) + $PhanConLai # Ghép 7-Zip lên vị trí đầu tiên
+        }
+
+        # --- DUYỆT THEO HÀNG CHỜ ĐÃ CHỌN ---
+        foreach ($PM in $DanhSachTienHanh) {
+            if ($PM.Chon -and $TrangThaiBoNho.TrangThai -ne "DungLai") { 
+                CaiDat $PM 
+            }
         }
     })
 
@@ -901,9 +917,24 @@ function TaiDuLieuTuCSV {
                 DanhMuc     = $Cat
                 KetQua      = ""
             }
+            
+            # --- CẬP NHẬT: Thêm ngay vào hàng chờ nếu file CSV mặc định đã tích ---
+            if ($Obj.Chon -and ($Global:HangChoCaiDat -notcontains $Obj)) {
+                $Global:HangChoCaiDat.Add($Obj)
+            }
+
             $Obj.add_PropertyChanged({
                 param($s, $e)
-                if ($e.PropertyName -eq "Chon") { CapNhat-LogChon }
+                if ($e.PropertyName -eq "Chon") { 
+                    if ($s.Chon) {
+                        # Nếu tích chọn, thêm vào cuối hàng chờ
+                        if ($Global:HangChoCaiDat -notcontains $s) { $Global:HangChoCaiDat.Add($s) }
+                    } else {
+                        # Nếu bỏ tích, xóa khỏi hàng chờ
+                        $Global:HangChoCaiDat.Remove($s) | Out-Null
+                    }
+                    CapNhat-LogChon 
+                }
             })
             $BangDanhSach.Add($Obj)
         }
