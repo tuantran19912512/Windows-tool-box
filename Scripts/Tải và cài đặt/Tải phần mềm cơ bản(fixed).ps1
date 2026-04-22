@@ -8,7 +8,7 @@
 # ------------------------------------------------------------------------------
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12 -bor [Net.SecurityProtocolType]::Tls13
 [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-
+[System.Net.ServicePointManager]::DefaultConnectionLimit = 20
 $TaiKhoanHienTai = [Security.Principal.WindowsIdentity]::GetCurrent()
 $QuyenQuanTri    = [Security.Principal.WindowsPrincipal]$TaiKhoanHienTai
 if (-not $QuyenQuanTri.IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -613,17 +613,26 @@ public class WinHelper {
                         $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
                         
                         # Tối ưu hóa Buffer và bộ đếm thời gian
-                        $Buf = New-Object byte[] 131072; $Tong = $PH.ContentLength; $Da = 0
+                        $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
                         $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                         do {
                             if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
                             $n = $Dong.Read($Buf, 0, $Buf.Length)
                             if ($n -gt 0) {
                                 $File.Write($Buf, 0, $n); $Da += $n
-                                if ($Tong -gt 0 -and $DongHo.ElapsedMilliseconds -gt 250) { 
-                                    $p = [math]::Round(($Da/$Tong)*100)
-                                    UI $PM "Đang tải: $p%" $p
-                                    $DongHo.Restart()
+                                
+                                # Logic cập nhật UI 150ms và chống lỗi khi không rõ dung lượng
+                                if ($Tong -gt 0) {
+                                    if ($DongHo.ElapsedMilliseconds -gt 150 -or $Da -eq $Tong) { 
+                                        $p = [math]::Round(($Da/$Tong)*100)
+                                        UI $PM "Đang tải: $p%" $p
+                                        $DongHo.Restart()
+                                    }
+                                } else {
+                                    if ($DongHo.ElapsedMilliseconds -gt 500) {
+                                        UI $PM "Đang tải: $([math]::Round($Da/1MB, 1)) MB" 50
+                                        $DongHo.Restart()
+                                    }
                                 }
                             }
                         } while ($n -gt 0)
@@ -650,18 +659,27 @@ public class WinHelper {
                     $Dong = $PH.GetResponseStream()
                     $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
                     
-                    # Tối ưu hóa Buffer và bộ đếm thời gian
-                    $Buf = New-Object byte[] 131072; $Tong = $PH.ContentLength; $Da = 0
+                    # Thay bằng Buffer 4MB (4194304)
+                    $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
                     $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                     do {
                         if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
                         $n = $Dong.Read($Buf, 0, $Buf.Length)
                         if ($n -gt 0) {
                             $File.Write($Buf, 0, $n); $Da += $n
-                            if ($Tong -gt 0 -and $DongHo.ElapsedMilliseconds -gt 250) { 
-                                $p = [math]::Round(($Da/$Tong)*100)
-                                UI $PM "Đang tải: $p%" $p
-                                $DongHo.Restart()
+                            
+                            # Logic cập nhật UI 150ms và chống lỗi khi không rõ dung lượng
+                            if ($Tong -gt 0) {
+                                if ($DongHo.ElapsedMilliseconds -gt 150 -or $Da -eq $Tong) { 
+                                    $p = [math]::Round(($Da/$Tong)*100)
+                                    UI $PM "Đang tải: $p%" $p
+                                    $DongHo.Restart()
+                                }
+                            } else {
+                                if ($DongHo.ElapsedMilliseconds -gt 500) {
+                                    UI $PM "Đang tải: $([math]::Round($Da/1MB, 1)) MB" 50
+                                    $DongHo.Restart()
+                                }
                             }
                         }
                     } while ($n -gt 0)
