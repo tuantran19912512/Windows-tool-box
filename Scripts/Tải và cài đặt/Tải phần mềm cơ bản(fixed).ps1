@@ -755,8 +755,24 @@ public class WinHelper {
                 $FileThucThi = "msiexec.exe"
             }
 
+            # ---------------------------------------------------------
             # Xử lý file MSIX/APPX (UWP từ Windows Store như WhatsApp)
+            # ---------------------------------------------------------
             if ($FileThucThi -match "(?i)\.(msix|appx|msixbundle|appxbundle)$") {
+                # Kiểm tra phiên bản Build của Windows
+                $PhienBanWin = [System.Environment]::OSVersion.Version.Build
+                
+                # Win 10 1809 có build là 17763. Dưới mức này là không hỗ trợ MSIX.
+                if ($PhienBanWin -lt 17763) {
+                    UI $PM "❌ Lỗi: Win quá cũ ko hỗ trợ" 0
+                    
+                    # Dọn ngay cái file .msixbundle vừa tải về cho đỡ rác máy
+                    try { if (Test-Path $DuongDanLT) { Remove-Item $DuongDanLT -Force -ErrorAction SilentlyContinue } } catch {}
+                    
+                    return # Ngắt ngang, không chạy cài đặt nữa, tool sẽ tự nhảy sang App tiếp theo
+                }
+
+                # Nếu Win đời mới đủ điều kiện thì chạy bình thường
                 $ThamSo      = "-NoProfile -NonInteractive -Command `"Add-AppxPackage -Path '$FileThucThi'`""
                 $FileThucThi = "powershell.exe"
             }
