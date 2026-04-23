@@ -829,27 +829,35 @@ $NutBatDau.Add_Click({
             Sua-RegWorker "HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System" "DisableStatusMessages" 1
             Ghi-NhatKyWorker ([int]($Buoc/$TongBuoc*100)) "Khởi động..." "✓ Đã tắt Lock Screen"
         }
-        if ($CauHinh.AutoLogon) {
+       if ($CauHinh.AutoLogon) {
             $Buoc++
             $NguoiDung = $env:USERNAME
-            Ghi-NhatKyWorker ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "Kiểm tra tài khoản: $NguoiDung"
+            W-Log ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "Kiểm tra tài khoản: $NguoiDung"
             $ThongTinNguoiDung = Get-LocalUser -Name $NguoiDung -ErrorAction SilentlyContinue
+            
+            # Kiểm tra xem máy có thực sự KHÔNG mật khẩu không
             $KhongMatKhau = $false
             try {
                 Add-Type -AssemblyName System.DirectoryServices.AccountManagement
-                $NguCach = New-Object System.DirectoryServices.AccountManagement.PrincipalContext(
-                    [System.DirectoryServices.AccountManagement.ContextType]::Machine)
+                $NguCach = New-Object System.DirectoryServices.AccountManagement.PrincipalContext([System.DirectoryServices.AccountManagement.ContextType]::Machine)
                 $KhongMatKhau = $NguCach.ValidateCredentials($NguoiDung, "")
             } catch {}
+
             if ($ThongTinNguoiDung -and $KhongMatKhau -and ($ThongTinNguoiDung.PrincipalSource -ne "MicrosoftAccount")) {
                 $RegDangNhap = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon"
-                Sua-RegWorker $RegDangNhap "AutoAdminLogon" "1" "String" ; Sua-RegWorker $RegDangNhap "DefaultUserName" $NguoiDung "String"
-                Sua-RegWorker $RegDangNhap "DefaultPassword" "" "String" ; Sua-RegWorker $RegDangNhap "ForceAutoLogon"  "1"   "String"
-                Ghi-NhatKyWorker ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "✓ Đã bật tự động đăng nhập cho: $NguoiDung"
-            } elseif ($ThongTinNguoiDung.PrincipalSource -eq "MicrosoftAccount") {
-                Ghi-NhatKyWorker ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "⚠ Tài khoản đám mây – Đã bỏ qua Auto-Logon"
+                
+                # --- SỬA LỖI TẠI ĐÂY ---
+                W-Reg $RegDangNhap "AutoAdminLogon" "1" "String"
+                W-Reg $RegDangNhap "DefaultUserName" $NguoiDung "String"
+                W-Reg $RegDangNhap "DefaultPassword" "" "String"
+                
+                # SET THÀNH 0 ĐỂ VẪN LOCK MÁY ĐƯỢC THỦ CÔNG
+                W-Reg $RegDangNhap "ForceAutoLogon" "0" "String" 
+                # -----------------------
+
+                W-Log ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "✓ Đã bật tự động đăng nhập (Vẫn có thể Lock máy)"
             } else {
-                Ghi-NhatKyWorker ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "⚠ Thiết bị có mật khẩu – Đã khóa Auto-Logon"
+                W-Log ([int]($Buoc/$TongBuoc*100)) "Đăng nhập..." "⚠ Không đủ điều kiện Auto-Logon - Đã bỏ qua"
             }
         }
 
