@@ -397,7 +397,7 @@ Get-AppxPackage -AllUsers | Where-Object { `$_.Name -notmatch '^System|^Microsof
         
         if ($UltraView) {
             $Cmd += "echo Dang doi Internet de tai UltraView...`r`nping 127.0.0.1 -n 15 >nul`r`n"
-            $Cmd += "powershell -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://ultraview.net/en/download/UltraViewer_setup_6.6_en.exe' -OutFile 'C:\UltraView_Setup.exe'`"`r`n"
+            $Cmd += "powershell -Command `"[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12; Invoke-WebRequest -Uri 'https://dl2.ultraviewer.net/UltraViewer_setup_6.6_vi.exe' -OutFile 'C:\UltraView_Setup.exe'`"`r`n"
             $Cmd += "start /wait C:\UltraView_Setup.exe /verysilent /norestart`r`n"
             $Cmd += "start `"`" `"C:\Program Files (x86)\UltraViewer\UltraViewer_Desktop.exe`"`r`n"
             $Cmd += "del /f /q C:\UltraView_Setup.exe`r`n"
