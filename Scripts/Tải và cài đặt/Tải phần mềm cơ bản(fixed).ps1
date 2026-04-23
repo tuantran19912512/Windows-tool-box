@@ -1,6 +1,6 @@
 ﻿# ==============================================================================
 # BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V709
-# Cải tiến: Nút Reload, Nhận diện UWP/Portable, Hàng chờ ưu tiên, Full Băng thông
+# Cải tiến: Nút Reload, Nhận diện UWP/Portable, Hàng chờ ưu tiên, Full Băng thông, Auto Scroll
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -316,7 +316,7 @@ $XAML = @"
                         </ItemsControl.GroupStyle>
                         <ItemsControl.ItemTemplate>
                             <DataTemplate>
-                                <Border Width="235" Height="92" Margin="5,5,14,14"
+                                <Border Name="KhungThe" Width="235" Height="92" Margin="5,5,14,14"
                                         Background="#FFFFFF" BorderBrush="#E2E8F0"
                                         BorderThickness="1.5" CornerRadius="10">
                                     <Grid Margin="10,8">
@@ -522,7 +522,8 @@ $DieuKhienKichHoat.Add_Click({
     $RS.SessionStateProxy.SetVariable("ThuMucLuuTru",    $Global:ThuMucLuuTru)
     $RS.SessionStateProxy.SetVariable("DanhSachKhoaAPI", $Global:DanhSachKhoaAPI)
     $RS.SessionStateProxy.SetVariable("TrangThaiBoNho",  $Global:TrangThaiBoNho)
-    $RS.SessionStateProxy.SetVariable("HangChoCaiDat",   $Global:HangChoCaiDat) # BƠM HÀNG CHỜ VÀO RUNSPACE
+    $RS.SessionStateProxy.SetVariable("HangChoCaiDat",   $Global:HangChoCaiDat)
+    $RS.SessionStateProxy.SetVariable("CtrlDanhSach",    $CuaSoChinh.FindName("BangHienThiDuLieu")) # BƠM BẢNG VÀO RUNSPACE
     $RS.SessionStateProxy.SetVariable("Dispatcher",      $Dispatcher)
     $RS.SessionStateProxy.SetVariable("F_KiemTra",       ${Function:KiemTra-LoiFileNen})
     $RS.SessionStateProxy.SetVariable("F_TuDong",        ${Function:TuDong-NhanDienThamSoEXE})
@@ -534,14 +535,39 @@ $DieuKhienKichHoat.Add_Click({
         Set-Item "Function:TuDong-NhanDienThamSoEXE" $F_TuDong
         Set-Item "Function:Chay-TienTrinhChuan"      $F_Chay
 
-       function UI ($PM, $TT, $TP) {
+        # Hàm quét cây giao diện để tìm đúng cái thẻ đang chạy
+        function Tim-KhungGiaoDien ($Goc, $DuLieu) {
+            if ($null -eq $Goc) { return $null }
+            $SoCon = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($Goc)
+            for ($i = 0; $i -lt $SoCon; $i++) {
+                $Con = [System.Windows.Media.VisualTreeHelper]::GetChild($Goc, $i)
+                if ($Con -is [System.Windows.FrameworkElement] -and $Con.DataContext -eq $DuLieu -and $Con.Name -eq "KhungThe") {
+                    return $Con
+                }
+                $Kq = Tim-KhungGiaoDien $Con $DuLieu
+                if ($Kq) { return $Kq }
+            }
+            return $null
+        }
+
+        function UI ($PM, $TT, $TP) {
             # Dùng lại Invoke để bắt chết biến trong bộ nhớ
             $Dispatcher.Invoke([action]{
                 if ($null -ne $TT) { 
                     $PM.TrangThai = $TT 
                     if ($TT -match "Hoàn tất") { $PM.KetQua = " ✔" }
                     elseif ($TT -match "Lỗi") { $PM.KetQua = " ❌" }
-                    elseif ($TT -match "Đang phân tích|Quét Drive") { $PM.KetQua = "" }
+                    elseif ($TT -match "Đang phân tích|Quét Drive") { 
+                        $PM.KetQua = "" 
+                        
+                        # --- CẢI TIẾN TỰ ĐỘNG CUỘN TỚI THẺ PHẦN MỀM ---
+                        if ($TT -match "Đang phân tích") {
+                            try {
+                                $TheApp = Tim-KhungGiaoDien $CtrlDanhSach $PM
+                                if ($null -ne $TheApp) { $TheApp.BringIntoView() }
+                            } catch {}
+                        }
+                    }
                 }
                 if ($null -ne $TP) { $PM.TienTrinh = $TP }
             })
@@ -616,7 +642,7 @@ public class WinHelper {
                         $Dong = $PH.GetResponseStream()
                         $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
                         
-                        # Tối ưu hóa Buffer và bộ đếm thời gian
+                        # Tối ưu hóa Buffer (4MB) và bộ đếm thời gian
                         $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
                         $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                         do {
@@ -663,7 +689,7 @@ public class WinHelper {
                     $Dong = $PH.GetResponseStream()
                     $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
                     
-                    # Thay bằng Buffer 4MB (4194304)
+                    # Tối ưu hóa Buffer (4MB) và bộ đếm thời gian
                     $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
                     $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                     do {
