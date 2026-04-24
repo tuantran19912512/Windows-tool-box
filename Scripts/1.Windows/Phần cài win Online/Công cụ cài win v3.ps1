@@ -1,6 +1,7 @@
 ﻿<#
 .SYNOPSIS
-    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V10.9 (BỔ SUNG FULL/NET DRIVER BACKUP)
+    CÔNG CỤ TRIỂN KHAI WINDOWS TỰ ĐỘNG - V11.0 FINAL
+    Tối ưu hóa: Offline Registry, Unattend, Smart Driver Network, Bloatware Safe Mode
 #>
 
 # ==========================================
@@ -27,11 +28,11 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 # ==========================================
 [xml]$XAML = @"
 <Window xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-        Title="Zero-Touch Deployment V10.9 (Dual Driver Backup)" 
+        Title="Zero-Touch Deployment V11.0 FINAL" 
         Width="780" Height="860" MinWidth="700" MinHeight="600" 
         WindowStartupLocation="CenterScreen" Background="#F8FAFC">
     <DockPanel Margin="12">
-        <TextBlock DockPanel.Dock="Top" Text="HỆ THỐNG TRIỂN KHAI WINDOWS TỰ ĐỘNG" FontSize="20" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,10"/>
+        <TextBlock DockPanel.Dock="Top" Text="HỆ THỐNG TRIỂN KHAI WINDOWS CHUẨN CHỈ" FontSize="20" FontWeight="Bold" Foreground="#0F172A" HorizontalAlignment="Center" Margin="0,0,0,10"/>
         
         <StackPanel DockPanel.Dock="Bottom" Margin="0,10,0,0">
             <StackPanel Margin="0,0,0,10">
@@ -149,7 +150,7 @@ $Global:TrangThaiHethong = [hashtable]::Synchronized(@{
 
 $TrinhDoc = (New-Object System.Xml.XmlNodeReader $XAML); $UI = [Windows.Markup.XamlReader]::Load($TrinhDoc)
 
-# Ánh xạ Biến Giao diện Core
+# Ánh xạ Biến Giao diện
 $HopFileBoCai = $UI.FindName("HopFileBoCai"); $NutChonFile = $UI.FindName("NutChonFile"); $DanhSachBanWin = $UI.FindName("DanhSachBanWin")
 $HopThuMucDriver = $UI.FindName("HopThuMucDriver"); $NutChonDriver = $UI.FindName("NutChonDriver"); $TxtTenUser = $UI.FindName("TxtTenUser")
 $ChkGhiDeUnattend = $UI.FindName("ChkGhiDeUnattend"); $KhuVucRegion = $UI.FindName("KhuVucRegion")
@@ -159,9 +160,7 @@ $ChkBackupAll = $UI.FindName("ChkBackupAll"); $ChkBackupNet = $UI.FindName("ChkB
 $HopNhatKy = $UI.FindName("HopNhatKy"); $TxtTrangThai = $UI.FindName("TxtTrangThai"); $TxtPhanTram = $UI.FindName("TxtPhanTram")
 $ThanhTienDo = $UI.FindName("ThanhTienDo"); $NutKichHoat = $UI.FindName("NutKichHoat")
 
-# Ánh xạ Biến Windows Optimizer & Bloatware
-$ChkBloatware = $UI.FindName("ChkBloatware")
-$ChkNet35 = $UI.FindName("ChkNet35"); $ChkLegacy = $UI.FindName("ChkLegacy"); $ChkSMB1 = $UI.FindName("ChkSMB1")
+$ChkBloatware = $UI.FindName("ChkBloatware"); $ChkNet35 = $UI.FindName("ChkNet35"); $ChkLegacy = $UI.FindName("ChkLegacy"); $ChkSMB1 = $UI.FindName("ChkSMB1")
 $ChkNetShare = $UI.FindName("ChkNetShare"); $ChkThisPC = $UI.FindName("ChkThisPC"); $ChkSpotlight = $UI.FindName("ChkSpotlight")
 $ChkOneDrive = $UI.FindName("ChkOneDrive"); $ChkCopilot = $UI.FindName("ChkCopilot"); $ChkMeetNow = $UI.FindName("ChkMeetNow")
 $ChkSuggested = $UI.FindName("ChkSuggested"); $ChkDefender = $UI.FindName("ChkDefender"); $ChkEdge = $UI.FindName("ChkEdge")
@@ -170,10 +169,9 @@ $ChkSticky = $UI.FindName("ChkSticky"); $ChkNews = $UI.FindName("ChkNews"); $Chk
 $ChkUAC = $UI.FindName("ChkUAC"); $ChkMenuClassic = $UI.FindName("ChkMenuClassic"); $ChkExt = $UI.FindName("ChkExt")
 $ChkNumLock = $UI.FindName("ChkNumLock"); $ChkWmic = $UI.FindName("ChkWmic")
 
-# Logic Checkbox Loại trừ lẫn nhau (Bấm cái này tắt cái kia)
+# Logic Checkbox
 $ChkBackupAll.Add_Click({ if ($ChkBackupAll.IsChecked) { $ChkBackupNet.IsChecked = $false } })
 $ChkBackupNet.Add_Click({ if ($ChkBackupNet.IsChecked) { $ChkBackupAll.IsChecked = $false } })
-
 $ChkGhiDeUnattend.Add_Click({
     $TrangThai = $ChkGhiDeUnattend.IsChecked; $KhuVucRegion.IsEnabled = $TrangThai
     $ChkOOBE.IsEnabled = $TrangThai; $ChkLogon.IsEnabled = $TrangThai
@@ -226,7 +224,7 @@ $NutChonFile.Add_Click({ $Hop = New-Object System.Windows.Forms.OpenFileDialog; 
 $NutChonDriver.Add_Click({ $F = New-Object System.Windows.Forms.FolderBrowserDialog; if ($F.ShowDialog() -eq 'OK') { $HopThuMucDriver.Text = $F.SelectedPath } })
 
 # ==========================================
-# 6. KỊCH BẢN NỀN
+# 6. KỊCH BẢN NỀN (XỬ LÝ LÕI)
 # ==========================================
 $KichBanNen = {
     param($G, $FileCai, $FileDriver, $IndexLoi, $GhiDeUnattend, $TenUser, $OOBE, $Logon, $TPM, $UltraView, $AnyDesk, $Wifi, $BackupAll, $BackupNet, $Tweaks)
@@ -236,7 +234,7 @@ $KichBanNen = {
     try {
         InLog "🚀 BẮT ĐẦU CHUỖI QUY TRÌNH ZERO-TOUCH VÀ OPTIMIZER..."
         
-        # BƯỚC 1: BACKUP DRIVER & NETWORK
+        # --- BƯỚC 1: BACKUP DRIVER & NETWORK ---
         $MarkerName = "THUMUC_KHONG_TON_TAI.txt"; $ThuMucDriverTuongDoi = ""
 
         if ($FileDriver) {
@@ -244,19 +242,18 @@ $KichBanNen = {
             Out-File -FilePath "$FileDriver\$MarkerName" -InputObject "Day la thu muc Driver ZT" -Encoding ascii
             $ThuMucDriverTuongDoi = if ($FileDriver.Length -gt 3) { $FileDriver.Substring(3) } else { "" }
 
-            # Xử lý Logic Backup Driver (Toàn bộ HOẶC Chỉ Mạng)
             if ($BackupAll) { 
                 $G.TrangThai = "BƯỚC 1/6: Đang trích xuất ALL Driver..."; $G.TienDo = 5
                 InLog "Đang quét và trích xuất TOÀN BỘ Driver máy hiện tại..."
                 Export-WindowsDriver -Online -Destination $FileDriver | Out-Null 
-                InLog "✅ Đã lưu Toàn bộ Driver vào: $FileDriver"
+                InLog "✅ Đã lưu Toàn bộ Driver."
             } elseif ($BackupNet) {
                 $G.TrangThai = "BƯỚC 1/6: Đang trích xuất Driver LAN/Wi-Fi..."; $G.TienDo = 5
                 InLog "Đang quét và CHỈ sao lưu Driver LAN & Wi-Fi..."
                 $NetDrivers = Get-WindowsDriver -Online | Where-Object { $_.ClassName -eq 'Net' }
                 if ($NetDrivers) {
                     foreach ($drv in $NetDrivers) { pnputil.exe /export-driver $($drv.Driver) "$FileDriver" | Out-Null }
-                    InLog "✅ Đã trích xuất gọn nhẹ Driver Mạng vào: $FileDriver"
+                    InLog "✅ Đã trích xuất Driver Mạng."
                 } else { InLog "⚠️ Không tìm thấy Driver Mạng bên ngoài nào." }
             }
 
@@ -268,11 +265,11 @@ $KichBanNen = {
                 "        DANH SÁCH TÊN WI-FI ĐÃ TỪNG KẾT NỐI      " | Out-File $LogWifi -Append -Encoding utf8
                 "=================================================" | Out-File $LogWifi -Append -Encoding utf8
                 netsh wlan show profile | Out-File $LogWifi -Append -Encoding utf8
-                InLog "✅ Đã xuất Tên & Cấu hình Wi-Fi thành công."
+                InLog "✅ Đã xuất Tên & Mật khẩu Wi-Fi."
             }
         }
 
-        # BƯỚC 2: XỬ LÝ ISO
+        # --- BƯỚC 2: XỬ LÝ ISO ---
         if ($FileCai -match '(?i)\.iso$') {
             $G.TrangThai = "BƯỚC 2/6: Đang xả nén bộ cài từ ISO..."
             Mount-DiskImage -ImagePath $FileCai -PassThru | Out-Null; Start-Sleep 1
@@ -293,27 +290,34 @@ $KichBanNen = {
             Dismount-DiskImage -ImagePath $FileCai | Out-Null; $FileCai = $FileCaiDich
         }
 
-        $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo Unattend.xml..."
+        $G.TienDo = 40; $G.TrangThai = "BƯỚC 3/6: Kiến tạo XML & Tweak Nền..."
         $DuongDanTuongDoiWin = if ($FileCai.Length -gt 3) { $FileCai.Substring(3) } else { "" }
 
-        # BƯỚC 3: TẠO UNATTEND.XML
+        # --- BƯỚC 3: TẠO UNATTEND.XML CHUẨN UTF-8 ---
         if ($GhiDeUnattend) {
             if ($OOBE) {
-                $KhốiUser = ""; $KhốiLogonReg = ""
+                $KhốiUser = ""; $KhốiLogonXML = ""
                 if ($Logon) {
-                    $KhốiLogonReg = @"
-            <component name="Microsoft-Windows-Deployment" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-                <RunSynchronous>
-                    <RunSynchronousCommand wcm:action="add"><Order>1</Order><Path>cmd /c reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d 1 /f</Path></RunSynchronousCommand>
-                    <RunSynchronousCommand wcm:action="add"><Order>2</Order><Path>cmd /c reg add "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "$TenUser" /f</Path></RunSynchronousCommand>
-                </RunSynchronous>
-            </component>
-"@
                     $KhốiUser = @"
-                <UserAccounts>
-                    <LocalAccounts><LocalAccount wcm:action="add"><Password><Value></Value><PlainText>true</PlainText></Password><Description>Local Administrator</Description><DisplayName>$TenUser</DisplayName><Group>Administrators</Group><Name>$TenUser</Name></LocalAccount></LocalAccounts>
-                </UserAccounts>
-                <AutoLogon><Password><Value></Value><PlainText>true</PlainText></Password><Enabled>true</Enabled><LogonCount>9999</LogonCount><Username>$TenUser</Username></AutoLogon>
+            <UserAccounts>
+                <LocalAccounts>
+                    <LocalAccount wcm:action="add">
+                        <Password><Value></Value><PlainText>true</PlainText></Password>
+                        <Description>Local Administrator</Description>
+                        <DisplayName>$TenUser</DisplayName>
+                        <Group>Administrators</Group>
+                        <Name>$TenUser</Name>
+                    </LocalAccount>
+                </LocalAccounts>
+            </UserAccounts>
+"@
+                    $KhốiLogonXML = @"
+            <AutoLogon>
+                <Password><Value></Value><PlainText>true</PlainText></Password>
+                <Enabled>true</Enabled>
+                <LogonCount>9999</LogonCount>
+                <Username>$TenUser</Username>
+            </AutoLogon>
 "@
                 }
 
@@ -321,26 +325,40 @@ $KichBanNen = {
 <?xml version="1.0" encoding="utf-8"?>
 <unattend xmlns="urn:schemas-microsoft-com:unattend" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State">
     <settings pass="specialize">
-        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"><TimeZone>SE Asia Standard Time</TimeZone></component>$KhốiLogonReg
+        <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+            <TimeZone>SE Asia Standard Time</TimeZone>
+        </component>
     </settings>
     <settings pass="oobeSystem">
-        <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS"><InputLocale>en-US</InputLocale><SystemLocale>en-US</SystemLocale><UILanguage>en-US</UILanguage><UserLocale>vi-VN</UserLocale></component>
+        <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
+            <InputLocale>en-US</InputLocale><SystemLocale>en-US</SystemLocale><UILanguage>en-US</UILanguage><UserLocale>vi-VN</UserLocale>
+        </component>
         <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS">
-            <OOBE><HideEULAPage>true</HideEULAPage><HideLocalAccountScreen>true</HideLocalAccountScreen><HideOnlineAccountScreens>true</HideOnlineAccountScreens><HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE><SkipMachineOOBE>true</SkipMachineOOBE><SkipUserOOBE>true</SkipUserOOBE><ProtectYourPC>3</ProtectYourPC></OOBE>
-            $KhốiUser
-            <FirstLogonCommands><SynchronousCommand wcm:action="add"><Order>1</Order><CommandLine>cmd.exe /c C:\Windows\Setup\Scripts\PostInstall_ZT.cmd</CommandLine><RequiresUserInput>false</RequiresUserInput></SynchronousCommand></FirstLogonCommands>
+            <OOBE>
+                <HideEULAPage>true</HideEULAPage>
+                <HideLocalAccountScreen>true</HideLocalAccountScreen>
+                <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+                <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+                <SkipMachineOOBE>true</SkipMachineOOBE>
+                <SkipUserOOBE>true</SkipUserOOBE>
+                <ProtectYourPC>3</ProtectYourPC>
+            </OOBE>
+$KhốiUser$KhốiLogonXML
+            <FirstLogonCommands>
+                <SynchronousCommand wcm:action="add"><Order>1</Order><CommandLine>cmd.exe /c C:\Windows\Setup\Scripts\PostInstall_ZT.cmd</CommandLine></SynchronousCommand>
+            </FirstLogonCommands>
         </component>
     </settings>
 </unattend>
 "@
-                $UnattendXML | Out-File "$env:TEMP\unattend_ZT.xml" -Encoding utf8
+                # Xuất ra chuẩn UTF-8 (Không BOM) để Windows Setup không bị lỗi
+                [System.IO.File]::WriteAllText("$env:TEMP\unattend_ZT.xml", $UnattendXML, [System.Text.Encoding]::UTF8)
             }
         }
 
-        # BƯỚC 4: TẠO SCRIPT POST-INSTALL & TWEAKS
+        # --- BƯỚC 4: TẠO SCRIPT POST-INSTALL & TWEAKS ---
         $G.TrangThai = "BƯỚC 4/6: Đóng gói Script Hệ thống..."; $G.TienDo = 50
         $Cmd = "@echo off`r`n"
-        if ($TPM) { $Cmd += "reg add `"HKLM\SYSTEM\Setup\MoSetup`" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f >nul 2>&1`r`n" }
         $Cmd += "manage-bde -off C: >nul 2>&1`r`n"
         
         InLog "Biên dịch 23 tùy chọn Windows Optimizer..."
@@ -381,7 +399,7 @@ $KichBanNen = {
         $UsrCmd | Out-File "$env:TEMP\UserTweaks_ZT.cmd" -Encoding oem
         $Cmd += "reg add `"HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\RunOnce`" /v `"ZT_Tweaks`" /t REG_SZ /d `"cmd.exe /c C:\Windows\Setup\Scripts\UserTweaks_ZT.cmd`" /f >nul 2>&1`r`n"
 
-        # TÍCH HỢP XÓA BLOATWARE THÔNG MINH BẰNG POWERSHELL
+        # TÍCH HỢP XÓA BLOATWARE THÔNG MINH
         if ($Tweaks.Bloatware) {
             InLog "Tạo kịch bản gỡ rác Bloatware (Giữ lại App cơ bản)..."
             $BloatPS1 = @"
@@ -411,7 +429,7 @@ Get-AppxPackage -AllUsers | Where-Object { `$_.Name -notmatch '^System|^Microsof
         $Cmd += "del %0`r`n"
         $Cmd | Out-File "$env:TEMP\PostInstall_ZT.cmd" -Encoding oem
 
-        # BƯỚC 5: XỬ LÝ WINRE
+        # --- BƯỚC 5: XỬ LÝ WINRE ---
         $G.TrangThai = "BƯỚC 5/6: Chuẩn bị WinRE..."; $G.TienDo = 60
         $ChuCaiO_Win = [System.IO.Path]::GetPathRoot($env:windir).Substring(0,1)
         $PhanVungOS = Get-Partition -DriveLetter $ChuCaiO_Win
@@ -433,11 +451,33 @@ Get-AppxPackage -AllUsers | Where-Object { `$_.Name -notmatch '^System|^Microsof
         if ($Tweaks.Bloatware) { Copy-Item "$env:TEMP\RemoveBloat_ZT.ps1" "$ThuMucMnt\Windows\System32\RemoveBloat_ZT.ps1" -Force }
         if ($GhiDeUnattend -and (Test-Path "$env:TEMP\unattend_ZT.xml")) { Copy-Item "$env:TEMP\unattend_ZT.xml" "$ThuMucMnt\Windows\System32\unattend_ZT.xml" -Force }
         
-        # BƯỚC 6: LỆNH CHẠY TRONG WINRE
-        $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động..."; $G.TienDo = 80
+        # --- BƯỚC 6: LỆNH CHẠY TRONG WINRE (OFFLINE REGISTRY INJECTION) ---
+        $G.TrangThai = "BƯỚC 6/6: Ghi kịch bản tự động hóa..."; $G.TienDo = 80
         $CheckDriverPath = if ($ThuMucDriverTuongDoi) { "%%D:\$ThuMucDriverTuongDoi\$MarkerName" } else { "%%D:\$MarkerName" }
         $DriverInjectPath = if ($ThuMucDriverTuongDoi) { "%DRIVER_DRIVE%:\$ThuMucDriverTuongDoi\." } else { "%DRIVER_DRIVE%:\." }
         $XmlCopyPath = if ($ThuMucDriverTuongDoi) { "%DRIVER_DRIVE%:\$ThuMucDriverTuongDoi\*.xml" } else { "%DRIVER_DRIVE%:\*.xml" }
+
+        # Mã hóa biến $TenUser cho Batch Script
+        $BypassRegistryCmd = ""
+        if ($OOBE -and $Logon) {
+            $BypassRegistryCmd = @"
+:: TIÊM REGISTRY NGOẠI TUYẾN ĐỂ BYPASS TÀI KHOẢN MICROSOFT VÀ ÉP AUTO LOGON
+reg load HKLM\ZT_SOFT W:\Windows\System32\config\SOFTWARE
+reg add "HKLM\ZT_SOFT\Microsoft\Windows\CurrentVersion\OOBE" /v BypassNRO /t REG_DWORD /d 1 /f
+reg add "HKLM\ZT_SOFT\Microsoft\Windows NT\CurrentVersion\Winlogon" /v AutoAdminLogon /t REG_SZ /d 1 /f
+reg add "HKLM\ZT_SOFT\Microsoft\Windows NT\CurrentVersion\Winlogon" /v DefaultUserName /t REG_SZ /d "$TenUser" /f
+reg unload HKLM\ZT_SOFT
+"@
+        }
+        if ($TPM) {
+            $BypassRegistryCmd += @"
+
+:: TIÊM REGISTRY BYPASS TPM
+reg load HKLM\ZT_SYS W:\Windows\System32\config\SYSTEM
+reg add "HKLM\ZT_SYS\Setup\MoSetup" /v AllowUpgradesWithUnsupportedTPMOrCPU /t REG_DWORD /d 1 /f
+reg unload HKLM\ZT_SYS
+"@
+        }
 
         @"
 @echo off
@@ -450,6 +490,8 @@ for %%D in (C D E F G H I J K L M N O P Q R S T U V W X Y Z) do (
 (echo select disk $OsDiskNum & echo select partition $OsPartNum & echo assign letter=W & echo format quick fs=ntfs label="Windows") | diskpart
 dism /apply-image /imagefile:"%WIM%" /index:$IndexLoi /applydir:W:\
 mkdir W:\Windows\Setup\Scripts
+mkdir W:\Windows\Panther
+
 if not "%DRIVER_DRIVE%"=="" (
     dism /image:W:\ /add-driver /driver:"$DriverInjectPath" /recurse
     copy /Y "$XmlCopyPath" W:\Windows\Setup\Scripts\
@@ -459,15 +501,20 @@ bcdboot W:\Windows
 
 bcdedit /timeout 0; bcdedit /set {default} recoveryenabled No; bcdedit /set {default} bootstatuspolicy IgnoreAllFailures
 
+:: Chép Scripts
 copy /Y X:\Windows\System32\PostInstall_ZT.cmd W:\Windows\Setup\Scripts\PostInstall_ZT.cmd
 copy /Y X:\Windows\System32\UserTweaks_ZT.cmd W:\Windows\Setup\Scripts\UserTweaks_ZT.cmd
 if exist X:\Windows\System32\RemoveBloat_ZT.ps1 ( copy /Y X:\Windows\System32\RemoveBloat_ZT.ps1 W:\Windows\Setup\Scripts\RemoveBloat_ZT.ps1 )
 
+:: Xử lý Unattend
 if exist X:\Windows\System32\unattend_ZT.xml ( 
-    mkdir W:\Windows\Panther; copy /Y X:\Windows\System32\unattend_ZT.xml W:\Windows\Panther\unattend.xml 
-) else (
-    echo call C:\Windows\Setup\Scripts\PostInstall_ZT.cmd >> W:\Windows\Setup\Scripts\SetupComplete.cmd
+    copy /Y X:\Windows\System32\unattend_ZT.xml W:\Windows\Panther\unattend.xml
+    copy /Y X:\Windows\System32\unattend_ZT.xml W:\unattend.xml
 )
+echo call C:\Windows\Setup\Scripts\PostInstall_ZT.cmd >> W:\Windows\Setup\Scripts\SetupComplete.cmd
+
+$BypassRegistryCmd
+
 del /F /Q X:\Windows\System32\winpeshl.ini
 wpeutil reboot
 "@ | Out-File "$ThuMucMnt\Windows\System32\LenhRE.cmd" -Encoding oem
