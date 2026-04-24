@@ -738,11 +738,14 @@ public class WinHelper {
 
             if ($FileThucThi -match "(?i)\.(msix|appx|msixbundle|appxbundle)$") {
                 $PhienBanWin = [System.Environment]::OSVersion.Version.Build
-                if ($PhienBanWin -lt 17763) {
-                    UI $PM "❌ Lỗi: Win quá cũ ko hỗ trợ" 0
+                
+                # NÂNG CẤP: WhatsApp mới đòi Win 10 2004 (Build 19041) trở lên
+                if ($PhienBanWin -lt 19041) {
+                    UI $PM "❌ Lỗi: Cần Win 10 2004+ hoặc Win 11" 0
                     try { if (Test-Path $DuongDanLT) { Remove-Item $DuongDanLT -Force -ErrorAction SilentlyContinue } } catch {}
                     return 
                 }
+
                 $ThamSo      = "-NoProfile -NonInteractive -Command `"Add-AppxPackage -Path '$FileThucThi'`""
                 $FileThucThi = "powershell.exe"
             }
