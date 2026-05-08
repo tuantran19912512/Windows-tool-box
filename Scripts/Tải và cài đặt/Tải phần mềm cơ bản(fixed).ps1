@@ -1,6 +1,7 @@
 ﻿# ==============================================================================
-# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V709
-# Cải tiến: Nút Reload, Nhận diện UWP/Portable, Hàng chờ ưu tiên, Full Băng thông, Auto Scroll
+# BỘ CÔNG CỤ TỰ ĐỘNG CÀI ĐẶT VIETTOOLBOX V709 (BẢN SMART FIX UWP)
+# Tính năng mới: Tự động vá lõi Windows App Runtime cho WhatsApp, Giữ lại bộ cài,
+#                Nút Dọn Sạch thủ công.
 # ==============================================================================
 
 # ------------------------------------------------------------------------------
@@ -101,6 +102,7 @@ function TuDong-NhanDienThamSoEXE ($TenPhanMem, $ThamSoTuCSV, $DuongDanFile) {
         "(?i)zalo"                                  = "/S"
         "(?i)telegram"                              = "/S"
         "(?i)discord"                               = "-s"
+        "(?i)whatsapp"                              = "--silent"
         "(?i)slack"                                 = "--silent"
         "(?i)skype"                                 = "/VERYSILENT /SUPPRESSMSGBOXES"
         "(?i)zoom"                                  = "/silent"
@@ -215,12 +217,6 @@ $XAML = @"
                                 FontWeight="Bold" FontSize="13" Margin="0,0,0,12" Cursor="Hand" IsEnabled="False">
                             <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
                         </Button>
-                        <Button Name="NutTaiLai" Content="↻  TẢI LẠI TỪ ĐẦU"
-                                Height="44" Background="#3B82F6" Foreground="White"
-                                FontWeight="Bold" FontSize="13" Margin="0,0,0,12" Cursor="Hand">
-                            <Button.Resources><Style TargetType="Border"><Setter Property="CornerRadius" Value="8"/></Style></Button.Resources>
-                        </Button>
-
                         <Border Background="#1E293B" CornerRadius="8" Padding="14,10" Margin="0,0,0,10">
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -257,7 +253,7 @@ $XAML = @"
                         </Grid>
                     </Border>
 
-                    <TextBlock Grid.Row="3" Text="V709 - Smart Silent Detect" Foreground="#475569"
+                    <TextBlock Grid.Row="3" Text="V709 - Smart Fix UWP (Keep Files)" Foreground="#475569"
                                FontSize="11" HorizontalAlignment="Center" Margin="0,0,0,16"/>
                 </Grid>
             </Border>
@@ -370,10 +366,8 @@ $LogScroll   = $CuaSoChinh.FindName("LogScroll")
 
 function CapNhat-LogChon {
     $Dispatcher.Invoke([action]{
-        # Cập nhật số đếm dựa trên số lượng trong hàng chờ
         $NhanSoLuong.Text = $Global:HangChoCaiDat.Count
 
-        # Vẽ lại log panel theo ĐÚNG THỨ TỰ TRONG HÀNG CHỜ
         $LogPanel.Children.Clear()
         $DaChon = $Global:HangChoCaiDat
         
@@ -399,14 +393,12 @@ function CapNhat-LogChon {
                 $Stack = New-Object System.Windows.Controls.StackPanel
                 $Stack.Orientation = [System.Windows.Controls.Orientation]::Horizontal
 
-                # 1. Khởi tạo lại Số thứ tự
                 $SttLabel = New-Object System.Windows.Controls.TextBlock
                 $SttLabel.Text       = "$STT. "
                 $SttLabel.Foreground = $BoChuyenMau.ConvertFromString("#64748B")
                 $SttLabel.FontSize   = 11
                 $SttLabel.VerticalAlignment = "Center"
 
-                # 2. Khởi tạo Tên phần mềm
                 $TenLabel = New-Object System.Windows.Controls.TextBlock
                 $TenLabel.Text       = $PM.Ten
                 $TenLabel.Foreground = [System.Windows.Media.Brushes]::White
@@ -416,7 +408,6 @@ function CapNhat-LogChon {
                 $TenLabel.MaxWidth   = 175
                 $TenLabel.VerticalAlignment = "Center"
 
-                # 3. Khởi tạo Tích xanh Data Binding
                 $TichXanhLabel = New-Object System.Windows.Controls.TextBlock
                 $TichXanhLabel.Foreground = $BoChuyenMau.ConvertFromString("#10B981")
                 $TichXanhLabel.FontSize   = 12
@@ -428,7 +419,6 @@ function CapNhat-LogChon {
                 $BindKetQua.Source = $PM
                 $TichXanhLabel.SetBinding([System.Windows.Controls.TextBlock]::TextProperty, $BindKetQua) | Out-Null
 
-                # Đẩy tất cả vào Stack
                 $Stack.Children.Add($SttLabel) | Out-Null
                 $Stack.Children.Add($TenLabel) | Out-Null
                 $Stack.Children.Add($TichXanhLabel) | Out-Null
@@ -438,12 +428,11 @@ function CapNhat-LogChon {
                 $STT++
             }
         }
-        # Auto scroll xuống cuối
         $LogScroll.ScrollToBottom()
     })
 }
 # ------------------------------------------------------------------------------
-# MODULE 6: SỰ KIỆN GIAO DIỆN
+# MODULE 6: SỰ KIỆN GIAO DIỆN VÀ NÚT DỌN SẠCH
 # ------------------------------------------------------------------------------
 $CuaSoChinh.FindName("KhungTieuDe").Add_MouseLeftButtonDown({
     param($NguoiGui, $SuKien)
@@ -460,7 +449,17 @@ $CuaSoChinh.FindName("NutPhongTo").Add_Click({
     else { $CuaSoChinh.WindowState = "Normal" }
 })
 
-$CuaSoChinh.FindName("NutThoat").Add_Click({ $Global:TrangThaiBoNho.TrangThai = "DungLai"; $CuaSoChinh.Close() })
+$CuaSoChinh.FindName("NutThoat").Add_Click({ 
+    $Global:TrangThaiBoNho.TrangThai = "DungLai"
+    
+    # --- THÊM CHỨC NĂNG: TỰ ĐỘNG DỌN RÁC TRƯỚC KHI TẮT TOOL ---
+    try {
+        if (Test-Path $Global:ThuMucLuuTru) { Remove-Item -Path "$Global:ThuMucLuuTru\*" -Recurse -Force -ErrorAction SilentlyContinue }
+        if (Test-Path "C:\VietToolbox_Temp") { Remove-Item -Path "C:\VietToolbox_Temp" -Recurse -Force -ErrorAction SilentlyContinue }
+    } catch {}
+    
+    $CuaSoChinh.Close() 
+})
 $CuaSoChinh.FindName("NutThuNho").Add_Click({ $CuaSoChinh.WindowState = "Minimized" })
 
 $CuaSoChinh.FindName("NutChonToanBo").Add_Click({
@@ -474,12 +473,10 @@ $CuaSoChinh.FindName("NutHuyChon").Add_Click({
 
 $DieuKhienKichHoat = $CuaSoChinh.FindName("NutKichHoat")
 $DieuKhienHuyViec  = $CuaSoChinh.FindName("NutHuyViec")
-$DieuKhienTaiLai   = $CuaSoChinh.FindName("NutTaiLai")
 
 function CapNhat-NutBam ($TT) {
     $DieuKhienKichHoat.IsEnabled = ($TT -eq "NhanhRoi")
     $DieuKhienHuyViec.IsEnabled  = ($TT -eq "DangChay")
-    $DieuKhienTaiLai.IsEnabled   = $true # CẬP NHẬT: Luôn bật nút tải lại
 }
 
 $DieuKhienHuyViec.Add_Click({
@@ -487,20 +484,6 @@ $DieuKhienHuyViec.Add_Click({
     CapNhat-NutBam "NhanhRoi"
 })
 
-$DieuKhienTaiLai.Add_Click({
-    # CẬP NHẬT: Ngắt tiến trình đang chạy (nếu có) trước khi tải lại
-    $Global:TrangThaiBoNho.TrangThai = "DungLai"
-    
-    # Reset nút bấm và trạng thái
-    $DieuKhienKichHoat.Content = "▶  BẮT ĐẦU CÀI ĐẶT"
-    $Global:TrangThaiBoNho.TrangThai = "NhanhRoi"
-    CapNhat-NutBam "NhanhRoi"
-    
-    # Xóa sạch dữ liệu cũ và tải lại mới từ CSV
-    $BangDanhSach.Clear()
-    $Global:HangChoCaiDat.Clear()
-    TaiDuLieuTuCSV
-})
 
 # ------------------------------------------------------------------------------
 # MODULE 7: ĐỘNG CƠ CÀI ĐẶT (RUNSPACE)
@@ -509,11 +492,6 @@ $DieuKhienKichHoat.Add_Click({
     $Global:TrangThaiBoNho.TrangThai = "DangChay"
     CapNhat-NutBam "DangChay"
 
-    $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "🧹 Dọn rác lần trước..." })
-    try {
-        Get-ChildItem -Path $Global:ThuMucLuuTru -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-        if (Test-Path "C:\VietToolbox_Temp") { Remove-Item "C:\VietToolbox_Temp" -Recurse -Force -ErrorAction SilentlyContinue }
-    } catch {}
     $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "⏳ Đang xử lý..." })
 
     $RS = [runspacefactory]::CreateRunspace()
@@ -523,7 +501,7 @@ $DieuKhienKichHoat.Add_Click({
     $RS.SessionStateProxy.SetVariable("DanhSachKhoaAPI", $Global:DanhSachKhoaAPI)
     $RS.SessionStateProxy.SetVariable("TrangThaiBoNho",  $Global:TrangThaiBoNho)
     $RS.SessionStateProxy.SetVariable("HangChoCaiDat",   $Global:HangChoCaiDat)
-    $RS.SessionStateProxy.SetVariable("CtrlDanhSach",    $CuaSoChinh.FindName("BangHienThiDuLieu")) # BƠM BẢNG VÀO RUNSPACE
+    $RS.SessionStateProxy.SetVariable("CtrlDanhSach",    $CuaSoChinh.FindName("BangHienThiDuLieu"))
     $RS.SessionStateProxy.SetVariable("Dispatcher",      $Dispatcher)
     $RS.SessionStateProxy.SetVariable("F_KiemTra",       ${Function:KiemTra-LoiFileNen})
     $RS.SessionStateProxy.SetVariable("F_TuDong",        ${Function:TuDong-NhanDienThamSoEXE})
@@ -535,7 +513,6 @@ $DieuKhienKichHoat.Add_Click({
         Set-Item "Function:TuDong-NhanDienThamSoEXE" $F_TuDong
         Set-Item "Function:Chay-TienTrinhChuan"      $F_Chay
 
-        # Hàm quét cây giao diện để tìm đúng cái thẻ đang chạy
         function Tim-KhungGiaoDien ($Goc, $DuLieu) {
             if ($null -eq $Goc) { return $null }
             $SoCon = [System.Windows.Media.VisualTreeHelper]::GetChildrenCount($Goc)
@@ -551,16 +528,14 @@ $DieuKhienKichHoat.Add_Click({
         }
 
         function UI ($PM, $TT, $TP) {
-            # Dùng lại Invoke để bắt chết biến trong bộ nhớ
             $Dispatcher.Invoke([action]{
                 if ($null -ne $TT) { 
                     $PM.TrangThai = $TT 
                     if ($TT -match "Hoàn tất") { $PM.KetQua = " ✔" }
                     elseif ($TT -match "Lỗi") { $PM.KetQua = " ❌" }
-                    elseif ($TT -match "Đang phân tích|Quét Drive") { 
+                    elseif ($TT -match "Đang phân tích|Quét Drive|Đang vá lõi") { 
                         $PM.KetQua = "" 
                         
-                        # --- CẢI TIẾN TỰ ĐỘNG CUỘN TỚI THẺ PHẦN MỀM ---
                         if ($TT -match "Đang phân tích") {
                             try {
                                 $TheApp = Tim-KhungGiaoDien $CtrlDanhSach $PM
@@ -573,7 +548,6 @@ $DieuKhienKichHoat.Add_Click({
             })
         }
 
-        # Đóng các cửa sổ Explorer mới xuất hiện sau khi cài
         function DongExplorerMoi ($DanhSachHwndCu) {
             try {
                 Add-Type @"
@@ -612,7 +586,6 @@ public class WinHelper {
             } catch {}
         }
 
-        # Lấy snapshot Explorer hiện tại trước khi bắt đầu cài bất kỳ gì
         $ExplorerTruocToanBo = try { [WinHelper]::GetExplorerWindows() } catch { @() }
 
         function CaiDat ($PM) {
@@ -626,23 +599,70 @@ public class WinHelper {
             if ($PM.DuongDanTai -match "id=([^&]+)")      { $IDDrive = $Matches[1] }
             elseif ($PM.DuongDanTai -match "/d/([^/]+)")  { $IDDrive = $Matches[1] }
 
-            if ($IDDrive) {
-                foreach ($Key in $DanhSachKhoaAPI) {
-                    try {
-                        UI $PM "Quét Drive..." $null
-                        $Meta = Invoke-RestMethod "https://www.googleapis.com/drive/v3/files/$IDDrive`?fields=name&key=$Key" -UseBasicParsing
-                        if ($Meta.name) {
-                            $Ext = [System.IO.Path]::GetExtension($Meta.name)
-                            if ($Ext -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") {
-                                $DuoiFile = $Ext; $DuongDanLT = Join-Path $ThuMucLuuTru $Meta.name
+            if ((Get-Item $DuongDanLT -EA SilentlyContinue).Length -ge 1MB) {
+                $DaXong = $true
+                UI $PM "Đã có sẵn bộ cài..." 100
+            } else {
+                if ($IDDrive) {
+                    foreach ($Key in $DanhSachKhoaAPI) {
+                        try {
+                            UI $PM "Quét Drive..." $null
+                            $Meta = Invoke-RestMethod "https://www.googleapis.com/drive/v3/files/$IDDrive`?fields=name&key=$Key" -UseBasicParsing
+                            if ($Meta.name) {
+                                $Ext = [System.IO.Path]::GetExtension($Meta.name)
+                                if ($Ext -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle|appx)") {
+                                    $DuoiFile = $Ext; $DuongDanLT = Join-Path $ThuMucLuuTru $Meta.name
+                                }
                             }
-                        }
-                        $Goi = [System.Net.HttpWebRequest]::Create("https://www.googleapis.com/drive/v3/files/$IDDrive`?alt=media&key=$Key")
+                            $Goi = [System.Net.HttpWebRequest]::Create("https://www.googleapis.com/drive/v3/files/$IDDrive`?alt=media&key=$Key")
+                            $PH  = $Goi.GetResponse()
+                            $Dong = $PH.GetResponseStream()
+                            $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
+                            
+                            $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
+                            $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
+                            do {
+                                if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
+                                $n = $Dong.Read($Buf, 0, $Buf.Length)
+                                if ($n -gt 0) {
+                                    $File.Write($Buf, 0, $n); $Da += $n
+                                    if ($Tong -gt 0) {
+                                        if ($DongHo.ElapsedMilliseconds -gt 150 -or $Da -eq $Tong) { 
+                                            $p = [math]::Round(($Da/$Tong)*100)
+                                            UI $PM "Đang tải: $p%" $p
+                                            $DongHo.Restart()
+                                        }
+                                    } else {
+                                        if ($DongHo.ElapsedMilliseconds -gt 500) {
+                                            UI $PM "Đang tải: $([math]::Round($Da/1MB, 1)) MB" 50
+                                            $DongHo.Restart()
+                                        }
+                                    }
+                                }
+                            } while ($n -gt 0)
+                            $File.Close(); $Dong.Close(); $PH.Close()
+                            
+                            if ($Tong -gt 0 -and $TrangThaiBoNho.TrangThai -ne "DungLai") { UI $PM "Đang tải: 100%" 100 }
+                            if ((Get-Item $DuongDanLT -EA SilentlyContinue).Length -ge 1MB) { $DaXong = $true; break }
+                        } catch { if ($File) { $File.Close() } }
+                    }
+                } else {
+                    try {
+                        $Goi = [System.Net.HttpWebRequest]::Create($PM.DuongDanTai)
+                        $Goi.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
                         $PH  = $Goi.GetResponse()
+                        $CD  = $PH.Headers["Content-Disposition"]
+                        if ($CD -match 'filename="?([^";]+)"?') {
+                            $TenGoc = [System.Net.WebUtility]::UrlDecode($Matches[1])
+                            $ExtGoc = [System.IO.Path]::GetExtension($TenGoc)
+                            if ($ExtGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") { $DuoiFile = $ExtGoc; $DuongDanLT = Join-Path $ThuMucLuuTru $TenGoc }
+                        } else {
+                            $ExtUrl = [System.IO.Path]::GetExtension($PM.DuongDanTai.Split('?')[0])
+                            if ($ExtUrl -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") { $DuoiFile = $ExtUrl; $DuongDanLT = Join-Path $ThuMucLuuTru "$TenSach$DuoiFile" }
+                        }
                         $Dong = $PH.GetResponseStream()
                         $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
                         
-                        # Tối ưu hóa Buffer (4MB) và bộ đếm thời gian
                         $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
                         $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
                         do {
@@ -650,8 +670,6 @@ public class WinHelper {
                             $n = $Dong.Read($Buf, 0, $Buf.Length)
                             if ($n -gt 0) {
                                 $File.Write($Buf, 0, $n); $Da += $n
-                                
-                                # Logic cập nhật UI 150ms và chống lỗi khi không rõ dung lượng
                                 if ($Tong -gt 0) {
                                     if ($DongHo.ElapsedMilliseconds -gt 150 -or $Da -eq $Tong) { 
                                         $p = [math]::Round(($Da/$Tong)*100)
@@ -669,55 +687,9 @@ public class WinHelper {
                         $File.Close(); $Dong.Close(); $PH.Close()
                         
                         if ($Tong -gt 0 -and $TrangThaiBoNho.TrangThai -ne "DungLai") { UI $PM "Đang tải: 100%" 100 }
-                        if ((Get-Item $DuongDanLT -EA SilentlyContinue).Length -ge 1MB) { $DaXong = $true; break }
+                        if ($TrangThaiBoNho.TrangThai -ne "DungLai") { $DaXong = $true }
                     } catch { if ($File) { $File.Close() } }
                 }
-            } else {
-                try {
-                    $Goi = [System.Net.HttpWebRequest]::Create($PM.DuongDanTai)
-                    $Goi.UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-                    $PH  = $Goi.GetResponse()
-                    $CD  = $PH.Headers["Content-Disposition"]
-                    if ($CD -match 'filename="?([^";]+)"?') {
-                        $TenGoc = [System.Net.WebUtility]::UrlDecode($Matches[1])
-                        $ExtGoc = [System.IO.Path]::GetExtension($TenGoc)
-                        if ($ExtGoc -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") { $DuoiFile = $ExtGoc; $DuongDanLT = Join-Path $ThuMucLuuTru $TenGoc }
-                    } else {
-                        $ExtUrl = [System.IO.Path]::GetExtension($PM.DuongDanTai.Split('?')[0])
-                        if ($ExtUrl -match "(?i)\.(zip|rar|7z|msi|exe|msixbundle)") { $DuoiFile = $ExtUrl; $DuongDanLT = Join-Path $ThuMucLuuTru "$TenSach$DuoiFile" }
-                    }
-                    $Dong = $PH.GetResponseStream()
-                    $File = New-Object System.IO.FileStream($DuongDanLT, [System.IO.FileMode]::Create)
-                    
-                    # Tối ưu hóa Buffer (4MB) và bộ đếm thời gian
-                    $Buf = New-Object byte[] 4194304; $Tong = $PH.ContentLength; $Da = 0
-                    $DongHo = [System.Diagnostics.Stopwatch]::StartNew()
-                    do {
-                        if ($TrangThaiBoNho.TrangThai -eq "DungLai") { break }
-                        $n = $Dong.Read($Buf, 0, $Buf.Length)
-                        if ($n -gt 0) {
-                            $File.Write($Buf, 0, $n); $Da += $n
-                            
-                            # Logic cập nhật UI 150ms và chống lỗi khi không rõ dung lượng
-                            if ($Tong -gt 0) {
-                                if ($DongHo.ElapsedMilliseconds -gt 150 -or $Da -eq $Tong) { 
-                                    $p = [math]::Round(($Da/$Tong)*100)
-                                    UI $PM "Đang tải: $p%" $p
-                                    $DongHo.Restart()
-                                }
-                            } else {
-                                if ($DongHo.ElapsedMilliseconds -gt 500) {
-                                    UI $PM "Đang tải: $([math]::Round($Da/1MB, 1)) MB" 50
-                                    $DongHo.Restart()
-                                }
-                            }
-                        }
-                    } while ($n -gt 0)
-                    $File.Close(); $Dong.Close(); $PH.Close()
-                    
-                    if ($Tong -gt 0 -and $TrangThaiBoNho.TrangThai -ne "DungLai") { UI $PM "Đang tải: 100%" 100 }
-                    if ($TrangThaiBoNho.TrangThai -ne "DungLai") { $DaXong = $true }
-                } catch { if ($File) { $File.Close() } }
             }
 
             if (-not $DaXong) { UI $PM "❌ Lỗi tải xuống" 0; return }
@@ -749,35 +721,36 @@ public class WinHelper {
 
             $ThamSo = TuDong-NhanDienThamSoEXE -TenPhanMem $PM.Ten -ThamSoTuCSV $PM.ThamSoNgam -DuongDanFile $FileThucThi
 
-            # Xử lý file MSI
             if ($FileThucThi -match "(?i)\.msi$") {
                 $ThamSo      = "/i `"$FileThucThi`" /quiet /norestart ALLUSERS=1"
                 $FileThucThi = "msiexec.exe"
             }
 
-            # ---------------------------------------------------------
-            # Xử lý file MSIX/APPX (UWP từ Windows Store như WhatsApp)
-            # ---------------------------------------------------------
+            # --- KHU VỰC VÁ LỖI CHO UWP / MSIXBUNDLE ---
             if ($FileThucThi -match "(?i)\.(msix|appx|msixbundle|appxbundle)$") {
-                # Kiểm tra phiên bản Build của Windows
                 $PhienBanWin = [System.Environment]::OSVersion.Version.Build
-                
-                # Win 10 1809 có build là 17763. Dưới mức này là không hỗ trợ MSIX.
-                if ($PhienBanWin -lt 17763) {
-                    UI $PM "❌ Lỗi: Win quá cũ ko hỗ trợ" 0
-                    
-                    # Dọn ngay cái file .msixbundle vừa tải về cho đỡ rác máy
-                    try { if (Test-Path $DuongDanLT) { Remove-Item $DuongDanLT -Force -ErrorAction SilentlyContinue } } catch {}
-                    
-                    return # Ngắt ngang, không chạy cài đặt nữa, tool sẽ tự nhảy sang App tiếp theo
+                if ($PhienBanWin -lt 19041) {
+                    UI $PM "❌ Lỗi: Cần Win 10 2004+ hoặc Win 11" 0
+                    return 
                 }
 
-                # Nếu Win đời mới đủ điều kiện thì chạy bình thường
+                # NÂNG CẤP: Tự động tải và cài lót Windows App Runtime 1.6 để trị WhatsApp
+                UI $PM "Đang vá lõi AppRuntime..." 60
+                try {
+                    $AppRT = Join-Path $env:TEMP "WinAppRuntime.exe"
+                    if (-not (Test-Path $AppRT)) {
+                        Invoke-WebRequest "https://aka.ms/windowsappsdk/1.6/latest/windowsappruntimeinstall-x64.exe" -OutFile $AppRT -UseBasicParsing -ErrorAction SilentlyContinue
+                    }
+                    if (Test-Path $AppRT) {
+                        $TienTrinhRT = Start-Process -FilePath $AppRT -ArgumentList "--quiet" -PassThru -WindowStyle Hidden
+                        $TienTrinhRT.WaitForExit()
+                    }
+                } catch {}
+
                 $ThamSo      = "-NoProfile -NonInteractive -Command `"Add-AppxPackage -Path '$FileThucThi'`""
                 $FileThucThi = "powershell.exe"
             }
 
-            # --- TỰ ĐỘNG NHẬN DIỆN ỨNG DỤNG PORTABLE (CHẠY TRỰC TIẾP) ---
             $TenExeChinh = [System.IO.Path]::GetFileNameWithoutExtension($FileThucThi)
             $LaAppPortable = ($TenExeChinh -notmatch "(?i)setup|install|msiexec") -and ($PM.Ten -match "(?i)unikey|evkey|rufus|anydesk" -or $DuoiFile -match "(?i)\.(zip|rar|7z)")
 
@@ -786,7 +759,6 @@ public class WinHelper {
                 $ThuMucDich = Join-Path $env:ProgramFiles $TenSach
                 if (-not (Test-Path $ThuMucDich)) { New-Item -ItemType Directory -Path $ThuMucDich -Force | Out-Null }
                 
-                # Dời nhà cho file từ Temp sang ổ C
                 if ($DuoiFile -match "(?i)\.(zip|rar|7z)" -and (Test-Path $ThuMucTemp)) {
                     Copy-Item -Path "$ThuMucTemp\*" -Destination $ThuMucDich -Recurse -Force
                 } else {
@@ -807,17 +779,9 @@ public class WinHelper {
                     
                     Start-Process -FilePath $ExeTrongOC.FullName -ErrorAction SilentlyContinue
                     UI $PM "✅ Hoàn tất!" 100
-
-                    # TỰ ĐỘNG XÓA RÁC KHI XONG (APP PORTABLE)
-                    try {
-                        if (Test-Path $DuongDanLT) { Remove-Item -Path $DuongDanLT -Force -ErrorAction SilentlyContinue }
-                        if (Test-Path $ThuMucTemp) { Remove-Item -Path $ThuMucTemp -Recurse -Force -ErrorAction SilentlyContinue }
-                    } catch {}
-
                     return 
                 }
             }
-            # -----------------------------------------------------------------------------
 
             UI $PM "🛠️ Đang cài đặt..." $null
             try {
@@ -841,8 +805,7 @@ public class WinHelper {
                         [System.Runtime.InteropServices.Marshal]::ReleaseComObject($SA) | Out-Null
                     } catch {}
 
-                    # Danh sách các app "cầm đèn chạy trước ô tô" tự động mở cửa sổ sau khi xả nén
-                    $DanhSachAppRac = "notepad", "hh", "cmd", "viber", "zalo", "telegram", "skype", "discord", "chrome", "msedge", "brave", "coccoc"
+                    $DanhSachAppRac = "notepad", "hh", "cmd", "chrome", "msedge", "brave", "coccoc"
                     foreach ($App in $DanhSachAppRac) {
                         Get-Process $App -ErrorAction SilentlyContinue | 
                             Where-Object { $_.StartTime -ge $ThoiDiemBatDauCai } | 
@@ -882,6 +845,14 @@ public class WinHelper {
                     }
                 }
 
+                if ($PM.Ten -match "(?i)zalo|telegram|viber|discord") {
+                    UI $PM "Đang bung file ngầm..." 96
+                    $ChoNgoaiLe = 0
+                    while ($ChoNgoaiLe -lt 15 -and $TrangThaiBoNho.TrangThai -ne "DungLai") {
+                        Start-Sleep -Seconds 2; $ChoNgoaiLe += 2
+                    }
+                }
+
                 $ChoXuatHien = 0
                 while ($ChoXuatHien -lt 8) {
                     Start-Sleep -Milliseconds 500; $ChoXuatHien++
@@ -890,25 +861,24 @@ public class WinHelper {
 
                 UI $PM "✅ Hoàn tất!" 100
 
-                # TỰ ĐỘNG XÓA RÁC KHI XONG (APP SETUP BÌNH THƯỜNG)
-                try {
-                    if (Test-Path $DuongDanLT) { Remove-Item -Path $DuongDanLT -Force -ErrorAction SilentlyContinue }
-                    if (Test-Path $ThuMucTemp) { Remove-Item -Path $ThuMucTemp -Recurse -Force -ErrorAction SilentlyContinue }
-                } catch {}
+                $DanhSachAppChat = "viber", "zalo", "telegram", "skype", "discord"
+                foreach ($App in $DanhSachAppChat) {
+                    Get-Process $App -ErrorAction SilentlyContinue | 
+                        Where-Object { $_.StartTime -ge $ThoiDiemBatDauCai } | 
+                        Stop-Process -Force -ErrorAction SilentlyContinue
+                }
 
             } catch { UI $PM "⚠️ Lỗi cài đặt" 0 }
         }
 
-        # --- BƯỚC ƯU TIÊN 7-ZIP (Tạo bản sao mảng để chạy an toàn trong đa luồng) ---
         $DanhSachTienHanh = @($HangChoCaiDat)
         $UuTien7Zip = $DanhSachTienHanh | Where-Object { $_.Ten -match "(?i)7-?Zip" } | Select-Object -First 1
         
         if ($null -ne $UuTien7Zip) {
             $PhanConLai = $DanhSachTienHanh | Where-Object { $_ -ne $UuTien7Zip }
-            $DanhSachTienHanh = @($UuTien7Zip) + $PhanConLai # Ghép 7-Zip lên vị trí đầu tiên
+            $DanhSachTienHanh = @($UuTien7Zip) + $PhanConLai 
         }
 
-        # --- DUYỆT THEO HÀNG CHỜ ĐÃ CHỌN ---
         foreach ($PM in $DanhSachTienHanh) {
             if ($PM.Chon -and $TrangThaiBoNho.TrangThai -ne "DungLai") { 
                 CaiDat $PM 
@@ -924,15 +894,12 @@ public class WinHelper {
             $PS.EndInvoke($KenhChay); $PS.Dispose(); $RS.Close(); $RS.Dispose()
             $Timer.Stop()
             
-            $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "🧹 Đang dọn rác giải phóng ổ cứng..." })
-            try {
-                Get-ChildItem -Path $Global:ThuMucLuuTru -File -ErrorAction SilentlyContinue | Remove-Item -Force -ErrorAction SilentlyContinue
-                if (Test-Path "C:\VietToolbox_Temp") { Remove-Item "C:\VietToolbox_Temp" -Recurse -Force -ErrorAction SilentlyContinue }
-            } catch {}
-
-            $Global:TrangThaiBoNho.TrangThai = "NhanhRoi"
-            CapNhat-NutBam "NhanhRoi"
-            $CuaSoChinh.Dispatcher.Invoke([action]{ $DieuKhienKichHoat.Content = "▶  BẮT ĐẦU CÀI ĐẶT" })
+            # ĐÃ SỬA: Bọc Dispatcher.Invoke để ép giao diện phải cập nhật ngay lập tức
+            $CuaSoChinh.Dispatcher.Invoke([action]{
+                $Global:TrangThaiBoNho.TrangThai = "NhanhRoi"
+                CapNhat-NutBam "NhanhRoi"
+                $DieuKhienKichHoat.Content = "▶  BẮT ĐẦU CÀI ĐẶT"
+            })
         }
     })
     $Timer.Start()
@@ -960,7 +927,6 @@ function TaiDuLieuTuCSV {
                 KetQua      = ""
             }
             
-            # --- CẬP NHẬT: Thêm ngay vào hàng chờ nếu file CSV mặc định đã tích ---
             if ($Obj.Chon -and ($Global:HangChoCaiDat -notcontains $Obj)) {
                 $Global:HangChoCaiDat.Add($Obj)
             }
@@ -969,10 +935,8 @@ function TaiDuLieuTuCSV {
                 param($s, $e)
                 if ($e.PropertyName -eq "Chon") { 
                     if ($s.Chon) {
-                        # Nếu tích chọn, thêm vào cuối hàng chờ
                         if ($Global:HangChoCaiDat -notcontains $s) { $Global:HangChoCaiDat.Add($s) }
                     } else {
-                        # Nếu bỏ tích, xóa khỏi hàng chờ
                         $Global:HangChoCaiDat.Remove($s) | Out-Null
                     }
                     CapNhat-LogChon 
