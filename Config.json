@@ -396,17 +396,11 @@
       "Microsoft.Todos",
       "Microsoft.PowerAutomateDesktop",
       "Microsoft.MicrosoftSolitaireCollection",
-      "Microsoft.WindowsSoundRecorder",
-      "Microsoft.MicrosoftStickyNotes",
       "Microsoft.Windows.DevHome",
-      "Microsoft.Paint",
-      "Microsoft.OutlookForWindows",
       "Microsoft.WindowsAlarms",
       "Microsoft.StartExperiencesApp",
       "Microsoft.GetHelp",
-      "Microsoft.ZuneMusic",
-      "MicrosoftCorporationII.QuickAssist",
-      "MSTeams"
+      "Microsoft.ZuneMusic"
     ],
     "InvokeScript": [
       "$TeamsPath = \"$Env:LocalAppData\\Microsoft\\Teams\\Update.exe\"\n\nif (Test-Path $TeamsPath) {\n  Write-Host \"Uninstalling Teams\"\n  Start-Process $TeamsPath -ArgumentList -uninstall -wait\n\n  Write-Host \"Deleting Teams directory\"\n  Remove-Item $TeamsPath -Recurse -Force\n}"
