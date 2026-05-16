@@ -2,7 +2,7 @@ Check,Name,Category,WingetID,ChocoID,GDriveID,SilentArgs,IconURL,DownloadUrl
 False,Google Chrome,Trình Duyệt,Google.Chrome,googlechrome,,/quiet,https://icon.horse/icon/google.com,https://dl.google.com/dl/chrome/install/googlechromestandaloneenterprise64.msi
 False,Zalo,Nhắn Tin,VNGCorp.Zalo,,,/S,https://icon.horse/icon/help.zalo.me,https://zalo.me/download/zalo-pc
 False,Unikey,Bộ gõ,UniKey.UniKey,Unikey,,,https://icon.horse/icon/unikey.vn,https://www.unikey.org/assets/release/unikey46RC2-230919-win32.zip
-False,UltraViewer,Điều Khiển Từ Xa,DucFabulous.UltraViewer,ultraviewer,,,https://icon.horse/icon/ultraviewer.net,https://dl2.ultraviewer.net/UltraViewer_setup_6.6_en.exe
+False,UltraViewer,Điều Khiển Từ Xa,DucFabulous.UltraViewer,ultraviewer,,/VERYSILENT /SUPPRESSMSGBOXES /NORESTART,https://icon.horse/icon/ultraviewer.net,https://dl2.ultraviewer.net/UltraViewer_setup_6.6_en.exe
 False,Foxit PDF Reader,Văn Phòng,Foxit.FoxitReader,FoxitReader,,/quiet /force,https://icon.horse/icon/foxit.com,https://drive.google.com/uc?export=download&id=108qMlDMb_Z6Lx1uIHi-Ftj0EOHN_bQZe&confirm=t
 False,EVKey,Bộ gõ,lamquangminh.EVKey,evkey,1wTUShoI6X8xdi3R07fBWLFsOP5eKoL_9,,https://icon.horse/icon/evkeyvn.com,https://github.com/lamquangminh/EVKey/releases/download/Release/EVKey.zip
 False,WPS Office,Văn Phòng,Kingsoft.WPSOffice,wps-office-free,,,https://icon.horse/icon/vi.wps.com,https://wdl1.pcfg.cache.wpscdn.com/wpsdl/wpsoffice/download/12.2.0.23196/500.1001/WPSOffice_23196.exe
