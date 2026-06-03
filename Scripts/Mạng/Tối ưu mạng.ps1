@@ -1,8 +1,3 @@
-# Khai báo hàm Ghi-Log để PowerShell hiểu
-function Ghi-Log {
-    param([string]$Message)
-    Write-Host $Message
-}
 Add-Type -AssemblyName System.Windows.Forms
 
 # ==============================================================================
