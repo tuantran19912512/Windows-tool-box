@@ -1,4 +1,8 @@
-﻿Add-Type -AssemblyName System.Windows.Forms
+# Khai báo hàm Ghi-Log để PowerShell hiểu
+function Ghi-Log {
+    param([string]$Message)
+    Write-Host $Message
+ Add-Type -AssemblyName System.Windows.Forms
 
 # ==============================================================================
 # SCRIPT: NETWORK TURBO ULTIMATE V4.0 - TỐI ƯU HOÁ TOÀN DIỆN MẠNG
