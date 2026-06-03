@@ -1,4 +1,9 @@
-﻿Add-Type -AssemblyName System.Windows.Forms, System.Drawing
+# Khai báo hàm Ghi-Log để PowerShell hiểu
+function Ghi-Log {
+    param([string]$Message)
+    Write-Host $Message
+}
+ Add-Type -AssemblyName System.Windows.Forms, System.Drawing
 
 # ==============================================================================
 # SCRIPT: TỐI ƯU OFFICE 1-CLICK (FIX LỖI BẢN MỚI + ẨN BẢN CŨ + DIỆT WPS)
