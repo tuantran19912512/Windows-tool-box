@@ -2,6 +2,7 @@
 function Ghi-Log {
     param([string]$Message)
     Write-Host $Message
+}
  Add-Type -AssemblyName System.Windows.Forms
 
 # ==============================================================================
