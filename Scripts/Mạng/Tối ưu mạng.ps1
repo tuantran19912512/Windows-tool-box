@@ -1,4 +1,4 @@
-Add-Type -AssemblyName System.Windows.Forms
+﻿Add-Type -AssemblyName System.Windows.Forms
 
 # ==============================================================================
 # SCRIPT: NETWORK TURBO ULTIMATE V4.0 - TỐI ƯU HOÁ TOÀN DIỆN MẠNG
