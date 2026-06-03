@@ -1,4 +1,9 @@
-﻿Add-Type -AssemblyName Microsoft.VisualBasic
+# Khai báo hàm Ghi-Log để PowerShell hiểu
+function Ghi-Log {
+    param([string]$Message)
+    Write-Host $Message
+}
+Add-Type -AssemblyName Microsoft.VisualBasic
 Add-Type -AssemblyName System.Windows.Forms
 
 Ghi-Log "=========================================="
